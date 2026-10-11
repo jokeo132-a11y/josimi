@@ -9,8 +9,8 @@ const SERVICE_FEE_CAP_ATOMIC = 50000000000n; // 0.05 XMR
 const ATOMIC_PER_XMR = 1000000000000n;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
-  // Public endpoints change over time; users can edit/add their own node.
-  'http://node.monerodevs.org:18081'
+  // HTTPS is required for the default public endpoint; users can enter their own node.
+  'https://node.monerodevs.org:18089'
 ];
 
 let mainWindow;
@@ -34,6 +34,15 @@ function archiveExistingWallet() {
   fs.mkdirSync(archive);
   for (const file of files) fs.renameSync(path.join(walletDir(), file), path.join(archive, file));
   return archive;
+}
+function tempWalletPath(prefix) { return path.join(walletDir(), `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`); }
+function promoteWallet(tempPath) {
+  const archived = archiveExistingWallet();
+  for (const file of walletFiles(tempPath)) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
+  return archived;
+}
+function removeWalletFiles(base) {
+  for (const file of walletFiles(base)) fs.rmSync(path.join(walletDir(), file), { force: true });
 }
 function atomicToXmr(value) { return (BigInt(value) / 1000000000000n).toString() + '.' + (BigInt(value) % 1000000000000n).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0'); }
 function xmrToAtomic(value) {
@@ -69,31 +78,42 @@ async function makeWindow() {
 ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES }));
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
-  if (wallet) await wallet.close(true).catch(() => {});
+  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network, node: node || DEFAULT_NODES[0] };
-  wallet = await monerojs.createWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
-  sessionPassword = password;
-  const seed = await wallet.getSeed();
-  const summary = await loadSummary();
-  return { ...summary, seed, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
+  const creationPath = tempWalletPath('monejo-create');
+  let created;
+  try {
+    created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, serverUri: activeConfig.node });
+    const seed = await created.getSeed();
+    await created.close(true);
+    promoteWallet(creationPath);
+    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
+    sessionPassword = password;
+    const summary = await loadSummary();
+    return { ...summary, seed, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
+  } catch (error) {
+    if (created) await created.close(true).catch(() => {});
+    removeWalletFiles(creationPath);
+    wallet = null;
+    throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
+  }
 });
 ipcMain.handle('wallet-restore', async (_, { password, seed, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   const normalizedSeed = String(seed || '').trim().replace(/\s+/g, ' ');
   const wordCount = normalizedSeed ? normalizedSeed.split(' ').length : 0;
   if (![12, 13, 24, 25].includes(wordCount)) throw new Error('Monero seed 단어 수를 확인해 주세요. 표준 seed는 12/13/24/25단어입니다.');
-  if (wallet) await wallet.close(true).catch(() => {});
+  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network, node: node || DEFAULT_NODES[0] };
-  const recoveryPath = path.join(walletDir(), `monejo-recovery-${Date.now()}`);
+  const recoveryPath = tempWalletPath('monejo-recovery');
   let recovered;
   try {
     recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, serverUri: activeConfig.node });
     await recovered.close(true);
-    archiveExistingWallet();
-    for (const file of walletFiles(recoveryPath)) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(recoveryPath), 'monejo-wallet')));
+    promoteWallet(recoveryPath);
   } catch (error) {
     if (recovered) await recovered.close(true).catch(() => {});
-    for (const file of walletFiles(recoveryPath)) fs.rmSync(path.join(walletDir(), file), { force: true });
+    removeWalletFiles(recoveryPath);
     throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
   }
   wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
@@ -102,7 +122,7 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, node, network = NET
 });
 ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
-  if (wallet) await wallet.close(true).catch(() => {});
+  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network, node: node || DEFAULT_NODES[0] };
   wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
   sessionPassword = password;

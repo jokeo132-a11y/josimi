@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows ZIP**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows ZIP (v0.3.4)**입니다.
 
 ## 현재 구현
 
@@ -40,7 +40,7 @@ npm install
 npm start
 ```
 
-처음에는 mainnet 기본 노드가 표시됩니다. 공개 노드는 중단·변경될 수 있으므로, 노드 입력란에 신뢰할 수 있는 본인 노드를 직접 지정하는 것을 권장합니다.
+기본 mainnet 노드는 `https://node.monerodevs.org:18089`입니다. 공개 노드는 중단·변경될 수 있으므로, 노드 입력란에 신뢰할 수 있는 본인 노드를 직접 지정하는 것을 권장합니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
 ## Windows 빌드
 
@@ -50,7 +50,7 @@ npm run dist
 
 생성물:
 
-- `dist/monejo-0.3.3-windows.zip`
+- `dist/monejo-0.3.4-windows.zip`
 - `dist/win-unpacked/`
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
