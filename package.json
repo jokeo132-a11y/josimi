@@ -1,6 +1,6 @@
 {
   "name": "monejo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "monejo — non-custodial Monero wallet MVP",
   "main": "src/main.js",
   "author": "monejo",
@@ -23,9 +23,24 @@
   "build": {
     "appId": "com.monejo.wallet",
     "productName": "monejo",
-    "files": ["src/**/*", "package.json"],
-    "win": { "target": ["nsis", "portable"], "artifactName": "monejo-${version}-${arch}.${ext}" },
-    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
-    "portable": { "artifactName": "monejo-${version}-portable.${ext}" }
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "artifactName": "monejo-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "portable": {
+      "artifactName": "monejo-${version}-portable.${ext}"
+    }
   }
 }
