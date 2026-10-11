@@ -1,6 +1,6 @@
 {
   "name": "monejo",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "monejo — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "monejo",
@@ -23,9 +23,27 @@
     "appId": "com.monejo.wallet",
     "productName": "monejo",
     "artifactName": "monejo-${version}-${arch}.${ext}",
-    "files": ["src/**/*", "package.json"],
-    "win": { "target": ["nsis", "portable"] },
-    "nsis": { "artifactName": "monejo-${version}-installer.${ext}", "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true, "shortcutName": "monejo" },
-    "portable": { "artifactName": "monejo-${version}-portable.${ext}" }
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "artifactName": "monejo-${version}-installer.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "monejo"
+    },
+    "portable": {
+      "artifactName": "monejo-${version}-portable.${ext}"
+    }
   }
 }
