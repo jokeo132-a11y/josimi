@@ -1,4 +1,17 @@
 const $ = (id) => document.getElementById(id);
+const LANG = {
+  ko: { lock:'잠금', heroTitle:'내 키는<br/><span>내 기기에.</span>', heroText:'monejo는 seed와 private key를 서버로 보내지 않는 비수탁형 Monero 지갑입니다.', open:'열기', create:'새 지갑', restore:'복구', walletPassword:'지갑 비밀번호', passwordPlaceholder:'8자 이상', nodeAddress:'노드 주소', moneroSeed:'Monero seed', seedPlaceholder:'12/13/24/25단어 seed', openWallet:'지갑 열기', createWallet:'새 지갑 만들기', restoreWallet:'seed로 복구', authFine:'mainnet 지갑입니다. 송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.', totalBalance:'TOTAL BALANCE', syncWaiting:'동기화 대기', myAddress:'내 주소', copyAddress:'주소 복사', showQr:'QR 보기', send:'보내기', recipientAddress:'받는 주소', recipientPlaceholder:'Monero 주소를 붙여넣으세요', sendAmount:'보낼 금액 (XMR)', priority:'우선순위', low:'낮음', normal:'보통', high:'높음', review:'검토하기', recentTransactions:'최근 거래', localRecord:'로컬 기록', noTransactions:'아직 거래가 없습니다.', walletTools:'지갑 도구', backupWallet:'지갑 파일 백업', showSeed:'복구용 seed 표시', seedFine:'seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.', reviewTitle:'송금 내용을 확인하세요', cancel:'취소', confirmSend:'확인하고 송금' },
+  en: { lock:'Lock', heroTitle:'Your keys,<br/><span>your device.</span>', heroText:'monejo is a non-custodial Monero wallet. Your seed and private keys stay on your device.', open:'Open', create:'New wallet', restore:'Restore', walletPassword:'Wallet password', passwordPlaceholder:'8 characters or more', nodeAddress:'Daemon address', moneroSeed:'Monero seed', seedPlaceholder:'12/13/24/25-word seed', openWallet:'Open wallet', createWallet:'Create wallet', restoreWallet:'Restore from seed', authFine:'Mainnet wallet. Always check the address, amount, and service fee before sending.', totalBalance:'TOTAL BALANCE', syncWaiting:'Waiting for sync', myAddress:'My address', copyAddress:'Copy address', showQr:'Show QR', send:'Send', recipientAddress:'Recipient address', recipientPlaceholder:'Paste a Monero address', sendAmount:'Amount (XMR)', priority:'Priority', low:'Low', normal:'Normal', high:'High', review:'Review', recentTransactions:'Recent transactions', localRecord:'Local record', noTransactions:'No transactions yet.', walletTools:'Wallet tools', backupWallet:'Back up wallet file', showSeed:'Show recovery seed', seedFine:'Showing your seed can expose it. Keep it offline.', reviewTitle:'Review transaction', cancel:'Cancel', confirmSend:'Confirm and send' }
+};
+let language = localStorage.getItem('monejo.language') || 'ko';
+function applyLanguage() {
+  const dict = LANG[language];
+  document.documentElement.lang = language;
+  document.querySelectorAll('[data-i18n]').forEach((node) => { if (dict[node.dataset.i18n]) node.textContent = dict[node.dataset.i18n]; });
+  document.querySelectorAll('[data-i18n-html]').forEach((node) => { if (dict[node.dataset.i18nHtml]) node.innerHTML = dict[node.dataset.i18nHtml]; });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => { if (dict[node.dataset.i18nPlaceholder]) node.placeholder = dict[node.dataset.i18nPlaceholder]; });
+  $('languageSelect').value = language;
+}
 let mode = 'open';
 let pendingSend = null;
 let currentSeed = null;
@@ -17,7 +30,8 @@ function setMode(next) {
   mode = next;
   document.querySelectorAll('.tab').forEach((tab) => tab.classList.toggle('active', tab.dataset.tab === next));
   $('seedLabel').classList.toggle('hidden', next !== 'restore');
-  $('submitBtn').textContent = next === 'create' ? '새 지갑 만들기' : next === 'restore' ? 'seed로 복구' : '지갑 열기';
+  const dict = LANG[language];
+  $('submitBtn').textContent = next === 'create' ? dict.createWallet : next === 'restore' ? dict.restoreWallet : dict.openWallet;
 }
 function renderTxs(txs = []) {
   if (!txs.length) { $('txList').innerHTML = '<div class="empty">아직 거래가 없습니다.</div>'; return; }
@@ -36,6 +50,7 @@ function resetInactivityTimer() {
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
+$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('monejo.language', language); applyLanguage(); setMode(mode); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
   const payload = { password: $('password').value, node: $('node').value.trim() || undefined, network: 'mainnet' };
@@ -72,3 +87,4 @@ $('sendForm').addEventListener('submit', async (event) => {
 $('cancelSend').addEventListener('click', () => $('confirmDialog').close());
 $('confirmSend').addEventListener('click', async () => { try { $('confirmSend').disabled = true; const result = await window.monejo.send(pendingSend); $('confirmDialog').close(); showToast(`송금 완료 · 서비스 수수료 ${result.serviceFeeXmr} XMR`); await refresh(); } catch (e) { showError('sendError', e); } finally { $('confirmSend').disabled = false; } });
 setMode('open');
+applyLanguage();

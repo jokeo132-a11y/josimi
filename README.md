@@ -1,10 +1,11 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **mainnet 송금용 Windows ZIP**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어를 지원하는 mainnet Windows ZIP**입니다.
 
 ## 현재 구현
 
 - Electron 기반 Windows x64 ZIP (`monejo.exe` 포함)
+- 한국어 / English 언어 선택
 - 로컬 wallet 파일 저장 및 비밀번호 잠금
 - 새 지갑 생성 / Monero seed 복구 / 지갑 열기
 - 복구 전 seed 형식 확인 및 기존 지갑 자동 보관
@@ -49,7 +50,7 @@ npm run dist
 
 생성물:
 
-- `dist/monejo-0.3.1-windows.zip`
+- `dist/monejo-0.3.2-windows.zip`
 - `dist/win-unpacked/`
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
