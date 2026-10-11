@@ -1,0 +1,8 @@
+node_modules/
+_pkg/
+dist/win-unpacked/
+dist/*.yaml
+dist/*.yml
+dist/*.exe
+.DS_Store
+*.log

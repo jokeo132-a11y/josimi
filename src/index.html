@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>monejo — Monero wallet</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar"><div class="brand"><span class="mark">m</span><span>monejo</span><em>MAINNET</em></div><button id="lockBtn" class="ghost hidden">잠금</button></header>
+    <main>
+      <section id="authView" class="auth-view">
+        <div class="hero"><div class="eyebrow">PRIVATE BY DEFAULT</div><h1>내 키는<br/><span>내 기기에.</span></h1><p>monejo는 seed와 private key를 서버로 보내지 않는 비수탁형 Monero 지갑입니다.</p></div>
+        <div class="auth-card"><div class="tabs"><button class="tab active" data-tab="open">열기</button><button class="tab" data-tab="create">새 지갑</button><button class="tab" data-tab="restore">복구</button></div>
+          <form id="walletForm"><label>지갑 비밀번호<input id="password" type="password" minlength="8" placeholder="8자 이상" required /></label><label class="node-label">노드 주소<input id="node" placeholder="http://node.monerodevs.org:18081" /></label><label id="seedLabel" class="hidden">Monero seed<input id="seed" autocomplete="off" placeholder="12/13/25단어 seed" /></label><button class="primary" type="submit" id="submitBtn">지갑 열기</button></form>
+          <p class="fine">mainnet 지갑입니다. 송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.</p><div id="authError" class="error hidden"></div>
+        </div>
+      </section>
+      <section id="appView" class="app-view hidden">
+        <div class="dashboard-head"><div><div class="eyebrow">TOTAL BALANCE</div><div id="balance" class="balance">0.000000000000 <small>XMR</small></div><div id="status" class="status">동기화 대기</div></div><button id="refreshBtn" class="round">↻</button></div>
+        <div class="grid">
+          <article class="card address-card"><div class="card-label">내 주소</div><div id="address" class="address">—</div><div class="address-actions"><button id="copyAddress">주소 복사</button><button id="showQr">QR 보기</button></div><canvas id="qr" class="hidden"></canvas></article>
+          <article class="card send-card"><div class="card-label">보내기</div><form id="sendForm"><label>받는 주소<input id="sendAddress" required placeholder="Monero 주소를 붙여넣으세요" /></label><label>보낼 금액 (XMR)<input id="sendAmount" inputmode="decimal" required placeholder="0.000000000000" /></label><label>우선순위<select id="priority"><option value="1">낮음</option><option value="2" selected>보통</option><option value="3">높음</option></select></label><button class="primary" type="submit">검토하기</button></form><div id="sendError" class="error hidden"></div></article>
+          <article class="card tx-card"><div class="card-title"><span>최근 거래</span><span class="muted">로컬 기록</span></div><div id="txList" class="tx-list"><div class="empty">아직 거래가 없습니다.</div></div></article>
+          <article class="card tools-card"><div class="card-title"><span>지갑 도구</span></div><button id="backupBtn" class="tool">지갑 파일 백업</button><button id="seedBtn" class="tool danger">복구용 seed 표시</button><p class="fine">seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.</p></article>
+        </div>
+      </section>
+    </main>
+  </div>
+  <dialog id="confirmDialog"><div class="dialog-inner"><div class="eyebrow">TRANSACTION REVIEW</div><h2>송금 내용을 확인하세요</h2><div id="review"></div><div class="dialog-actions"><button id="cancelSend">취소</button><button id="confirmSend" class="primary">확인하고 송금</button></div></div></dialog>
+  <div id="toast" class="toast hidden"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "monejo",
+  "version": "0.1.0",
+  "description": "monejo — non-custodial Monero wallet MVP",
+  "main": "src/main.js",
+  "author": "monejo",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "dist": "electron-builder --win nsis portable",
+    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js"
+  },
+  "dependencies": {
+    "monero-ts": "0.11.20",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "electron": "44.7.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.monejo.wallet",
+    "productName": "monejo",
+    "files": ["src/**/*", "package.json"],
+    "win": { "target": ["nsis", "portable"], "artifactName": "monejo-${version}-${arch}.${ext}" },
+    "nsis": { "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true },
+    "portable": { "artifactName": "monejo-${version}-portable.${ext}" }
+  }
+}
