@@ -1,16 +1,15 @@
 {
   "name": "monejo",
-  "version": "0.2.1",
-  "description": "monejo — non-custodial Monero wallet MVP",
+  "version": "0.3.0",
+  "description": "monejo — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "monejo",
   "license": "MIT",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dev": "electron .",
-    "dist": "electron-builder --win nsis portable",
-    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js"
+    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js",
+    "dist": "electron-builder --win nsis portable"
   },
   "dependencies": {
     "monero-ts": "0.11.20",
@@ -23,24 +22,10 @@
   "build": {
     "appId": "com.monejo.wallet",
     "productName": "monejo",
-    "files": [
-      "src/**/*",
-      "package.json"
-    ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "artifactName": "monejo-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "portable": {
-      "artifactName": "monejo-${version}-portable.${ext}"
-    }
+    "artifactName": "monejo-${version}-${arch}.${ext}",
+    "files": ["src/**/*", "package.json"],
+    "win": { "target": ["nsis", "portable"] },
+    "nsis": { "artifactName": "monejo-${version}-installer.${ext}", "oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "createStartMenuShortcut": true, "shortcutName": "monejo" },
+    "portable": { "artifactName": "monejo-${version}-portable.${ext}" }
   }
 }

@@ -1,12 +1,13 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **mainnet 송금용 Windows portable EXE**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **mainnet 송금용 Windows installer/portable EXE**입니다.
 
 ## 현재 구현
 
 - Electron 기반 Windows x64 portable EXE
 - 로컬 wallet 파일 저장 및 비밀번호 잠금
 - 새 지갑 생성 / Monero seed 복구 / 지갑 열기
+- 복구 전 seed 형식 확인 및 기존 지갑 자동 보관
 - 주소 표시·복사 / QR
 - 잔액·거래내역 조회
 - 송금 검토·확인·relay
@@ -48,8 +49,11 @@ npm run dist
 
 생성물:
 
-- `dist/monejo-0.1.0-portable.exe`
+- `dist/monejo-0.3.0-installer.exe`
+- `dist/monejo-0.3.0-portable.exe`
 - `dist/win-unpacked/`
+
+복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
 
 ## 중요한 보안 고지
 

@@ -42,10 +42,15 @@ $('walletForm').addEventListener('submit', async (event) => {
   try {
     let result;
     if (mode === 'create') result = await window.monejo.create(payload);
-    else if (mode === 'restore') result = await window.monejo.restore({ ...payload, seed: $('seed').value });
+    else if (mode === 'restore') {
+      const seed = $('seed').value.trim();
+      if (!confirm('입력한 seed가 정확한지 확인했습니다. 복구를 시작할까요? 기존 지갑은 자동 보관됩니다.')) return;
+      result = await window.monejo.restore({ ...payload, seed });
+    }
     else result = await window.monejo.open(payload);
     currentSeed = result.seed || null; renderSummary(result);
     if (currentSeed) showToast('지갑이 생성되었습니다. seed를 오프라인 백업하세요.');
+    else if (result.restored) showToast(result.recoveryNote || 'seed로 지갑을 복구했습니다.');
     resetInactivityTimer();
   } catch (e) { showError('authError', e); }
 });
