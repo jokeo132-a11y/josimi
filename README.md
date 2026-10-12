@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows ZIP (v0.3.4)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows ZIP (v0.3.5)**입니다.
 
 ## 현재 구현
 
@@ -50,10 +50,12 @@ npm run dist
 
 생성물:
 
-- `dist/monejo-0.3.4-windows.zip`
+- `dist/monejo-0.3.5-windows.zip`
 - `dist/win-unpacked/`
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
+
+Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 사용하므로 packaged EXE에서도 `window.monejo`가 정상 노출됩니다.
 
 ## 중요한 보안 고지
 

@@ -74,7 +74,7 @@ $('walletForm').addEventListener('submit', async (event) => {
 $('refreshBtn').addEventListener('click', refresh);
 $('lockBtn').addEventListener('click', async () => { await window.monejo.lock(); location.reload(); });
 $('copyAddress').addEventListener('click', async () => { await navigator.clipboard.writeText($('address').textContent); showToast('주소를 복사했습니다.'); });
-$('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { await window.monejo.qr($('address').textContent, canvas); } });
+ $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.monejo.qr($('address').textContent); } });
 $('backupBtn').addEventListener('click', async () => { const result = await window.monejo.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); });
 $('seedBtn').addEventListener('click', () => { if (!currentSeed) { showToast('현재 세션에서 생성된 seed가 없습니다. 복구 지갑은 원래 seed를 사용하세요.'); return; } if (confirm('seed를 화면에 표시합니다. 주변에 사람이 없고 기록 장치가 안전한지 확인했습니까?')) alert(currentSeed); });
 $('sendForm').addEventListener('submit', async (event) => {

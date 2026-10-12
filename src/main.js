@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const monerojs = require('monero-ts');
+const QRCode = require('qrcode');
 
 const FEE_ADDRESS = '42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu';
 const SERVICE_FEE_RATE = 0.0025;
@@ -156,6 +157,7 @@ ipcMain.handle('wallet-export-backup', async () => {
   fs.copyFileSync(walletPath() + '.keys', result.filePath);
   return { canceled: false, path: result.filePath };
 });
+ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
 
 app.whenReady().then(makeWindow);
 app.on('window-all-closed', async () => { if (wallet) await wallet.close(true).catch(() => {}); if (process.platform !== 'darwin') app.quit(); });
