@@ -1,3 +1,13 @@
+## v0.3.6 — 2026-10-13
+
+복구 주소 불일치 점검 및 Monero 공식 GUI/CLI 흐름 대조 버전입니다.
+
+- monero-ts 공식 설정명인 `server`를 사용하도록 수정했습니다. 이전의 `serverUri`는 daemon 연결 설정으로 적용되지 않았습니다.
+- 공식 GUI/CLI에 있는 seed offset passphrase 입력을 복구 화면에 추가했습니다. offset을 사용하면 다른 주소가 나오는 것이 정상입니다.
+- Monero 표준 seed 형식인 13/14/25단어만 허용하고 잘못된 12/24단어 입력은 거부합니다.
+- 생성된 지갑과 복구된 지갑의 primary address를 파일 저장 전후로 비교해 주소가 바뀌면 실패 처리합니다.
+- 실제 monero-ts 재현에서 같은 25단어 seed는 같은 주소를 만들고, offset passphrase를 넣은 경우에만 다른 주소가 만들어지는 것을 확인했습니다.
+
 # Changelog
 
 ## v0.3.5 — 2026-10-12

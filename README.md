@@ -74,3 +74,8 @@ Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 
 4. 서비스 수수료 정책·법적 고지·환불/오류 처리 확정
 5. 웹앱을 Vercel에 연결하고 `MONERO_DAEMON_URL`을 본인 노드로 설정
 6. 웹·EXE 모두 독립 보안 감사 및 재현 가능한 빌드 적용
+
+
+## v0.3.6 복구 검증
+
+복구 화면은 Monero 공식 흐름에 맞춰 13/14/25단어 seed와 선택적 seed offset passphrase를 받습니다. 같은 seed를 offset 없이 복구하면 primary address가 같아야 하며, offset을 입력하면 다른 지갑 주소가 생성되는 것이 정상입니다. 생성·복구 후에는 저장 파일을 다시 열어 primary address가 바뀌지 않았는지도 검증합니다.

@@ -60,6 +60,12 @@ async function assertMainnetAddress(address, label) {
   if (!(await monerojs.MoneroUtils.isValidAddress(address, 'mainnet'))) throw new Error(`${label}가 유효한 Monero mainnet 주소가 아닙니다.`);
 }
 function ensureWallet() { if (!wallet) throw new Error('먼저 지갑을 열거나 생성해 주세요.'); }
+function normalizeSeed(seed) {
+  const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
+  const wordCount = normalized ? normalized.split(' ').length : 0;
+  if (![13, 14, 25].includes(wordCount)) throw new Error('Monero seed는 표준 13/14/25단어 형식이어야 합니다. 12/24단어를 입력했다면 seed를 다시 복사하세요.');
+  return normalized;
+}
 function safeTx(tx) {
   return { hash: tx.getHash?.(), fee: tx.getFee?.()?.toString?.() || '0', amount: tx.getAmount?.()?.toString?.() || '0', height: tx.getHeight?.(), isConfirmed: tx.isConfirmed?.(), isLocked: tx.isLocked?.(), timestamp: tx.getTimestamp?.() };
 }
@@ -84,13 +90,15 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
   const creationPath = tempWalletPath('monejo-create');
   let created;
   try {
-    created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, serverUri: activeConfig.node });
+    created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, server: activeConfig.node });
     const seed = await created.getSeed();
+    const createdAddress = await created.getPrimaryAddress();
     await created.close(true);
     promoteWallet(creationPath);
-    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
+    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     sessionPassword = password;
     const summary = await loadSummary();
+    if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, seed, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
   } catch (error) {
     if (created) await created.close(true).catch(() => {});
@@ -99,25 +107,27 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
-ipcMain.handle('wallet-restore', async (_, { password, seed, node, network = NETWORK }) => {
+ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
-  const normalizedSeed = String(seed || '').trim().replace(/\s+/g, ' ');
-  const wordCount = normalizedSeed ? normalizedSeed.split(' ').length : 0;
-  if (![12, 13, 24, 25].includes(wordCount)) throw new Error('Monero seed 단어 수를 확인해 주세요. 표준 seed는 12/13/24/25단어입니다.');
+  const normalizedSeed = normalizeSeed(seed);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network, node: node || DEFAULT_NODES[0] };
   const recoveryPath = tempWalletPath('monejo-recovery');
   let recovered;
   try {
-    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, serverUri: activeConfig.node });
+    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: String(seedOffset || '').trim() || undefined, server: activeConfig.node });
+    const recoveredAddress = await recovered.getPrimaryAddress();
     await recovered.close(true);
     promoteWallet(recoveryPath);
+    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
+    if (await wallet.getPrimaryAddress() !== recoveredAddress) throw new Error('복구 후 파일 주소 검증에 실패했습니다.');
   } catch (error) {
+    if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
     if (recovered) await recovered.close(true).catch(() => {});
     removeWalletFiles(recoveryPath);
     throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
   }
-  wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
+  if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   sessionPassword = password;
   return { ...(await loadSummary()), restored: true, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
 });
@@ -125,7 +135,7 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network, node: node || DEFAULT_NODES[0] };
-  wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, serverUri: activeConfig.node });
+  wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   sessionPassword = password;
   return loadSummary();
 });
