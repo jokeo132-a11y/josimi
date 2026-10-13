@@ -84,3 +84,8 @@ Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 
 ## v0.3.7 UI
 
 GUI는 getmonero의 Monero GUI와 Cake Wallet의 실사용 화면에서 영감을 받아 정보 중심의 charcoal/orange 디자인으로 정리했습니다. 장식적인 효과를 줄이고 주소, 잔액, 송금, 거래내역의 가독성과 작업 흐름을 우선합니다.
+
+
+## v0.3.8 UI
+
+첫 화면은 홍보용 랜딩페이지가 아니라 지갑 앱의 시작 화면으로 단순화했습니다. 브랜드와 지갑 작업만 남기고 큰 슬로건, MAINNET 배지, 불필요한 네트워크 문구를 제거했습니다.
