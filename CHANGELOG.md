@@ -1,3 +1,13 @@
+## v0.3.7 — 2026-10-13
+
+Monero GUI와 Cake Wallet의 실제 제품 화면을 참고해 인터페이스를 정리했습니다.
+
+- 큰 히어로 문구와 장식적인 radial gradient를 제거했습니다.
+- Monero GUI처럼 정보 밀도가 있는 charcoal surface, orange accent, compact navigation을 사용합니다.
+- Cake Wallet처럼 버튼·입력·잔액·주소·송금 흐름의 우선순위를 명확히 했습니다.
+- 카드 모서리, 간격, 테두리, hover/focus 상태를 일관되게 맞췄습니다.
+- 모바일 화면에서도 송금·주소·거래내역 카드가 자연스럽게 쌓입니다.
+
 ## v0.3.6 — 2026-10-13
 
 복구 주소 불일치 점검 및 Monero 공식 GUI/CLI 흐름 대조 버전입니다.

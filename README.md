@@ -79,3 +79,8 @@ Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 
 ## v0.3.6 복구 검증
 
 복구 화면은 Monero 공식 흐름에 맞춰 13/14/25단어 seed와 선택적 seed offset passphrase를 받습니다. 같은 seed를 offset 없이 복구하면 primary address가 같아야 하며, offset을 입력하면 다른 지갑 주소가 생성되는 것이 정상입니다. 생성·복구 후에는 저장 파일을 다시 열어 primary address가 바뀌지 않았는지도 검증합니다.
+
+
+## v0.3.7 UI
+
+GUI는 getmonero의 Monero GUI와 Cake Wallet의 실사용 화면에서 영감을 받아 정보 중심의 charcoal/orange 디자인으로 정리했습니다. 장식적인 효과를 줄이고 주소, 잔액, 송금, 거래내역의 가독성과 작업 흐름을 우선합니다.
