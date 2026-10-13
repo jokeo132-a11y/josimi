@@ -3,11 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="monejo — 브라우저에서 사용하는 비수탁형 Monero 지갑" />
-  <title>monejo web wallet</title>
+  <meta name="description" content="monejo — 간단하고 프라이빗한 Monero 지갑" />
+  <title>monejo — Monero wallet</title>
 </head>
 <body>
-  <div id="app"></div>
+  <header class="nav"><a class="logo" href="/"><span>m</span> monejo</a><a class="nav-download" href="#download">다운로드</a></header>
+  <main>
+    <section class="hero"><div class="eyebrow">PRIVATE MONERO WALLET</div><h1>필요한 것만.<br><em>monejo.</em></h1><p>개인키를 직접 보관하는 간단한 Monero 지갑입니다. Windows에서 바로 시작할 수 있습니다.</p><a class="main-cta" href="#download">다운로드 보기 <b>↓</b></a></section>
+    <section class="intro"><div><span class="number">01</span><h2>내 키는<br>내 컴퓨터에.</h2></div><p>monejo는 비수탁형 지갑입니다. seed와 private key를 서버에 보내지 않고, 사용자의 기기에서 지갑을 만들고 관리합니다.</p></section>
+    <section class="features"><article><span>01</span><h3>비수탁형</h3><p>지갑 접근 권한은 사용자에게만 있습니다.</p></article><article><span>02</span><h3>mainnet</h3><p>실제 Monero 네트워크를 사용합니다.</p></article><article><span>03</span><h3>확인 후 송금</h3><p>주소와 금액을 확인한 뒤 직접 전송합니다.</p></article></section>
+    <section id="download" class="download"><div><div class="eyebrow">WINDOWS DOWNLOAD</div><h2>monejo 받기</h2><p>Windows용 파일입니다. 압축을 풀거나 EXE를 바로 실행하세요.</p></div><div class="download-list"><a class="download-row primary" href="/downloads/monejo.exe" download="monejo.exe"><span><b>exe</b><small>Windows Portable 실행 파일</small></span><strong>↓</strong></a><a class="download-row" href="/downloads/monejo.zip" download="monejo.zip"><span><b>zip</b><small>압축 해제 후 바로 실행</small></span><strong>↓</strong></a><a class="checksum" href="/downloads/SHA256SUMS.txt" download="SHA256SUMS.txt">SHA-256 확인 파일</a></div></section>
+    <section class="notice"><strong>사용 전 확인</strong><p>monejo는 독립 보안 감사를 받지 않은 MVP입니다. 처음에는 소액으로만 테스트하고 seed는 오프라인에 백업하세요.</p></section>
+  </main><footer><span>monejo · Monero wallet</span><span>© 2026</span></footer>
   <script type="module" src="/src/main.js"></script>
 </body>
 </html>
