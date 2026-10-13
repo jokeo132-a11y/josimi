@@ -1,4 +1,3 @@
 {
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
-  "functions": { "api/daemon/[...path].js": { "maxDuration": 30 } }
+  "rewrites": [{ "source": "/((?!downloads/).*)", "destination": "/index.html" }]
 }

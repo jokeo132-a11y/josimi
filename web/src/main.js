@@ -1,42 +1,8 @@
-import monerojs from 'monero-ts';
-import QRCode from 'qrcode';
 import './style.css';
 
-const FEE_ADDRESS = '42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu';
-const SERVICE_FEE_RATE = 0.0025;
-const SERVICE_FEE_CAP = 50000000000n;
-const ATOMIC = 1000000000000n;
-const NETWORK = 'mainnet';
-const DAEMON = `${location.origin}/api/daemon`;
-let wallet = null;
-let seedInMemory = null;
-let lockTimer;
-
-const root = document.querySelector('#app');
-root.innerHTML = `
-<header><div class="brand"><b>m</b><strong>monejo</strong><span>WEB MAINNET</span></div><button id="lock" class="outline hidden">잠금</button></header>
-<main>
-<section id="auth" class="auth"><div class="hero"><small>NON-CUSTODIAL / MAINNET</small><h1>Monero,<br><i>내 방식대로.</i></h1><p>seed와 private key는 이 브라우저를 떠나지 않습니다. Vercel은 공개 데몬 요청만 중계합니다.</p></div><div class="panel"><nav><button data-mode="open" class="active">열기</button><button data-mode="create">새 지갑</button><button data-mode="restore">복구</button></nav><form id="authForm"><label>비밀번호<input id="password" type="password" minlength="8" required placeholder="8자 이상" /></label><label id="seedWrap" class="hidden">Monero seed<textarea id="seed" rows="4" placeholder="복구할 seed를 입력"></textarea></label><button class="accent" id="authSubmit">지갑 열기</button></form><p class="note">브라우저 저장소에는 암호화된 seed만 저장됩니다. seed를 누구에게도 공유하지 마세요.</p><div class="downloads"><strong>monejo Windows 다운로드</strong><div><a href="https://github.com/jokeo132-a11y/monejo/releases/download/v0.2.1/monejo-0.2.1-x64.exe">설치형 EXE</a><a href="https://github.com/jokeo132-a11y/monejo/releases/download/v0.2.1/monejo-0.2.1-portable.exe">Portable EXE</a><a href="https://github.com/jokeo132-a11y/monejo/releases/download/v0.2.1/monejo-0.2.1-win-unpacked.zip">ZIP</a></div><a class="release" href="https://github.com/jokeo132-a11y/monejo/releases/tag/v0.2.1">GitHub Release · SHA-256</a></div><div id="authError" class="error hidden"></div></div></section>
-<section id="wallet" class="hidden"><div class="walletHead"><div><small>MAINNET BALANCE</small><h2 id="balance">0.000000000000 <em>XMR</em></h2><p id="status">연결 준비 중</p></div><button id="refresh" class="circle">↻</button></div><div class="cards"><article class="card address"><small>내 주소</small><p id="address">—</p><div><button id="copy">주소 복사</button><button id="qrBtn">QR</button></div><canvas id="qr" class="hidden"></canvas></article><article class="card send"><small>보내기</small><form id="sendForm"><label>받는 주소<input id="to" required placeholder="Monero mainnet 주소" /></label><label>금액 (XMR)<input id="amount" inputmode="decimal" required placeholder="0.01" /></label><button class="accent">송금 검토</button></form><div id="sendError" class="error hidden"></div></article><article class="card security"><small>보안</small><p>개인키·seed는 서버로 전송되지 않습니다. 공용 브라우저에서는 사용하지 마세요.</p><button id="backup" class="wide">암호화 백업 다운로드</button><button id="showSeed" class="wide warn">현재 seed 표시</button></article></div></section>
-</main><dialog id="reviewDialog"><div class="dialog"><small>TRANSACTION REVIEW</small><h3>송금 내용을 확인하세요</h3><div id="review"></div><div class="actions"><button id="cancel">취소</button><button id="confirm" class="accent">확인하고 송금</button></div></div></dialog><div id="toast" class="toast hidden"></div>`;
-
-const $ = (id) => document.getElementById(id);
-const toXmr = (v) => { const n = BigInt(v); return `${n / ATOMIC}.${(n % ATOMIC).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0')}`; };
-const toAtomic = (v) => { const s = String(v).trim(); if (!/^\d+(\.\d{1,12})?$/.test(s)) throw new Error('금액 형식이 올바르지 않습니다.'); const [a,b=''] = s.split('.'); return BigInt(a)*ATOMIC+BigInt((b+'000000000000').slice(0,12)); };
-const feeFor = (n) => { const f = n*25n/10000n; return f > SERVICE_FEE_CAP ? SERVICE_FEE_CAP : f; };
-const toast = (s) => { $('toast').textContent=s; $('toast').classList.remove('hidden'); setTimeout(()=> $('toast').classList.add('hidden'), 2800); };
-const err = (id,e) => { $(id).textContent=e.message||String(e); $(id).classList.remove('hidden'); };
-const clear = (id) => $(id).classList.add('hidden');
-async function deriveKey(password, salt) { const raw=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']); return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},raw,{name:'AES-GCM',length:256},false,['encrypt','decrypt']); }
-async function encryptSeed(seed,password) { const salt=crypto.getRandomValues(new Uint8Array(16)); const iv=crypto.getRandomValues(new Uint8Array(12)); const key=await deriveKey(password,salt); const data=await crypto.subtle.encrypt({name:'AES-GCM',iv},key,new TextEncoder().encode(seed)); localStorage.setItem('monejo.enc',JSON.stringify({salt:[...salt],iv:[...iv],data:[...new Uint8Array(data)]})); }
-async function decryptSeed(password) { const x=JSON.parse(localStorage.getItem('monejo.enc')||'null'); if(!x) return null; const key=await deriveKey(password,new Uint8Array(x.salt)); const data=await crypto.subtle.decrypt({name:'AES-GCM',iv:new Uint8Array(x.iv)},key,new Uint8Array(x.data)); return new TextDecoder().decode(data); }
-async function openWallet(password, suppliedSeed='') { const seed=suppliedSeed||await decryptSeed(password); if(seed) wallet=await monerojs.createWalletFull({password,seed,networkType:NETWORK,serverUri:DAEMON}); else { const keys=await monerojs.createWalletKeys({networkType:NETWORK}); const seed=await keys.getSeed(); await keys.close(); wallet=await monerojs.createWalletFull({password,seed,networkType:NETWORK,serverUri:DAEMON}); seedInMemory=seed; await encryptSeed(seed,password); } seedInMemory=seed||seedInMemory; await sync(); }
-async function sync() { const address=await wallet.getPrimaryAddress(); const b=await wallet.getBalance(0); $('address').textContent=address; $('balance').innerHTML=`${toXmr(b)} <em>XMR</em>`; $('status').textContent='mainnet · 브라우저 로컬 지갑'; }
-function armLock() { clearTimeout(lockTimer); lockTimer=setTimeout(()=>{ wallet?.close(true).catch(()=>{}); wallet=null; seedInMemory=null; location.reload(); },15*60*1000); }
-let mode='open'; document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{mode=b.dataset.mode;document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));$('seedWrap').classList.toggle('hidden',mode!=='restore');$('authSubmit').textContent=mode==='create'?'새 지갑 만들기':mode==='restore'?'seed로 복구':'지갑 열기';});
-$('authForm').onsubmit=async(e)=>{e.preventDefault();clear('authError');try{const pw=$('password').value;const seed=mode==='restore'?$('seed').value.trim():'';if(mode==='restore'&&!seed)throw new Error('seed를 입력해 주세요.');await openWallet(pw,seed);$('auth').classList.add('hidden');$('wallet').classList.remove('hidden');$('lock').classList.remove('hidden');armLock();toast(mode==='create'?'지갑을 만들었습니다. 암호화 백업을 내려받으세요.':'지갑을 열었습니다.');}catch(x){err('authError',x);}};
-$('refresh').onclick=()=>sync().catch(x=>toast(x.message)); $('lock').onclick=()=>{wallet?.close(true).catch(()=>{});location.reload();}; $('copy').onclick=()=>navigator.clipboard.writeText($('address').textContent).then(()=>toast('주소를 복사했습니다.')); $('qrBtn').onclick=()=>{$('qr').classList.toggle('hidden');if(!$('qr').classList.contains('hidden'))QRCode.toCanvas($('qr'),$('address').textContent,{width:210,margin:1});};
-let pending=null; $('sendForm').onsubmit=async(e)=>{e.preventDefault();clear('sendError');try{const address=$('to').value.trim(), amount=$('amount').value.trim(), n=toAtomic(amount);if(!(await monerojs.MoneroUtils.isValidAddress(address,NETWORK)))throw new Error('mainnet Monero 주소가 아닙니다.');const f=feeFor(n);pending={address,amount:n,fee:f};$('review').innerHTML=`<p><span>받는 주소</span><b>${address}</b></p><p><span>보낼 금액</span><b>${amount} XMR</b></p><p><span>서비스 수수료</span><b>${toXmr(f)} XMR (0.25%)</b></p><p><span>수수료 주소</span><b>${FEE_ADDRESS}</b></p><p><span>네트워크 수수료</span><b>지갑 코어 계산</b></p>`;$('reviewDialog').showModal();}catch(x){err('sendError',x);}};
-$('cancel').onclick=()=>$('reviewDialog').close(); $('confirm').onclick=async()=>{try{$('confirm').disabled=true;const txs=await wallet.createTxs({accountIndex:0,destinations:[{address:pending.address,amount:pending.amount.toString()},{address:FEE_ADDRESS,amount:pending.fee.toString()}],relay:true});$('reviewDialog').close();toast(`송금 완료 · ${txs[0]?.getHash?.()||'처리됨'}`);await sync();}catch(x){err('sendError',x);}finally{$('confirm').disabled=false;}};
-$('showSeed').onclick=()=>{if(seedInMemory&&confirm('seed를 표시합니다. 주변에 사람이 없고 화면 녹화가 없는지 확인했습니까?'))alert(seedInMemory);}; $('backup').onclick=()=>{if(!seedInMemory){toast('먼저 지갑을 열어 주세요.');return;}const blob=new Blob([JSON.stringify({network:NETWORK,encryptedSeed:localStorage.getItem('monejo.enc')},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='monejo-mainnet-backup.json';a.click();URL.revokeObjectURL(a.href);toast('암호화 백업을 다운로드했습니다.');};
-['click','keydown','mousemove','touchstart'].forEach(e=>document.addEventListener(e,armLock,{passive:true}));
+document.querySelectorAll('a[href^="#"]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) { event.preventDefault(); target.scrollIntoView({ behavior: 'smooth' }); }
+  });
+});
