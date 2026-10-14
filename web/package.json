@@ -1,7 +1,0 @@
-{
-  "name": "monejo-download-site",
-  "version": "0.2.2",
-  "private": true,
-  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
-  "devDependencies": { "vite": "6.1.0" }
-}
