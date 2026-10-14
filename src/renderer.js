@@ -25,6 +25,7 @@ const formatXmr = (atomic) => {
   const frac = (n % 1000000000000n).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0');
   return `${whole}.${frac}`;
 };
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 const showToast = (message) => { $('toast').textContent = message; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); };
 const showError = (id, error) => { $(id).textContent = error?.message || String(error); $(id).classList.remove('hidden'); };
 const clearError = (id) => $(id).classList.add('hidden');
@@ -38,7 +39,7 @@ function setMode(next) {
 }
 function renderTxs(txs = []) {
   if (!txs.length) { $('txList').innerHTML = '<div class="empty">아직 거래가 없습니다.</div>'; return; }
-  $('txList').innerHTML = txs.map((tx) => `<div class="tx-row"><div><div class="tx-hash">${(tx.hash || 'pending').slice(0, 16)}…</div><div class="muted">${tx.isConfirmed ? '확정' : '대기 중'}</div></div><div class="tx-amount">${formatXmr(tx.amount)} XMR</div></div>`).join('');
+  $('txList').innerHTML = txs.map((tx) => `<div class="tx-row"><div><div class="tx-hash">${escapeHtml((tx.hash || 'pending').slice(0, 16))}…</div><div class="muted">${tx.isConfirmed ? '확정' : '대기 중'}</div></div><div class="tx-amount">${escapeHtml(formatXmr(tx.amount))} XMR</div></div>`).join('');
 }
 function renderSummary(summary) {
   $('authView').classList.add('hidden'); $('appView').classList.remove('hidden'); $('lockBtn').classList.remove('hidden');
@@ -84,7 +85,7 @@ $('sendForm').addEventListener('submit', async (event) => {
   try {
     pendingSend = { address: $('sendAddress').value.trim(), amount: $('sendAmount').value.trim(), priority: $('priority').value };
     const preview = await window.monejo.previewSend(pendingSend);
-    $('review').innerHTML = [['받는 주소', preview.address], ['보낼 금액', `${preview.amountXmr} XMR`], ['monejo 서비스 수수료', `${preview.serviceFeeXmr} XMR (0.25%, 상한 0.05)`], ['네트워크 수수료', '지갑 코어가 계산'], ['총액(네트워크 수수료 전)', `${preview.totalBeforeNetworkFeeXmr} XMR`]].map(([key, value]) => `<div class="review-row"><span>${key}</span><strong>${value}</strong></div>`).join('');
+    $('review').innerHTML = [['받는 주소', preview.address], ['보낼 금액', `${preview.amountXmr} XMR`], ['monejo 서비스 수수료', `${preview.serviceFeeXmr} XMR (0.25%, 상한 0.05)`], ['네트워크 수수료', '지갑 코어가 계산'], ['총액(네트워크 수수료 전)', `${preview.totalBeforeNetworkFeeXmr} XMR`]].map(([key, value]) => `<div class="review-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
     $('confirmDialog').showModal();
   } catch (e) { showError('sendError', e); }
 });

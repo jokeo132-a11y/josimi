@@ -1,6 +1,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
+const https = require('node:https');
+const { spawn } = require('node:child_process');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
 
@@ -13,11 +16,92 @@ const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
   'https://node.monerodevs.org:18089'
 ];
+const GITHUB_REPOSITORY = 'jokeo132-a11y/monejo';
+const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest`;
 
 let mainWindow;
 let wallet = null;
 let sessionPassword = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
+
+function compareVersions(left, right) {
+  const parse = (value) => String(value).replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
+  const a = parse(left); const b = parse(right);
+  for (let i = 0; i < 3; i += 1) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) - (b[i] || 0);
+  return 0;
+}
+
+function requestUrl(url, headers = {}, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirects > 5) return reject(new Error('GitHub 다운로드 리디렉션이 너무 많습니다.'));
+    const request = https.get(url, { headers: { 'User-Agent': 'monejo-updater', ...headers } }, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
+        response.resume();
+        return requestUrl(response.headers.location, headers, redirects + 1).then(resolve, reject);
+      }
+      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`GitHub 응답 오류 (${response.statusCode})`)); }
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+    request.setTimeout(15000, () => request.destroy(new Error('GitHub 연결 시간이 초과되었습니다.')));
+    request.on('error', reject);
+  });
+}
+
+async function downloadToFile(url, destination) {
+  const data = await requestUrl(url, { Accept: 'application/octet-stream' });
+  await fs.promises.writeFile(destination, data, { mode: 0o700 });
+  return crypto.createHash('sha256').update(data).digest('hex');
+}
+
+function checksumForExe(checksumText) {
+  const match = String(checksumText).match(/([a-f0-9]{64})\s+.*monejo\.exe/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+async function schedulePortableReplacement(downloadedExe) {
+  const currentExe = process.execPath;
+  if (!app.isPackaged || process.platform !== 'win32' || !fs.existsSync(currentExe)) throw new Error('Portable Windows 실행 파일에서만 자동 업데이트할 수 있습니다.');
+  const scriptPath = path.join(app.getPath('temp'), `monejo-update-${Date.now()}.cmd`);
+  const script = [
+    '@echo off',
+    'setlocal',
+    `set "TARGET=${currentExe}"`,
+    `set "NEW=${downloadedExe}"`,
+    `set "PID_TO_WAIT=${process.pid}"`,
+    ':wait',
+    'tasklist /FI "PID eq %PID_TO_WAIT%" | findstr /I "%PID_TO_WAIT%" >nul',
+    'if not errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)',
+    'move /Y "%NEW%" "%TARGET%" >nul',
+    'start "" "%TARGET%"',
+    'del "%~f0"'
+  ].join('\r\n');
+  await fs.promises.writeFile(scriptPath, script, 'utf8');
+  spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'start', '', '/b', scriptPath], { detached: true, windowsHide: true, stdio: 'ignore' }).unref();
+  app.quit();
+}
+
+async function checkForUpdates() {
+  if (!app.isPackaged || process.platform !== 'win32' || !mainWindow) return;
+  try {
+    const release = JSON.parse((await requestUrl(GITHUB_API_RELEASES, { Accept: 'application/vnd.github+json' })).toString('utf8'));
+    const latestVersion = String(release.tag_name || '').replace(/^v/i, '');
+    if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return;
+    const exeAsset = release.assets?.find((asset) => asset.name === 'monejo.exe');
+    const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
+    if (!exeAsset || !checksumAsset) return;
+    const choice = await dialog.showMessageBox(mainWindow, { type: 'info', title: 'monejo 업데이트', message: `monejo ${latestVersion} 업데이트가 있습니다.`, detail: 'GitHub에서 공식 Portable EXE를 내려받아 현재 실행 파일을 교체합니다.', buttons: ['업데이트', '나중에'], defaultId: 0, cancelId: 1 });
+    if (choice.response !== 0) return;
+    const updatePath = path.join(app.getPath('temp'), `monejo-update-${latestVersion}-${Date.now()}.exe`);
+    const actualHash = await downloadToFile(exeAsset.browser_download_url, updatePath);
+    const expectedHash = checksumForExe((await requestUrl(checksumAsset.browser_download_url)).toString('utf8'));
+    if (!expectedHash || actualHash !== expectedHash) throw new Error('업데이트 파일의 SHA-256 검증에 실패했습니다.');
+    await schedulePortableReplacement(updatePath);
+  } catch (error) {
+    console.warn('[monejo updater]', error.message);
+  }
+}
 
 function walletDir() {
   const dir = path.join(app.getPath('userData'), 'wallets');
@@ -52,6 +136,17 @@ function xmrToAtomic(value) {
   const [whole, fraction = ''] = normalized.split('.');
   return BigInt(whole) * ATOMIC_PER_XMR + BigInt((fraction + '000000000000').slice(0, 12));
 }
+function normalizeNode(node) {
+  const value = String(node || DEFAULT_NODES[0]).trim();
+  let parsed;
+  try { parsed = new URL(value); } catch (_) { throw new Error('노드 주소 형식이 올바르지 않습니다.'); }
+  const local = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  if (parsed.protocol !== 'https:' && !local) throw new Error('개인정보 보호를 위해 HTTPS 노드만 사용할 수 있습니다.');
+  return parsed.toString().replace(/\/$/, '');
+}
+function assertMainnetNetwork(network) {
+  if (network !== NETWORK) throw new Error('monejo는 mainnet 전용 지갑입니다.');
+}
 function calculateServiceFee(amountAtomic) {
   const computed = (amountAtomic * 25n) / 10000n;
   return computed > SERVICE_FEE_CAP_ATOMIC ? SERVICE_FEE_CAP_ATOMIC : computed;
@@ -85,8 +180,9 @@ async function makeWindow() {
 ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES }));
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+  assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network, node: node || DEFAULT_NODES[0] };
+  activeConfig = { network: NETWORK, node: normalizeNode(node) };
   const creationPath = tempWalletPath('monejo-create');
   let created;
   try {
@@ -109,9 +205,10 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
 });
 ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+  assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network, node: node || DEFAULT_NODES[0] };
+  activeConfig = { network: NETWORK, node: normalizeNode(node) };
   const recoveryPath = tempWalletPath('monejo-recovery');
   let recovered;
   try {
@@ -133,8 +230,9 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, n
 });
 ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
+  assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network, node: node || DEFAULT_NODES[0] };
+  activeConfig = { network: NETWORK, node: normalizeNode(node) };
   wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   sessionPassword = password;
   return loadSummary();
@@ -144,6 +242,7 @@ ipcMain.handle('wallet-lock', async () => { if (wallet) await wallet.close(true)
 ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
   ensureWallet();
   const amountAtomic = xmrToAtomic(amount);
+  if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
   const serviceFeeAtomic = calculateServiceFee(amountAtomic);
   if (!address || address.length < 90) throw new Error('Monero 주소를 확인해 주세요.');
   await assertMainnetAddress(address, '받는 주소');
@@ -153,6 +252,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
 ipcMain.handle('wallet-send', async (_, { address, amount, priority = 2 }) => {
   ensureWallet();
   const amountAtomic = xmrToAtomic(amount);
+  if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
   const serviceFeeAtomic = calculateServiceFee(amountAtomic);
   await assertMainnetAddress(address, '받는 주소');
   await assertMainnetAddress(FEE_ADDRESS, '서비스 수수료 주소');
@@ -169,5 +269,8 @@ ipcMain.handle('wallet-export-backup', async () => {
 });
 ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
 
-app.whenReady().then(makeWindow);
+app.whenReady().then(async () => {
+  await makeWindow();
+  setTimeout(() => { checkForUpdates(); }, 4000);
+});
 app.on('window-all-closed', async () => { if (wallet) await wallet.close(true).catch(() => {}); if (process.platform !== 'darwin') app.quit(); });
