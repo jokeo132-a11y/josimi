@@ -62,13 +62,16 @@ function resetInactivityTimer() {
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
-$('nodeMode').addEventListener('change', () => $('remoteNodeLabel').classList.toggle('hidden', $('nodeMode').value !== 'remote'));
+ $('nodeMode').addEventListener('change', () => { const remote = $('nodeMode').value === 'remote'; $('remoteNodeLabel').classList.toggle('hidden', !remote); $('node').required = remote; });
 window.monejo.onNodeStatus(renderSync);
 syncTimer = setInterval(async () => { try { renderSync(await window.monejo.nodeStatus()); } catch (_) {} }, 3000);
 $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('monejo.language', language); applyLanguage(); setMode(mode); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
-  const payload = { password: $('password').value, node: $('nodeMode').value === 'local' ? undefined : ($('node').value.trim() || undefined), network: 'mainnet' };
+  const remoteMode = $('nodeMode').value === 'remote';
+  const nodeValue = $('node').value.trim();
+  if (remoteMode && !nodeValue) { showError('authError', new Error('원격 노드 주소를 입력하세요.')); return; }
+  const payload = { password: $('password').value, node: remoteMode ? nodeValue : undefined, network: 'mainnet' };
   $('submitBtn').disabled = true;
   try {
     let result;

@@ -31,6 +31,9 @@ let sessionPassword = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
 let daemonProcess = null;
 let daemonStatusTimer = null;
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) app.quit();
+else app.on('second-instance', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 
 function compareVersions(left, right) {
   const parse = (value) => String(value).replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -249,8 +252,19 @@ function archiveExistingWallet() {
 function tempWalletPath(prefix) { return path.join(walletDir(), `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`); }
 function promoteWallet(tempPath) {
   const archived = archiveExistingWallet();
-  for (const file of walletFiles(tempPath)) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
+  try {
+    for (const file of walletFiles(tempPath)) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
+  } catch (error) {
+    removeWalletFiles();
+    restoreArchivedWallet(archived);
+    throw error;
+  }
   return archived;
+}
+function restoreArchivedWallet(archive) {
+  if (!archive || !fs.existsSync(archive)) return;
+  for (const file of fs.readdirSync(archive)) fs.renameSync(path.join(archive, file), path.join(walletDir(), file));
+  fs.rmSync(archive, { recursive: true, force: true });
 }
 function removeWalletFiles(base) {
   for (const file of walletFiles(base)) fs.rmSync(path.join(walletDir(), file), { force: true });
@@ -322,13 +336,13 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationPath = tempWalletPath('monejo-create');
-  let created;
+  let created; let archived = null;
   try {
     created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, server: activeConfig.node });
     const seed = await created.getSeed();
     const createdAddress = await created.getPrimaryAddress();
     await created.close(true);
-    promoteWallet(creationPath);
+    archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     sessionPassword = password;
     const summary = await loadSummary();
@@ -336,8 +350,9 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     return { ...summary, seed, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
   } catch (error) {
     if (created) await created.close(true).catch(() => {});
+    if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
     removeWalletFiles(creationPath);
-    wallet = null;
+    if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
@@ -348,18 +363,19 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, n
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const recoveryPath = tempWalletPath('monejo-recovery');
-  let recovered;
+  let recovered; let archived = null;
   try {
     recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: String(seedOffset || '').trim() || undefined, server: activeConfig.node });
     const recoveredAddress = await recovered.getPrimaryAddress();
     await recovered.close(true);
-    promoteWallet(recoveryPath);
+    archived = promoteWallet(recoveryPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     if (await wallet.getPrimaryAddress() !== recoveredAddress) throw new Error('복구 후 파일 주소 검증에 실패했습니다.');
   } catch (error) {
     if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
     if (recovered) await recovered.close(true).catch(() => {});
     removeWalletFiles(recoveryPath);
+    if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
     throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
   }
   if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
@@ -411,7 +427,7 @@ ipcMain.handle('wallet-export-backup', async () => {
 });
 ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
 
-app.whenReady().then(async () => {
+if (singleInstanceLock) app.whenReady().then(async () => {
   await makeWindow();
   setTimeout(() => { checkForUpdates(); }, 4000);
 });
