@@ -89,7 +89,23 @@ function postJson(url, body, redirects = 0) {
   });
 }
 
-function nodeDataDir() { return path.join(app.getPath('userData'), 'monero-node'); }
+function portableDataDir() {
+  if (!app.isPackaged) return path.join(app.getPath('userData'), 'monejo');
+  const executableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
+  return path.join(executableDir, 'monejo');
+}
+function hasWalletData(dir) {
+  try { return fs.readdirSync(dir).some((name) => name === 'monejo-wallet.keys' || name.startsWith('monejo-wallet.')); } catch (_) { return false; }
+}
+function hasNodeData(dir) {
+  if (fs.existsSync(path.join(dir, 'bin', 'monerod.exe')) || fs.existsSync(path.join(dir, 'blockchain'))) return true;
+  try { return fs.readdirSync(dir).length > 0; } catch (_) { return false; }
+}
+function nodeDataDir() {
+  const legacy = path.join(app.getPath('userData'), 'monero-node');
+  const current = path.join(portableDataDir(), 'node');
+  return hasNodeData(legacy) && !hasNodeData(current) ? legacy : current;
+}
 function nodeBinaryPath() { return path.join(nodeDataDir(), 'bin', 'monerod.exe'); }
 function findFile(root, filename) {
   if (!fs.existsSync(root)) return null;
@@ -113,6 +129,21 @@ async function getLocalNodeStatus() {
     return { mode: 'local', node: LOCAL_NODE, state: info.synchronized ? 'synced' : 'syncing', synchronized: Boolean(info.synchronized), height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0), databaseSize: Number(info.database_size || 0) };
   } catch (_) {
     return { mode: 'local', node: LOCAL_NODE, state: daemonProcess ? 'starting' : 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+  }
+}
+
+async function getNodeInfo(node) {
+  const response = await postJson(`${node}/json_rpc`, { jsonrpc: '2.0', id: 'monejo', method: 'get_info' });
+  return response.result || {};
+}
+
+async function getNodeHeight(node) {
+  try {
+    const info = await getNodeInfo(node);
+    const height = Number(info.height);
+    return Number.isSafeInteger(height) && height >= 0 ? height : null;
+  } catch (_) {
+    return null;
   }
 }
 
@@ -234,7 +265,9 @@ async function checkForUpdates() {
 }
 
 function walletDir() {
-  const dir = path.join(app.getPath('userData'), 'wallets');
+  const legacy = path.join(app.getPath('userData'), 'wallets');
+  const current = path.join(portableDataDir(), 'wallets');
+  const dir = hasWalletData(legacy) && !hasWalletData(current) ? legacy : current;
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -313,6 +346,12 @@ function normalizeSeed(seed) {
   if (![13, 14, 25].includes(wordCount)) throw new Error('Monero seed는 표준 13/14/25단어 형식이어야 합니다. 12/24단어를 입력했다면 seed를 다시 복사하세요.');
   return normalized;
 }
+function normalizeRestoreHeight(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
+  const height = Number(value);
+  if (!Number.isSafeInteger(height) || height < 0) throw new Error('복구 블록 높이는 0 이상의 정수여야 합니다.');
+  return height;
+}
 function safeTx(tx) {
   return { hash: tx.getHash?.(), fee: tx.getFee?.()?.toString?.() || '0', amount: tx.getAmount?.()?.toString?.() || '0', height: tx.getHeight?.(), isConfirmed: tx.isConfirmed?.(), isLocked: tx.isLocked?.(), timestamp: tx.getTimestamp?.() };
 }
@@ -336,6 +375,7 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
   assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
+  const creationHeight = await getNodeHeight(activeConfig.node);
   const creationPath = tempWalletPath('monejo-create');
   let created; let archived = null;
   try {
@@ -348,7 +388,7 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     sessionPassword = password;
     const summary = await loadSummary();
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
-    return { ...summary, seed, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
+    return { ...summary, seed, createdAtHeight: creationHeight, restoreHeight: creationHeight, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
   } catch (error) {
     if (created) await created.close(true).catch(() => {});
     if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
@@ -357,16 +397,17 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
-ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, network = NETWORK }) => {
+ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restoreHeight, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
+  const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
   const recoveryPath = tempWalletPath('monejo-recovery');
   let recovered; let archived = null;
   try {
-    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: String(seedOffset || '').trim() || undefined, server: activeConfig.node });
+    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: String(seedOffset || '').trim() || undefined, restoreHeight: normalizedRestoreHeight, server: activeConfig.node });
     const recoveredAddress = await recovered.getPrimaryAddress();
     await recovered.close(true);
     archived = promoteWallet(recoveryPath);
@@ -381,7 +422,7 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, n
   }
   if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   sessionPassword = password;
-  return { ...(await loadSummary()), restored: true, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
+  return { ...(await loadSummary()), restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
 });
 ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');

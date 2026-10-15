@@ -1,3 +1,12 @@
+## v0.5.0 — 2026-10-15
+
+- seed 복구 화면에 선택 가능한 Monero restore height 입력 추가
+- 새 지갑 생성 시 현재 노드 블록 높이를 표시하고 복구용 높이로 안내
+- `restoreHeight`를 monero-ts 지갑 복구 옵션에 전달
+- Portable EXE/ZIP 실행 위치에 `monejo` 데이터 폴더 생성
+- 지갑과 로컬 노드를 `monejo` 폴더 아래에 보관
+- 기존 AppData 지갑·노드 파일이 있으면 그대로 우선 사용하고 덮어쓰지 않음
+
 ## v0.4.2 — 2026-10-15
 
 - GitHub 릴리스 목록에서 draft·pre-release를 제외

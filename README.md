@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.4.2)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.5.0)**입니다.
 
 ## 현재 구현
 
@@ -21,6 +21,8 @@
   - 수수료 주소: `42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu`
 - 송금 전 수취 주소·서비스 수수료·총액을 사용자에게 표시
 - 로컬 Monero 노드 자동 다운로드·실행·동기화 진행 표시
+- seed 복구 시 restore height 입력 및 생성 시 복구 높이 표시
+- Portable EXE/ZIP 실행 위치의 `monejo` 폴더에 지갑·노드 파일 저장
 
 ## 실행
 
@@ -30,6 +32,8 @@ npm start
 ```
 
 기본값은 Windows 로컬 노드입니다. 처음 사용할 때 공식 Monero CLI ZIP을 다운로드하고 SHA-256을 확인한 뒤 `monerod`를 `127.0.0.1:18081`에서 실행합니다. 초기 동기화에는 상당한 시간과 디스크 공간이 필요합니다. 원하면 HTTPS 원격 노드를 선택할 수도 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
+
+Portable EXE 또는 ZIP을 실행하면 실행 파일 옆에 `monejo` 폴더가 만들어지고 그 아래에 `wallets`와 `node`가 생성됩니다. 이미 기존 `monejo` 폴더나 이전 AppData 지갑·노드가 있으면 새 파일로 덮어쓰지 않고 기존 파일을 우선 사용합니다. restore height는 첫 입금 거래보다 낮거나 같은 높이를 입력해야 하며, 모르면 낮은 값을 입력하는 것이 안전합니다.
 
 ## Windows 빌드
 
