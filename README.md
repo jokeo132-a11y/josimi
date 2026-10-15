@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.3.9)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.4.0)**입니다.
 
 ## 현재 구현
 
@@ -19,7 +19,8 @@
 - 송금액의 0.25% monejo 서비스 수수료
   - 상한 0.05 XMR
   - 수수료 주소: `42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu`
-  - 송금 전 수취 주소·서비스 수수료·총액을 사용자에게 표시
+- 송금 전 수취 주소·서비스 수수료·총액을 사용자에게 표시
+- 로컬 Monero 노드 자동 다운로드·실행·동기화 진행 표시
 
 ## 실행
 
@@ -28,7 +29,7 @@ npm install
 npm start
 ```
 
-기본 mainnet 노드는 `https://node.monerodevs.org:18089`입니다. 공개 노드는 중단·변경될 수 있으므로, 노드 입력란에 신뢰할 수 있는 본인 노드를 직접 지정하는 것을 권장합니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
+기본값은 Windows 로컬 노드입니다. 처음 사용할 때 공식 Monero CLI ZIP을 다운로드하고 SHA-256을 확인한 뒤 `monerod`를 `127.0.0.1:18081`에서 실행합니다. 초기 동기화에는 상당한 시간과 디스크 공간이 필요합니다. 원하면 HTTPS 원격 노드를 선택할 수도 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
 ## Windows 빌드
 

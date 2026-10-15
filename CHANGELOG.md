@@ -1,3 +1,18 @@
+## v0.4.0 — 2026-10-15
+
+getmonero 방식의 Windows 로컬 노드 흐름과 송금 안정성을 추가했습니다.
+
+- 노드 선택 기본값을 로컬 `monerod`로 변경
+- 공식 Monero CLI ZIP을 getmonero 다운로드 주소에서 자동 다운로드
+- 공식 hashes.txt의 버전별 SHA-256과 고정 해시를 모두 대조한 뒤 압축 해제
+- `monerod.exe`뿐 아니라 실행에 필요한 CLI DLL 전체를 함께 설치
+- 로컬 데몬을 `127.0.0.1:18081`에만 바인딩하고 pruning으로 실행
+- `get_info`의 height·target_height·synchronized·peer 수를 화면에 표시
+- 노드가 동기화되지 않은 동안 송금을 차단해 relay 오류를 줄임
+- 잘못된 우선순위와 0 XMR 서비스 수수료 목적지 생성을 차단
+- 원격 노드 선택은 HTTPS 주소에 한해 유지
+- 기존 GitHub EXE 자동 업데이트 기능 유지
+
 ## v0.3.9 — 2026-10-14
 
 Windows Portable 본체 안정성과 GitHub 자동 업데이트를 보강했습니다.

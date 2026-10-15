@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
 const { spawn } = require('node:child_process');
@@ -16,6 +17,11 @@ const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
   'https://node.monerodevs.org:18089'
 ];
+const LOCAL_NODE = 'http://127.0.0.1:18081';
+const MONERO_CLI_VERSION = '0.18.5.3';
+const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
+const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
+const MONERO_CLI_SHA256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a';
 const GITHUB_REPOSITORY = 'jokeo132-a11y/monejo';
 const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest`;
 
@@ -23,6 +29,8 @@ let mainWindow;
 let wallet = null;
 let sessionPassword = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
+let daemonProcess = null;
+let daemonStatusTimer = null;
 
 function compareVersions(left, right) {
   const parse = (value) => String(value).replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
@@ -59,6 +67,124 @@ function checksumForExe(checksumText) {
   const match = String(checksumText).match(/([a-f0-9]{64})\s+.*monejo\.exe/i);
   return match ? match[1].toLowerCase() : null;
 }
+
+function postJson(url, body, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    if (redirects > 3) return reject(new Error('노드 RPC 리디렉션이 너무 많습니다.'));
+    const parsed = new URL(url);
+    const transport = parsed.protocol === 'https:' ? https : http;
+    const payload = Buffer.from(JSON.stringify(body));
+    const request = transport.request(parsed, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length }, timeout: 5000 }, (response) => {
+      if ([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return postJson(response.headers.location, body, redirects + 1).then(resolve, reject); }
+      const chunks = [];
+      response.on('data', (chunk) => chunks.push(chunk));
+      response.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (_) { reject(new Error('노드 RPC 응답을 해석할 수 없습니다.')); } });
+    });
+    request.on('timeout', () => request.destroy(new Error('로컬 노드 RPC 시간이 초과되었습니다.')));
+    request.on('error', reject);
+    request.end(payload);
+  });
+}
+
+function nodeDataDir() { return path.join(app.getPath('userData'), 'monero-node'); }
+function nodeBinaryPath() { return path.join(nodeDataDir(), 'bin', 'monerod.exe'); }
+function findFile(root, filename) {
+  if (!fs.existsSync(root)) return null;
+  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
+    const candidate = path.join(root, entry.name);
+    if (entry.isFile() && entry.name.toLowerCase() === filename.toLowerCase()) return candidate;
+    if (entry.isDirectory()) { const found = findFile(candidate, filename); if (found) return found; }
+  }
+  return null;
+}
+
+function emitNodeStatus(status) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('node-status', status);
+}
+
+async function getLocalNodeStatus() {
+  try {
+    const response = await postJson(`${LOCAL_NODE}/json_rpc`, { jsonrpc: '2.0', id: 'monejo', method: 'get_info' });
+    const info = response.result || {};
+    const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
+    return { mode: 'local', node: LOCAL_NODE, state: info.synchronized ? 'synced' : 'syncing', synchronized: Boolean(info.synchronized), height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0), databaseSize: Number(info.database_size || 0) };
+  } catch (_) {
+    return { mode: 'local', node: LOCAL_NODE, state: daemonProcess ? 'starting' : 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+  }
+}
+
+async function pollLocalNode() {
+  const status = await getLocalNodeStatus();
+  emitNodeStatus(status);
+  return status;
+}
+
+async function downloadFile(url, destination, onProgress, redirects = 0) {
+  if (redirects > 5) throw new Error('Monero CLI 다운로드 리디렉션이 너무 많습니다.');
+  return new Promise((resolve, reject) => {
+    const request = https.get(url, { headers: { 'User-Agent': 'monejo-node-installer' } }, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(response.headers.location, destination, onProgress, redirects + 1).then(resolve, reject); }
+      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`Monero CLI 다운로드 오류 (${response.statusCode})`)); }
+      const total = Number(response.headers['content-length'] || 0); let received = 0;
+      const output = fs.createWriteStream(destination); const hash = crypto.createHash('sha256');
+      response.on('data', (chunk) => { received += chunk.length; hash.update(chunk); if (onProgress) onProgress(total ? received / total : 0); });
+      response.pipe(output);
+      output.on('finish', () => output.close(() => resolve(hash.digest('hex'))));
+      output.on('error', (error) => { response.destroy(); reject(error); });
+    });
+    request.setTimeout(30000, () => request.destroy(new Error('Monero CLI 다운로드 시간이 초과되었습니다.')));
+    request.on('error', reject);
+  });
+}
+
+async function extractZip(zipPath, destination) {
+  await fs.promises.mkdir(destination, { recursive: true });
+  await new Promise((resolve, reject) => {
+    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
+    const command = `$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath ${quote(zipPath)} -DestinationPath ${quote(destination)} -Force`;
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true });
+    let errorText = ''; child.stderr.on('data', (chunk) => { errorText += chunk.toString(); });
+    child.on('error', reject); child.on('close', (code) => code === 0 ? resolve() : reject(new Error(`Monero CLI 압축 해제 실패: ${errorText.trim()}`)));
+  });
+}
+
+async function installLocalNode() {
+  if (process.platform !== 'win32') throw new Error('현재 로컬 노드 자동 설치는 Windows에서 지원됩니다.');
+  const dir = nodeDataDir(); const binary = nodeBinaryPath();
+  if (fs.existsSync(binary)) return binary;
+  await fs.promises.mkdir(dir, { recursive: true });
+  const archive = path.join(dir, `monero-cli-${MONERO_CLI_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
+  emitNodeStatus({ mode: 'local', state: 'downloading', progress: 0, height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE });
+  const actualHash = await downloadFile(MONERO_CLI_URL, archive, (progress) => emitNodeStatus({ mode: 'local', state: 'downloading', progress: Math.floor(progress * 100), height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE }));
+  const hashes = (await requestUrl(MONERO_HASHES_URL)).toString('utf8');
+  const escapedVersion = MONERO_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const expectedMatch = hashes.match(new RegExp(`([a-f0-9]{64})\\s+monero-win-x64-v${escapedVersion}\\.zip`, 'i'));
+  if (!expectedMatch || expectedMatch[1].toLowerCase() !== MONERO_CLI_SHA256 || actualHash !== MONERO_CLI_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 Monero CLI ZIP의 SHA-256 검증에 실패했습니다.'); }
+  await extractZip(archive, extracted);
+  const found = findFile(extracted, 'monerod.exe');
+  if (!found) throw new Error('Monero CLI ZIP에서 monerod.exe를 찾지 못했습니다.');
+  await fs.promises.mkdir(path.dirname(binary), { recursive: true });
+  await fs.promises.cp(path.dirname(found), path.dirname(binary), { recursive: true, force: true });
+  if (!fs.existsSync(binary)) throw new Error('Monero CLI 파일을 설치했지만 monerod.exe가 없습니다.');
+  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
+  return binary;
+}
+
+async function startLocalNode() {
+  const binary = await installLocalNode();
+  const existing = await getLocalNodeStatus();
+  if (existing.state !== 'stopped') return existing;
+  const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
+  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  daemonProcess.on('error', (error) => { console.warn('[monejo monerod]', error.message); daemonProcess = null; });
+  daemonProcess.on('close', () => { daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
+  daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
+  for (let attempt = 0; attempt < 30; attempt += 1) { const status = await getLocalNodeStatus(); if (status.state !== 'stopped' && status.state !== 'starting') return status; await new Promise((resolve) => setTimeout(resolve, 1000)); }
+  throw new Error('로컬 Monero 노드가 시작되지 않았습니다. 로그와 방화벽 설정을 확인하세요.');
+}
+
+async function resolveNode(node) { return String(node || '').trim() ? normalizeNode(node) : (await startLocalNode(), LOCAL_NODE); }
+async function stopLocalNode() { if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; if (daemonProcess) { daemonProcess.kill(); daemonProcess = null; } }
 
 async function schedulePortableReplacement(downloadedExe) {
   const currentExe = process.execPath;
@@ -155,6 +281,17 @@ async function assertMainnetAddress(address, label) {
   if (!(await monerojs.MoneroUtils.isValidAddress(address, 'mainnet'))) throw new Error(`${label}가 유효한 Monero mainnet 주소가 아닙니다.`);
 }
 function ensureWallet() { if (!wallet) throw new Error('먼저 지갑을 열거나 생성해 주세요.'); }
+function normalizePriority(priority) {
+  const value = Number(priority);
+  if (![1, 2, 3].includes(value)) throw new Error('송금 우선순위가 올바르지 않습니다.');
+  return value;
+}
+async function ensureSendableNode() {
+  if (activeConfig.node !== LOCAL_NODE) return;
+  const status = await getLocalNodeStatus();
+  if (status.state === 'stopped' || status.state === 'starting') throw new Error('로컬 Monero 노드가 아직 시작되지 않았습니다.');
+  if (!status.synchronized) throw new Error(`노드 동기화가 끝날 때까지 송금할 수 없습니다. 현재 ${status.progress || 0}%입니다.`);
+}
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
   const wordCount = normalized ? normalized.split(' ').length : 0;
@@ -170,19 +307,20 @@ async function loadSummary() {
   const balance = await wallet.getBalance(0);
   let txs = [];
   try { txs = await wallet.getTxs({ accountIndex: 0 }); } catch (_) {}
-  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node };
+  const sync = activeConfig.node === LOCAL_NODE ? await getLocalNodeStatus() : { mode: 'remote', node: activeConfig.node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node, sync };
 }
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES }));
+ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32' }));
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network: NETWORK, node: normalizeNode(node) };
+  activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationPath = tempWalletPath('monejo-create');
   let created;
   try {
@@ -208,7 +346,7 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, node, n
   assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network: NETWORK, node: normalizeNode(node) };
+  activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const recoveryPath = tempWalletPath('monejo-recovery');
   let recovered;
   try {
@@ -232,12 +370,13 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
   assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
-  activeConfig = { network: NETWORK, node: normalizeNode(node) };
+  activeConfig = { network: NETWORK, node: await resolveNode(node) };
   wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   sessionPassword = password;
   return loadSummary();
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
+ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : { mode: 'remote', node: activeConfig.node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 });
 ipcMain.handle('wallet-lock', async () => { if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
 ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
   ensureWallet();
@@ -253,11 +392,14 @@ ipcMain.handle('wallet-send', async (_, { address, amount, priority = 2 }) => {
   ensureWallet();
   const amountAtomic = xmrToAtomic(amount);
   if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
+  const txPriority = normalizePriority(priority);
+  await ensureSendableNode();
   const serviceFeeAtomic = calculateServiceFee(amountAtomic);
   await assertMainnetAddress(address, '받는 주소');
   await assertMainnetAddress(FEE_ADDRESS, '서비스 수수료 주소');
-  const destinations = [{ address, amount: amountAtomic.toString() }, { address: FEE_ADDRESS, amount: serviceFeeAtomic.toString() }];
-  const txs = await wallet.createTxs({ accountIndex: 0, destinations, priority: Number(priority), relay: true });
+  const destinations = [{ address, amount: amountAtomic.toString() }];
+  if (serviceFeeAtomic > 0n) destinations.push({ address: FEE_ADDRESS, amount: serviceFeeAtomic.toString() });
+  const txs = await wallet.createTxs({ accountIndex: 0, destinations, priority: txPriority, relay: true });
   return { txs: txs.map(safeTx), serviceFeeXmr: atomicToXmr(serviceFeeAtomic) };
 });
 ipcMain.handle('wallet-export-backup', async () => {
@@ -273,4 +415,4 @@ app.whenReady().then(async () => {
   await makeWindow();
   setTimeout(() => { checkForUpdates(); }, 4000);
 });
-app.on('window-all-closed', async () => { if (wallet) await wallet.close(true).catch(() => {}); if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', async () => { if (wallet) await wallet.close(true).catch(() => {}); await stopLocalNode(); if (process.platform !== 'darwin') app.quit(); });

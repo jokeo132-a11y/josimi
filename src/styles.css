@@ -44,9 +44,9 @@ main{max-width:1160px;margin:0 auto;padding:56px 28px 70px}
 .tab.active{color:var(--text);font-weight:650}
 .tab.active::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--orange)}
 .auth-card label,.send-card label{display:block;color:var(--text-soft);font-size:12px;margin:15px 0}
-.auth-card input,.send-card input,.send-card select{display:block;width:100%;margin-top:7px;height:43px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:0 12px;font-size:13px;outline:none}
+.auth-card input,.auth-card select,.send-card input,.send-card select{display:block;width:100%;margin-top:7px;height:43px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:0 12px;font-size:13px;outline:none}
 .auth-card input::placeholder,.send-card input::placeholder{color:#686a62}
-.auth-card input:focus,.send-card input:focus,.send-card select:focus{border-color:var(--orange);box-shadow:0 0 0 2px #f2682222}
+.auth-card input:focus,.auth-card select:focus,.send-card input:focus,.send-card select:focus{border-color:var(--orange);box-shadow:0 0 0 2px #f2682222}
 .primary{width:100%;height:44px;border:0;border-radius:6px;background:var(--orange);color:#1b1009;font-weight:750;padding:0 18px}
 .primary:hover{background:var(--orange-soft)}
 .primary:disabled{opacity:.55;cursor:wait}

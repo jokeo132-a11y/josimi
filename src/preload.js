@@ -6,6 +6,8 @@ contextBridge.exposeInMainWorld('monejo', {
   restore: (payload) => ipcRenderer.invoke('wallet-restore', payload),
   open: (payload) => ipcRenderer.invoke('wallet-open', payload),
   refresh: () => ipcRenderer.invoke('wallet-refresh'),
+  nodeStatus: () => ipcRenderer.invoke('node-status'),
+  onNodeStatus: (callback) => ipcRenderer.on('node-status', (_, status) => callback(status)),
   lock: () => ipcRenderer.invoke('wallet-lock'),
   previewSend: (payload) => ipcRenderer.invoke('wallet-send-preview', payload),
   send: (payload) => ipcRenderer.invoke('wallet-send', payload),
