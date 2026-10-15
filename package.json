@@ -1,6 +1,6 @@
 {
   "name": "monejo",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "monejo — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "monejo",

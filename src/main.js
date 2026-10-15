@@ -23,7 +23,7 @@ const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
 const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
 const MONERO_CLI_SHA256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a';
 const GITHUB_REPOSITORY = 'jokeo132-a11y/monejo';
-const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/latest`;
+const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100`;
 
 let mainWindow;
 let wallet = null;
@@ -214,14 +214,15 @@ async function schedulePortableReplacement(downloadedExe) {
 async function checkForUpdates() {
   if (!app.isPackaged || process.platform !== 'win32' || !mainWindow) return;
   try {
-    const release = JSON.parse((await requestUrl(GITHUB_API_RELEASES, { Accept: 'application/vnd.github+json' })).toString('utf8'));
+    const releases = JSON.parse((await requestUrl(GITHUB_API_RELEASES, { Accept: 'application/vnd.github+json' })).toString('utf8'));
+    const release = releases.filter((candidate) => !candidate.draft && !candidate.prerelease && /^v?\d+\.\d+\.\d+$/.test(String(candidate.tag_name || ''))).sort((a, b) => compareVersions(b.tag_name, a.tag_name))[0];
+    if (!release) return;
     const latestVersion = String(release.tag_name || '').replace(/^v/i, '');
     if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return;
     const exeAsset = release.assets?.find((asset) => asset.name === 'monejo.exe');
     const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
     if (!exeAsset || !checksumAsset) return;
-    const choice = await dialog.showMessageBox(mainWindow, { type: 'info', title: 'monejo 업데이트', message: `monejo ${latestVersion} 업데이트가 있습니다.`, detail: 'GitHub에서 공식 Portable EXE를 내려받아 현재 실행 파일을 교체합니다.', buttons: ['업데이트', '나중에'], defaultId: 0, cancelId: 1 });
-    if (choice.response !== 0) return;
+    console.info(`[monejo updater] latest stable release v${latestVersion} detected; downloading automatically`);
     const updatePath = path.join(app.getPath('temp'), `monejo-update-${latestVersion}-${Date.now()}.exe`);
     const actualHash = await downloadToFile(exeAsset.browser_download_url, updatePath);
     const expectedHash = checksumForExe((await requestUrl(checksumAsset.browser_download_url)).toString('utf8'));

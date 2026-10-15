@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.4.1)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.4.2)**입니다.
 
 ## 현재 구현
 
@@ -43,7 +43,7 @@ npm run dist
 - `dist/release/monejo.zip` — ZIP 배포본
 - `dist/win-unpacked/`
 
-실행 중인 Portable EXE는 앱 시작 후 GitHub 저장소의 최신 릴리스를 확인합니다. 새 릴리스의 `monejo.exe`와 SHA-256 해시가 모두 검증되면 업데이트 여부를 묻고, 사용자가 선택하면 앱을 종료한 뒤 새 EXE로 교체하고 재실행합니다.
+실행 중인 Portable EXE는 앱 시작 후 GitHub 릴리스 목록에서 가장 높은 버전의 안정 릴리스만 선택합니다. 새 릴리스의 `monejo.exe`와 SHA-256 해시가 검증되면 별도 확인 없이 앱을 종료하고 새 EXE로 교체한 뒤 재실행합니다. draft와 pre-release는 제외합니다.
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
 
