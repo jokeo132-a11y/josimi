@@ -19,12 +19,13 @@ let pendingSend = null;
 let currentSeed = null;
 let inactivityTimer;
 let syncTimer;
+let syncRequestInFlight = false;
 
 const formatXmr = (atomic) => {
-  const n = BigInt(atomic || 0);
-  const whole = n / 1000000000000n;
-  const frac = (n % 1000000000000n).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0');
-  return `${whole}.${frac}`;
+  const n = BigInt(atomic || 0); const negative = n < 0n; const absolute = negative ? -n : n;
+  const whole = absolute / 1000000000000n;
+  const frac = (absolute % 1000000000000n).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0');
+  return `${negative ? '-' : ''}${whole}.${frac}`;
 };
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
 const showToast = (message) => { $('toast').textContent = message; $('toast').classList.remove('hidden'); setTimeout(() => $('toast').classList.add('hidden'), 3000); };
@@ -47,7 +48,7 @@ function renderSync(sync = {}) {
   const state = sync.state || 'stopped';
   const labels = { downloading: 'Monero 노드 다운로드 중', starting: '로컬 노드 시작 중', syncing: '노드 동기화 중', synced: '동기화 완료', remote: '원격 노드 사용', stopped: '노드 중지됨' };
   $('status').textContent = labels[state] || state;
-  if (sync.mode === 'local' && sync.targetHeight) $('syncDetails').textContent = `${sync.progress || 0}% · 블록 ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · 피어 ${sync.peers || 0}`;
+  if (sync.targetHeight) $('syncDetails').textContent = `${sync.progress || 0}% · 블록 ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · 피어 ${sync.peers || 0}`;
   else $('syncDetails').textContent = sync.node || '';
 }
 function renderSummary(summary) {
@@ -67,7 +68,7 @@ function resetInactivityTimer() {
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
  $('nodeMode').addEventListener('change', () => { const remote = $('nodeMode').value === 'remote'; $('remoteNodeLabel').classList.toggle('hidden', !remote); $('node').required = remote; });
 window.monejo.onNodeStatus(renderSync);
-syncTimer = setInterval(async () => { try { renderSync(await window.monejo.nodeStatus()); } catch (_) {} }, 3000);
+syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.monejo.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
 $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('monejo.language', language); applyLanguage(); setMode(mode); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
@@ -94,22 +95,23 @@ $('walletForm').addEventListener('submit', async (event) => {
     resetInactivityTimer();
   } catch (e) { showError('authError', e); } finally { $('submitBtn').disabled = false; setMode(mode); }
 });
-$('refreshBtn').addEventListener('click', refresh);
-$('lockBtn').addEventListener('click', async () => { await window.monejo.lock(); location.reload(); });
-$('copyAddress').addEventListener('click', async () => { await navigator.clipboard.writeText($('address').textContent); showToast('주소를 복사했습니다.'); });
- $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.monejo.qr($('address').textContent); } });
-$('backupBtn').addEventListener('click', async () => { const result = await window.monejo.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); });
+ $('refreshBtn').addEventListener('click', refresh);
+ $('lockBtn').addEventListener('click', async () => { try { await window.monejo.lock(); location.reload(); } catch (e) { showToast(e.message); } });
+ $('copyAddress').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('address').textContent); showToast('주소를 복사했습니다.'); } catch (e) { showToast(`주소 복사 실패: ${e.message}`); } });
+ $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { try { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.monejo.qr($('address').textContent); } catch (e) { canvas.classList.add('hidden'); showToast(e.message); } } });
+ $('backupBtn').addEventListener('click', async () => { try { const result = await window.monejo.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); } catch (e) { showToast(e.message); } });
 $('seedBtn').addEventListener('click', () => { if (!currentSeed) { showToast('현재 세션에서 생성된 seed가 없습니다. 복구 지갑은 원래 seed를 사용하세요.'); return; } if (confirm('seed를 화면에 표시합니다. 주변에 사람이 없고 기록 장치가 안전한지 확인했습니까?')) alert(currentSeed); });
 $('sendForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('sendError');
   try {
     pendingSend = { address: $('sendAddress').value.trim(), amount: $('sendAmount').value.trim(), priority: $('priority').value };
+    $('sendForm').querySelector('button[type="submit"]').disabled = true;
     const preview = await window.monejo.previewSend(pendingSend);
     $('review').innerHTML = [['받는 주소', preview.address], ['보낼 금액', `${preview.amountXmr} XMR`], ['monejo 서비스 수수료', `${preview.serviceFeeXmr} XMR (0.25%, 상한 0.05)`], ['네트워크 수수료', '지갑 코어가 계산'], ['총액(네트워크 수수료 전)', `${preview.totalBeforeNetworkFeeXmr} XMR`]].map(([key, value]) => `<div class="review-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
     $('confirmDialog').showModal();
-  } catch (e) { showError('sendError', e); }
+  } catch (e) { showError('sendError', e); } finally { $('sendForm').querySelector('button[type="submit"]').disabled = false; }
 });
-$('cancelSend').addEventListener('click', () => $('confirmDialog').close());
-$('confirmSend').addEventListener('click', async () => { try { $('confirmSend').disabled = true; const result = await window.monejo.send(pendingSend); $('confirmDialog').close(); showToast(`송금 완료 · 서비스 수수료 ${result.serviceFeeXmr} XMR`); await refresh(); } catch (e) { showError('sendError', e); } finally { $('confirmSend').disabled = false; } });
+ $('cancelSend').addEventListener('click', () => { pendingSend = null; $('confirmDialog').close(); });
+ $('confirmSend').addEventListener('click', async () => { if (!pendingSend) return; try { $('confirmSend').disabled = true; const result = await window.monejo.send(pendingSend); pendingSend = null; $('confirmDialog').close(); showToast(`송금 완료 · 서비스 수수료 ${result.serviceFeeXmr} XMR`); await refresh(); } catch (e) { $('confirmDialog').close(); showError('sendError', e); } finally { $('confirmSend').disabled = false; } });
 setMode('open');
 applyLanguage();

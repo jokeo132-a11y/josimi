@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.5.0)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.5.1)**입니다.
 
 ## 현재 구현
 

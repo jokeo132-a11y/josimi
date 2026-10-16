@@ -31,6 +31,9 @@ let sessionPassword = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
 let daemonProcess = null;
 let daemonStatusTimer = null;
+let daemonPollInFlight = false;
+let selectedWalletDir = null;
+let selectedNodeDir = null;
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
 else app.on('second-instance', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
@@ -48,7 +51,7 @@ function requestUrl(url, headers = {}, redirects = 0) {
     const request = https.get(url, { headers: { 'User-Agent': 'monejo-updater', ...headers } }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
         response.resume();
-        return requestUrl(response.headers.location, headers, redirects + 1).then(resolve, reject);
+        return requestUrl(new URL(response.headers.location, url).toString(), headers, redirects + 1).then(resolve, reject);
       }
       if (response.statusCode !== 200) { response.resume(); return reject(new Error(`GitHub 응답 오류 (${response.statusCode})`)); }
       const chunks = [];
@@ -78,7 +81,8 @@ function postJson(url, body, redirects = 0) {
     const transport = parsed.protocol === 'https:' ? https : http;
     const payload = Buffer.from(JSON.stringify(body));
     const request = transport.request(parsed, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length }, timeout: 5000 }, (response) => {
-      if ([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return postJson(response.headers.location, body, redirects + 1).then(resolve, reject); }
+      if ([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return postJson(new URL(response.headers.location, url).toString(), body, redirects + 1).then(resolve, reject); }
+      if (response.statusCode < 200 || response.statusCode >= 300) { response.resume(); return reject(new Error(`노드 RPC 응답 오류 (${response.statusCode})`)); }
       const chunks = [];
       response.on('data', (chunk) => chunks.push(chunk));
       response.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); } catch (_) { reject(new Error('노드 RPC 응답을 해석할 수 없습니다.')); } });
@@ -102,9 +106,11 @@ function hasNodeData(dir) {
   try { return fs.readdirSync(dir).length > 0; } catch (_) { return false; }
 }
 function nodeDataDir() {
+  if (selectedNodeDir) return selectedNodeDir;
   const legacy = path.join(app.getPath('userData'), 'monero-node');
   const current = path.join(portableDataDir(), 'node');
-  return hasNodeData(legacy) && !hasNodeData(current) ? legacy : current;
+  selectedNodeDir = hasNodeData(legacy) && !hasNodeData(current) ? legacy : current;
+  return selectedNodeDir;
 }
 function nodeBinaryPath() { return path.join(nodeDataDir(), 'bin', 'monerod.exe'); }
 function findFile(root, filename) {
@@ -147,17 +153,28 @@ async function getNodeHeight(node) {
   }
 }
 
+async function getRemoteNodeStatus(node) {
+  try {
+    const info = await getNodeInfo(node);
+    const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
+    const synchronized = typeof info.synchronized === 'boolean' ? info.synchronized : null;
+    return { mode: 'remote', node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0) };
+  } catch (_) {
+    return { mode: 'remote', node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+  }
+}
+
 async function pollLocalNode() {
-  const status = await getLocalNodeStatus();
-  emitNodeStatus(status);
-  return status;
+  if (daemonPollInFlight) return;
+  daemonPollInFlight = true;
+  try { const status = await getLocalNodeStatus(); emitNodeStatus(status); return status; } finally { daemonPollInFlight = false; }
 }
 
 async function downloadFile(url, destination, onProgress, redirects = 0) {
   if (redirects > 5) throw new Error('Monero CLI 다운로드 리디렉션이 너무 많습니다.');
   return new Promise((resolve, reject) => {
     const request = https.get(url, { headers: { 'User-Agent': 'monejo-node-installer' } }, (response) => {
-      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(response.headers.location, destination, onProgress, redirects + 1).then(resolve, reject); }
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(new URL(response.headers.location, url).toString(), destination, onProgress, redirects + 1).then(resolve, reject); }
       if (response.statusCode !== 200) { response.resume(); return reject(new Error(`Monero CLI 다운로드 오류 (${response.statusCode})`)); }
       const total = Number(response.headers['content-length'] || 0); let received = 0;
       const output = fs.createWriteStream(destination); const hash = crypto.createHash('sha256');
@@ -244,6 +261,8 @@ async function schedulePortableReplacement(downloadedExe) {
 
 async function checkForUpdates() {
   if (!app.isPackaged || process.platform !== 'win32' || !mainWindow) return;
+  let updatePath = null;
+  let replacementScheduled = false;
   try {
     const releases = JSON.parse((await requestUrl(GITHUB_API_RELEASES, { Accept: 'application/vnd.github+json' })).toString('utf8'));
     const release = releases.filter((candidate) => !candidate.draft && !candidate.prerelease && /^v?\d+\.\d+\.\d+$/.test(String(candidate.tag_name || ''))).sort((a, b) => compareVersions(b.tag_name, a.tag_name))[0];
@@ -254,22 +273,26 @@ async function checkForUpdates() {
     const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
     if (!exeAsset || !checksumAsset) return;
     console.info(`[monejo updater] latest stable release v${latestVersion} detected; downloading automatically`);
-    const updatePath = path.join(app.getPath('temp'), `monejo-update-${latestVersion}-${Date.now()}.exe`);
+    updatePath = path.join(app.getPath('temp'), `monejo-update-${latestVersion}-${Date.now()}.exe`);
     const actualHash = await downloadToFile(exeAsset.browser_download_url, updatePath);
     const expectedHash = checksumForExe((await requestUrl(checksumAsset.browser_download_url)).toString('utf8'));
     if (!expectedHash || actualHash !== expectedHash) throw new Error('업데이트 파일의 SHA-256 검증에 실패했습니다.');
     await schedulePortableReplacement(updatePath);
+    replacementScheduled = true;
   } catch (error) {
     console.warn('[monejo updater]', error.message);
+  } finally {
+    if (updatePath && !replacementScheduled) await fs.promises.rm(updatePath, { force: true }).catch(() => {});
   }
 }
 
 function walletDir() {
+  if (selectedWalletDir) return selectedWalletDir;
   const legacy = path.join(app.getPath('userData'), 'wallets');
   const current = path.join(portableDataDir(), 'wallets');
-  const dir = hasWalletData(legacy) && !hasWalletData(current) ? legacy : current;
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
+  selectedWalletDir = hasWalletData(legacy) && !hasWalletData(current) ? legacy : current;
+  fs.mkdirSync(selectedWalletDir, { recursive: true });
+  return selectedWalletDir;
 }
 function walletPath() { return path.join(walletDir(), 'monejo-wallet'); }
 function walletFiles(base = walletPath()) {
@@ -314,7 +337,7 @@ function normalizeNode(node) {
   const value = String(node || DEFAULT_NODES[0]).trim();
   let parsed;
   try { parsed = new URL(value); } catch (_) { throw new Error('노드 주소 형식이 올바르지 않습니다.'); }
-  const local = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
   if (parsed.protocol !== 'https:' && !local) throw new Error('개인정보 보호를 위해 HTTPS 노드만 사용할 수 있습니다.');
   return parsed.toString().replace(/\/$/, '');
 }
@@ -335,10 +358,14 @@ function normalizePriority(priority) {
   return value;
 }
 async function ensureSendableNode() {
-  if (activeConfig.node !== LOCAL_NODE) return;
-  const status = await getLocalNodeStatus();
-  if (status.state === 'stopped' || status.state === 'starting') throw new Error('로컬 Monero 노드가 아직 시작되지 않았습니다.');
-  if (!status.synchronized) throw new Error(`노드 동기화가 끝날 때까지 송금할 수 없습니다. 현재 ${status.progress || 0}%입니다.`);
+  if (activeConfig.node === LOCAL_NODE) {
+    const status = await getLocalNodeStatus();
+    if (status.state === 'stopped' || status.state === 'starting') throw new Error('로컬 Monero 노드가 아직 시작되지 않았습니다.');
+    if (!status.synchronized) throw new Error(`노드 동기화가 끝날 때까지 송금할 수 없습니다. 현재 ${status.progress || 0}%입니다.`);
+    return;
+  }
+  const info = await getNodeInfo(activeConfig.node);
+  if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
@@ -361,11 +388,13 @@ async function loadSummary() {
   const balance = await wallet.getBalance(0);
   let txs = [];
   try { txs = await wallet.getTxs({ accountIndex: 0 }); } catch (_) {}
-  const sync = activeConfig.node === LOCAL_NODE ? await getLocalNodeStatus() : { mode: 'remote', node: activeConfig.node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+  const sync = activeConfig.node === LOCAL_NODE ? await getLocalNodeStatus() : await getRemoteNodeStatus(activeConfig.node);
   return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node, sync };
 }
 async function makeWindow() {
-  mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false } });
+  mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('file://')) event.preventDefault(); });
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
@@ -429,12 +458,19 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
   assertMainnetNetwork(network);
   if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
-  wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-  sessionPassword = password;
-  return loadSummary();
+  try {
+    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
+    sessionPassword = password;
+    return await loadSummary();
+  } catch (error) {
+    if (wallet) await wallet.close(true).catch(() => {});
+    wallet = null;
+    sessionPassword = null;
+    throw error;
+  }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
-ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : { mode: 'remote', node: activeConfig.node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 });
+ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('wallet-lock', async () => { if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
 ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
   ensureWallet();
@@ -462,9 +498,12 @@ ipcMain.handle('wallet-send', async (_, { address, amount, priority = 2 }) => {
 });
 ipcMain.handle('wallet-export-backup', async () => {
   ensureWallet();
+  const source = walletPath() + '.keys';
+  if (!fs.existsSync(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
   const result = await dialog.showSaveDialog(mainWindow, { title: 'monejo 지갑 백업 저장', defaultPath: 'monejo-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
-  fs.copyFileSync(walletPath() + '.keys', result.filePath);
+  if (path.resolve(result.filePath) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
+  fs.copyFileSync(source, result.filePath);
   return { canceled: false, path: result.filePath };
 });
 ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
