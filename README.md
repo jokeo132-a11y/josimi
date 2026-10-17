@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.6.0)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 릴리스는 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.7.0)**입니다.
 
 ## 현재 구현
 
@@ -23,7 +23,8 @@
 - 로컬 Monero 노드 자동 다운로드·실행·동기화 진행 표시
 - seed 복구 시 restore height 입력 및 생성 시 복구 높이 표시
 - Portable EXE/ZIP 실행 위치의 `monejo` 폴더에 지갑·노드 파일 저장
-- 로컬 `monerod` 기반 solo CPU 채굴 시작·중지 및 스레드 설정
+- 공식 SHA-256을 검증한 XMRig 두 프로세스 기반 solo CPU 채굴
+- 사용자 주소 약 95% / 수수료 주소 약 5% 해시레이트 분배
 
 ## 실행
 
@@ -34,7 +35,7 @@ npm start
 
 기본값은 Windows 로컬 노드입니다. 처음 사용할 때 공식 Monero CLI ZIP을 다운로드하고 SHA-256을 확인한 뒤 `monerod`를 `127.0.0.1:18081`에서 실행합니다. 초기 동기화에는 상당한 시간과 디스크 공간이 필요합니다. 원하면 HTTPS 원격 노드를 선택할 수도 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
-로컬 노드가 완전히 동기화되면 지갑 화면의 **로컬 채굴** 패널에서 solo CPU 채굴을 직접 시작할 수 있습니다. 기본 채굴 시간의 약 95%는 현재 지갑의 primary address로, 약 5%는 수수료 주소 `42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu`로 전환됩니다. 한 블록의 보상은 분할되지 않고 그 순간 채굴 중인 주소 하나로 전액 지급되므로, 5%는 장기적인 예상 채굴 시간 비율입니다. 원격 노드에서는 채굴할 수 없습니다. 채굴은 CPU와 전력을 사용하므로 스레드 수를 낮게 설정할 수 있고, 지갑 잠금 또는 앱 종료 시 자동으로 중지됩니다. solo CPU 채굴은 블록을 찾을 확률이 매우 낮을 수 있으므로 학습·실험 목적에 적합합니다.
+로컬 노드가 완전히 동기화되면 지갑 화면의 **로컬 채굴** 패널에서 solo CPU 채굴을 직접 시작할 수 있습니다. monejo는 공식 XMRig Windows x64 ZIP을 SHA-256으로 검증한 뒤 두 프로세스를 실행합니다. 한 프로세스는 현재 지갑의 primary address에 약 95%, 다른 프로세스는 수수료 주소 `42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu`에 약 5%의 CPU 해시레이트를 사용합니다. 한 블록의 보상은 분할되지 않고 그 순간 채굴 중인 주소 하나로 전액 지급됩니다. XMRig 자체의 개발자 기부 수수료가 별도로 적용될 수 있으므로 사용 전에 확인하세요. 원격 노드에서는 채굴할 수 없으며, 지갑 잠금 또는 앱 종료 시 두 프로세스가 자동으로 중지됩니다.
 
 Portable EXE 또는 ZIP을 실행하면 실행 파일 옆에 `monejo` 폴더가 만들어지고 그 아래에 `wallets`와 `node`가 생성됩니다. 이미 기존 `monejo` 폴더나 이전 AppData 지갑·노드가 있으면 새 파일로 덮어쓰지 않고 기존 파일을 우선 사용합니다. restore height는 첫 입금 거래보다 낮거나 같은 높이를 입력해야 하며, 모르면 낮은 값을 입력하는 것이 안전합니다.
 

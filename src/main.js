@@ -13,8 +13,9 @@ const FEE_ADDRESS = '42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JL
 const SERVICE_FEE_RATE = 0.0025;
 const SERVICE_FEE_CAP_ATOMIC = 50000000000n; // 0.05 XMR
 const MINING_FEE_RATE = 0.05;
-const MINING_USER_PHASE_MS = 19 * 60 * 1000;
-const MINING_FEE_PHASE_MS = 1 * 60 * 1000;
+const XMRIG_VERSION = '6.26.0';
+const XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-windows-x64.zip';
+const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87d9e147';
 const ATOMIC_PER_XMR = 1000000000000n;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
@@ -36,7 +37,7 @@ let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
 let daemonProcess = null;
 let daemonStatusTimer = null;
 let daemonPollInFlight = false;
-let miningRotationTimer = null;
+let miningProcesses = [];
 let miningSession = null;
 let selectedWalletDir = null;
 let selectedNodeDir = null;
@@ -376,44 +377,39 @@ async function ensureSendableNode() {
 function miningThreadLimit() { return Math.max(1, Math.min(64, os.cpus().length || 1)); }
 async function getMiningStatus() {
   if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote' };
-  try {
-    const response = await postJson(`${LOCAL_NODE}/mining_status`, {});
-    return { ...response, supported: true, state: response.active ? 'mining' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, phase: miningSession?.phase || null };
-  } catch (_) {
-    return { active: false, supported: true, state: daemonProcess ? 'starting' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, phase: miningSession?.phase || null };
-  }
+  const active = miningProcesses.some((process) => !process.killed && process.exitCode === null);
+  return { active, supported: true, state: active ? 'mining' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, mode: 'xmrig-dual', userShare: 95, feeShare: 5 };
 }
-async function startMiningTarget(address, session) {
-  const response = await postJson(`${LOCAL_NODE}/start_mining`, { miner_address: address, threads_count: session.threads, do_background_mining: session.background, ignore_battery: session.ignoreBattery });
-  if (response.status && response.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.status})`);
-  if (response.result?.status && response.result.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.result.status})`);
+function minerDataDir() { return path.join(portableDataDir(), 'miner'); }
+function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig.exe'); }
+async function installXMRig() {
+  if (process.platform !== 'win32') throw new Error('XMRig 채굴은 Windows에서 지원됩니다.');
+  const dir = minerDataDir(); const binary = minerBinaryPath();
+  if (fs.existsSync(binary)) return binary;
+  await fs.promises.mkdir(dir, { recursive: true });
+  const archive = path.join(dir, `xmrig-${XMRIG_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
+  const actualHash = await downloadFile(XMRIG_URL, archive);
+  if (actualHash !== XMRIG_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 XMRig ZIP의 SHA-256 검증에 실패했습니다.'); }
+  await extractZip(archive, extracted);
+  const found = findFile(extracted, 'xmrig.exe');
+  if (!found) throw new Error('XMRig ZIP에서 xmrig.exe를 찾지 못했습니다.');
+  await fs.promises.cp(path.dirname(found), dir, { recursive: true, force: true });
+  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
+  if (!fs.existsSync(binary)) throw new Error('XMRig 설치 후 실행 파일을 찾지 못했습니다.');
+  return binary;
 }
-function scheduleMiningRotation() {
-  if (miningRotationTimer) clearTimeout(miningRotationTimer);
-  if (!miningSession) return;
-  const phaseDuration = miningSession.phase === 'fee' ? MINING_FEE_PHASE_MS : MINING_USER_PHASE_MS;
-  miningRotationTimer = setTimeout(async () => {
-    const session = miningSession;
-    if (!session) return;
-    try {
-      await postJson(`${LOCAL_NODE}/stop_mining`, {});
-      if (miningSession !== session) return;
-      session.phase = session.phase === 'fee' ? 'user' : 'fee';
-      await startMiningTarget(session.phase === 'fee' ? FEE_ADDRESS : session.userAddress, session);
-      scheduleMiningRotation();
-    } catch (error) {
-      console.warn('[monejo mining rotation]', error.message);
-      await stopMining();
-    }
-  }, phaseDuration);
-  miningRotationTimer.unref?.();
+function startXMRig(binary, address, threadsHint, session) {
+  const args = ['--daemon', '-o', '127.0.0.1:18081', '-u', address, '--cpu-max-threads-hint', String(threadsHint), '--no-color'];
+  if (!session.ignoreBattery) args.push('--pause-on-battery');
+  const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  processHandle.stderr.on('data', (chunk) => console.warn('[monejo xmrig]', chunk.toString().trim()));
+  processHandle.on('error', (error) => console.warn('[monejo xmrig]', error.message));
+  return processHandle;
 }
 async function stopMining() {
-  if (miningRotationTimer) clearTimeout(miningRotationTimer);
-  miningRotationTimer = null;
+  for (const processHandle of miningProcesses) { if (!processHandle.killed) processHandle.kill(); }
+  miningProcesses = [];
   miningSession = null;
-  if (activeConfig.node !== LOCAL_NODE) return;
-  try { await postJson(`${LOCAL_NODE}/stop_mining`, {}); } catch (_) {}
 }
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
@@ -524,7 +520,7 @@ ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignor
   ensureWallet();
   if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
   const limit = miningThreadLimit(); const count = Number(threads);
-  if (!Number.isSafeInteger(count) || count < 1 || count > limit) throw new Error(`채굴 스레드는 1에서 ${limit} 사이여야 합니다.`);
+  if (!Number.isSafeInteger(count) || count < 2 || count > limit) throw new Error(`두 채굴 프로세스에 사용할 CPU 스레드 수는 2에서 ${limit} 사이여야 합니다.`);
   await stopMining();
   await startLocalNode();
   const status = await getLocalNodeStatus();
@@ -532,10 +528,10 @@ ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignor
   const address = await wallet.getPrimaryAddress();
   await assertMainnetAddress(address, '채굴 주소');
   await assertMainnetAddress(FEE_ADDRESS, '채굴 수수료 주소');
-  miningSession = { userAddress: address, threads: count, background: Boolean(background), ignoreBattery: Boolean(ignoreBattery), phase: 'user' };
+  const binary = await installXMRig();
+  miningSession = { userAddress: address, threads: count, background: Boolean(background), ignoreBattery: Boolean(ignoreBattery), mode: 'xmrig-dual' };
   try {
-    await startMiningTarget(address, miningSession);
-    scheduleMiningRotation();
+    miningProcesses = [startXMRig(binary, address, 95, miningSession), startXMRig(binary, FEE_ADDRESS, 5, miningSession)];
     return getMiningStatus();
   } catch (error) {
     await stopMining();
