@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
@@ -235,7 +236,7 @@ async function startLocalNode() {
 }
 
 async function resolveNode(node) { return String(node || '').trim() ? normalizeNode(node) : (await startLocalNode(), LOCAL_NODE); }
-async function stopLocalNode() { if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; if (daemonProcess) { daemonProcess.kill(); daemonProcess = null; } }
+async function stopLocalNode() { await stopMining(); if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; if (daemonProcess) { daemonProcess.kill(); daemonProcess = null; } }
 
 async function schedulePortableReplacement(downloadedExe) {
   const currentExe = process.execPath;
@@ -367,6 +368,20 @@ async function ensureSendableNode() {
   const info = await getNodeInfo(activeConfig.node);
   if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
+function miningThreadLimit() { return Math.max(1, Math.min(64, os.cpus().length || 1)); }
+async function getMiningStatus() {
+  if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote' };
+  try {
+    const response = await postJson(`${LOCAL_NODE}/mining_status`, {});
+    return { ...response, supported: true, state: response.active ? 'mining' : 'stopped' };
+  } catch (_) {
+    return { active: false, supported: true, state: daemonProcess ? 'starting' : 'stopped' };
+  }
+}
+async function stopMining() {
+  if (activeConfig.node !== LOCAL_NODE) return;
+  try { await postJson(`${LOCAL_NODE}/stop_mining`, {}); } catch (_) {}
+}
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
   const wordCount = normalized ? normalized.split(' ').length : 0;
@@ -398,7 +413,7 @@ async function makeWindow() {
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32' }));
+ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32', miningMaxThreads: miningThreadLimit() }));
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
@@ -471,7 +486,24 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
-ipcMain.handle('wallet-lock', async () => { if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
+ipcMain.handle('mining-status', async () => getMiningStatus());
+ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignoreBattery = false } = {}) => {
+  ensureWallet();
+  if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
+  const limit = miningThreadLimit(); const count = Number(threads);
+  if (!Number.isSafeInteger(count) || count < 1 || count > limit) throw new Error(`채굴 스레드는 1에서 ${limit} 사이여야 합니다.`);
+  await startLocalNode();
+  const status = await getLocalNodeStatus();
+  if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
+  const address = await wallet.getPrimaryAddress();
+  await assertMainnetAddress(address, '채굴 주소');
+  const response = await postJson(`${LOCAL_NODE}/start_mining`, { miner_address: address, threads_count: count, do_background_mining: Boolean(background), ignore_battery: Boolean(ignoreBattery) });
+  if (response.status && response.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.status})`);
+  if (response.result?.status && response.result.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.result.status})`);
+  return getMiningStatus();
+});
+ipcMain.handle('mining-stop', async () => { await stopMining(); return getMiningStatus(); });
+ipcMain.handle('wallet-lock', async () => { await stopMining(); if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
 ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
   ensureWallet();
   const amountAtomic = xmrToAtomic(amount);

@@ -65,6 +65,7 @@ main{max-width:1160px;margin:0 auto;padding:56px 28px 70px}
 .send-card{grid-column:2;grid-row:1 / span 3}
 .tx-card{grid-column:1;grid-row:2}
 .tools-card{grid-column:1;grid-row:3}
+.mining-card{grid-column:1;grid-row:4}
 .address{font-size:12px;color:var(--text-soft);word-break:break-all;line-height:1.7;margin:14px 0 18px;background:#121310;border:1px solid var(--line);border-radius:6px;padding:11px}
 .address-actions{display:flex;gap:8px}
 .address-actions button,.tool,.dialog-actions button{background:var(--surface-2);border:1px solid var(--line-strong);color:var(--text-soft);border-radius:6px;padding:9px 11px;cursor:pointer;font-size:12px}
@@ -79,6 +80,8 @@ main{max-width:1160px;margin:0 auto;padding:56px 28px 70px}
 .tx-amount{color:var(--orange);font-variant-numeric:tabular-nums;white-space:nowrap}
 .tool{display:block;width:100%;text-align:left;margin:8px 0}
 .tool.danger{color:#f0a293}
+.check-row{display:flex;align-items:center;gap:8px;color:var(--text-soft);font-size:12px;margin:10px 0}.check-row input{accent-color:var(--orange)}
+.mining-card label:not(.check-row){display:block;color:var(--text-soft);font-size:12px;margin:12px 0}.mining-card label:not(.check-row) input{display:block;width:100%;margin-top:7px;height:40px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:0 10px}.mining-actions{display:flex;gap:8px;margin-top:14px}.mining-actions button{flex:1}.mining-actions .tool{text-align:center;margin:0}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--orange);color:#1b1009;padding:10px 15px;border-radius:6px;font-weight:700;font-size:12px;z-index:5;box-shadow:0 7px 25px #0008}
 dialog{border:1px solid var(--line-strong);background:var(--surface);color:var(--text);border-radius:10px;max-width:480px;width:calc(100% - 32px);padding:0;box-shadow:0 25px 80px #000b}
 dialog::backdrop{background:#000b}
@@ -90,5 +93,5 @@ dialog::backdrop{background:#000b}
 .dialog-actions{display:flex;gap:8px;margin-top:20px}
 .dialog-actions button{flex:1}
 .dialog-actions .primary{border:0}
-@media(max-width:820px){main{padding:38px 18px 55px}.auth-view{display:block;max-width:430px;margin:42px auto 55px}.auth-heading h1{font-size:22px}.grid{grid-template-columns:1fr}.send-card,.address-card,.tx-card,.tools-card{grid-column:1;grid-row:auto}}
+@media(max-width:820px){main{padding:38px 18px 55px}.auth-view{display:block;max-width:430px;margin:42px auto 55px}.auth-heading h1{font-size:22px}.grid{grid-template-columns:1fr}.send-card,.address-card,.tx-card,.tools-card,.mining-card{grid-column:1;grid-row:auto}}
 @media(max-width:480px){.topbar{padding:0 16px}.brand em{display:none}.auth-heading h1{font-size:22px}.auth-card{padding:20px}.card{padding:17px}.balance{font-size:35px}}
