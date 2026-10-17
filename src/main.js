@@ -12,6 +12,9 @@ const QRCode = require('qrcode');
 const FEE_ADDRESS = '42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu';
 const SERVICE_FEE_RATE = 0.0025;
 const SERVICE_FEE_CAP_ATOMIC = 50000000000n; // 0.05 XMR
+const MINING_FEE_RATE = 0.05;
+const MINING_USER_PHASE_MS = 19 * 60 * 1000;
+const MINING_FEE_PHASE_MS = 1 * 60 * 1000;
 const ATOMIC_PER_XMR = 1000000000000n;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
@@ -33,6 +36,8 @@ let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
 let daemonProcess = null;
 let daemonStatusTimer = null;
 let daemonPollInFlight = false;
+let miningRotationTimer = null;
+let miningSession = null;
 let selectedWalletDir = null;
 let selectedNodeDir = null;
 const singleInstanceLock = app.requestSingleInstanceLock();
@@ -373,12 +378,40 @@ async function getMiningStatus() {
   if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote' };
   try {
     const response = await postJson(`${LOCAL_NODE}/mining_status`, {});
-    return { ...response, supported: true, state: response.active ? 'mining' : 'stopped' };
+    return { ...response, supported: true, state: response.active ? 'mining' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, phase: miningSession?.phase || null };
   } catch (_) {
-    return { active: false, supported: true, state: daemonProcess ? 'starting' : 'stopped' };
+    return { active: false, supported: true, state: daemonProcess ? 'starting' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, phase: miningSession?.phase || null };
   }
 }
+async function startMiningTarget(address, session) {
+  const response = await postJson(`${LOCAL_NODE}/start_mining`, { miner_address: address, threads_count: session.threads, do_background_mining: session.background, ignore_battery: session.ignoreBattery });
+  if (response.status && response.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.status})`);
+  if (response.result?.status && response.result.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.result.status})`);
+}
+function scheduleMiningRotation() {
+  if (miningRotationTimer) clearTimeout(miningRotationTimer);
+  if (!miningSession) return;
+  const phaseDuration = miningSession.phase === 'fee' ? MINING_FEE_PHASE_MS : MINING_USER_PHASE_MS;
+  miningRotationTimer = setTimeout(async () => {
+    const session = miningSession;
+    if (!session) return;
+    try {
+      await postJson(`${LOCAL_NODE}/stop_mining`, {});
+      if (miningSession !== session) return;
+      session.phase = session.phase === 'fee' ? 'user' : 'fee';
+      await startMiningTarget(session.phase === 'fee' ? FEE_ADDRESS : session.userAddress, session);
+      scheduleMiningRotation();
+    } catch (error) {
+      console.warn('[monejo mining rotation]', error.message);
+      await stopMining();
+    }
+  }, phaseDuration);
+  miningRotationTimer.unref?.();
+}
 async function stopMining() {
+  if (miningRotationTimer) clearTimeout(miningRotationTimer);
+  miningRotationTimer = null;
+  miningSession = null;
   if (activeConfig.node !== LOCAL_NODE) return;
   try { await postJson(`${LOCAL_NODE}/stop_mining`, {}); } catch (_) {}
 }
@@ -492,15 +525,22 @@ ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignor
   if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
   const limit = miningThreadLimit(); const count = Number(threads);
   if (!Number.isSafeInteger(count) || count < 1 || count > limit) throw new Error(`채굴 스레드는 1에서 ${limit} 사이여야 합니다.`);
+  await stopMining();
   await startLocalNode();
   const status = await getLocalNodeStatus();
   if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
   const address = await wallet.getPrimaryAddress();
   await assertMainnetAddress(address, '채굴 주소');
-  const response = await postJson(`${LOCAL_NODE}/start_mining`, { miner_address: address, threads_count: count, do_background_mining: Boolean(background), ignore_battery: Boolean(ignoreBattery) });
-  if (response.status && response.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.status})`);
-  if (response.result?.status && response.result.status !== 'OK') throw new Error(`채굴 시작에 실패했습니다. (${response.result.status})`);
-  return getMiningStatus();
+  await assertMainnetAddress(FEE_ADDRESS, '채굴 수수료 주소');
+  miningSession = { userAddress: address, threads: count, background: Boolean(background), ignoreBattery: Boolean(ignoreBattery), phase: 'user' };
+  try {
+    await startMiningTarget(address, miningSession);
+    scheduleMiningRotation();
+    return getMiningStatus();
+  } catch (error) {
+    await stopMining();
+    throw error;
+  }
 });
 ipcMain.handle('mining-stop', async () => { await stopMining(); return getMiningStatus(); });
 ipcMain.handle('wallet-lock', async () => { await stopMining(); if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
