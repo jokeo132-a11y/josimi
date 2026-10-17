@@ -398,8 +398,8 @@ async function installXMRig() {
   if (!fs.existsSync(binary)) throw new Error('XMRig 설치 후 실행 파일을 찾지 못했습니다.');
   return binary;
 }
-function startXMRig(binary, address, threadsHint, session) {
-  const args = ['--daemon', '-o', '127.0.0.1:18081', '-u', address, '--cpu-max-threads-hint', String(threadsHint), '--no-color'];
+function startXMRig(binary, address, threadCount, session) {
+  const args = ['--daemon', '-o', '127.0.0.1:18081', '-u', address, '--threads', String(threadCount), '--no-color'];
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
   processHandle.stderr.on('data', (chunk) => console.warn('[monejo xmrig]', chunk.toString().trim()));
@@ -531,7 +531,9 @@ ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignor
   const binary = await installXMRig();
   miningSession = { userAddress: address, threads: count, background: Boolean(background), ignoreBattery: Boolean(ignoreBattery), mode: 'xmrig-dual' };
   try {
-    miningProcesses = [startXMRig(binary, address, 95, miningSession), startXMRig(binary, FEE_ADDRESS, 5, miningSession)];
+    const userThreads = Math.min(count - 1, Math.max(1, Math.round(count * 0.95)));
+    const feeThreads = Math.max(1, count - userThreads);
+    miningProcesses = [startXMRig(binary, address, userThreads, miningSession), startXMRig(binary, FEE_ADDRESS, feeThreads, miningSession)];
     return getMiningStatus();
   } catch (error) {
     await stopMining();
