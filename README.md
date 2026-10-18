@@ -1,6 +1,6 @@
 # monejo
 
-비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.7.2)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.8.0-next)**입니다.
 
 ## 현재 구현
 
@@ -18,15 +18,17 @@
 - 한국어 UI
 - 송금액의 0.25% monejo 서비스 수수료
   - 상한 0.05 XMR
-  - 송금/채굴 공통 수수료 수취 주소: `42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT`
+- 송금 서비스 수수료 수취 주소: `42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT`
 - 송금 확인 전에 받는 주소, 서비스 수수료, 실제 네트워크 수수료 및 총 차감액을 표시
 - relay 응답이 불확실하면 같은 서명 거래를 보존해 재시도하며, 해결 전 새 송금·지갑 전환을 막음; 여러 건으로 분할되는 송금은 차단
 - 로컬 Monero 노드 자동 다운로드·실행·동기화 진행 표시
 - seed 복구 시 restore height 입력 및 생성 시 복구 높이 표시
 - Portable EXE/ZIP 실행 위치의 `monejo` 폴더에 지갑·노드 파일 저장
-- 공식 SHA-256을 검증한 XMRig 두 프로세스 기반 solo CPU 채굴
-- Windows에서 CPU 스레드 20개 이상을 20개 단위로 선택하면 두 XMRig 프로세스의 수수료 주소 몫을 스레드 기준 정확히 5%로 제한
-- 프로세스별 스레드 수를 표시하며 실제 해시레이트 비율이나 블록 보상 비율은 보장하지 않음; CPU가 20개 미만이면 채굴 시작 불가
+- 공식 SHA-256을 검증한 XMRig 기반 Windows CPU 채굴
+- 20개 단위나 CPU 개수 상한 없이 양의 정수 스레드 수를 직접 입력
+- 직접 지정한 Stratum 풀, 기본 preset 중 TCP 지연이 가장 낮은 풀을 고르는 자동 풀 선택, 로컬 solo 채굴 지원
+- P2Pool main/mini/nano 선택, 공식 Windows x64 P2Pool ZIP의 GitHub SHA-256 digest 검증 후 자동 다운로드·실행
+- P2Pool을 로컬 Monero 노드와 함께 동기화하거나 원격 P2Pool stratum endpoint 선택
 
 ## 실행
 
@@ -37,7 +39,9 @@ npm start
 
 기본값은 Windows 로컬 노드입니다. 처음 사용할 때 공식 Monero CLI ZIP을 다운로드하고 SHA-256을 확인한 뒤 `monerod`를 `127.0.0.1:18081`에서 실행합니다. 초기 동기화에는 상당한 시간과 디스크 공간이 필요합니다. 원하면 HTTPS 원격 노드를 선택할 수도 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
-로컬 노드가 완전히 동기화되면 지갑 화면의 **로컬 채굴** 패널에서 solo CPU 채굴을 직접 시작할 수 있습니다. monejo는 공식 XMRig Windows x64 ZIP을 SHA-256으로 검증한 뒤 두 프로세스를 실행합니다. 한 프로세스는 현재 지갑의 primary address, 다른 프로세스는 수수료 주소 `42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT`를 사용합니다. 총 스레드는 20개 이상이며 20개 단위로만 고를 수 있어, 수수료 주소에 배정되는 스레드는 전체의 5%입니다. 이는 실제 해시레이트나 블록 보상 비율을 보장하지 않습니다. UI의 "두 채굴 프로세스 실행 중" 표시는 프로세스 생성 성공을 뜻하며, XMRig의 유효 작업 수신이나 해시레이트 확인과 동일하지 않습니다. 블록 보상은 블록을 찾은 주소 하나로 전액 지급됩니다. XMRig 자체의 개발자 기부 수수료가 별도로 적용될 수 있으므로 사용 전에 확인하세요. 원격 노드에서는 채굴할 수 없으며, 지갑 잠금·지갑 전환·앱 종료 시 두 프로세스가 자동으로 중지됩니다.
+지갑 화면의 **채굴** 패널에서 모드를 고를 수 있습니다. Solo는 동기화된 로컬 monerod에 XMRig daemon 모드로 연결하고, 직접 풀은 입력한 Stratum endpoint와 현재 지갑 주소를 사용합니다. 자동 풀은 기본 preset을 TCP probe해 가장 빠른 endpoint를 선택합니다. 수수료 주소로 별도 채굴 프로세스를 만들지 않으며, 채굴 보상은 선택한 풀·P2Pool·solo 설정에 따라 현재 지갑 주소로 귀속됩니다. XMRig 자체의 개발자 기부 수수료가 별도로 적용될 수 있으므로 사용 전에 확인하세요.
+
+P2Pool 로컬 모드는 먼저 공식 Monero CLI를 `--zmq-pub tcp://127.0.0.1:18083` 옵션과 함께 시작하고, Monero 노드가 완전히 동기화된 뒤 공식 P2Pool Windows x64 릴리스를 GitHub digest로 검증해 설치합니다. P2Pool은 main/mini/nano 중 선택한 sidechain을 열고 XMRig는 `127.0.0.1:3333`에 연결합니다. 원격 모드는 `host:3333` endpoint로 바로 연결합니다. P2Pool은 지갑 주소가 공개되므로 전용 채굴 지갑 사용을 권장하며, 최초 동기화에는 상당한 시간·RAM·디스크가 필요합니다. 지갑 잠금·지갑 전환·앱 종료 시 XMRig와 로컬 P2Pool은 자동으로 중지됩니다.
 
 Portable EXE 또는 ZIP을 실행하면 실행 파일 옆에 `monejo` 폴더가 만들어지고 그 아래에 `wallets`와 `node`가 생성됩니다. 이미 기존 `monejo` 폴더나 이전 AppData 지갑·노드가 있으면 새 파일로 덮어쓰지 않고 기존 파일을 우선 사용합니다. restore height는 첫 입금 거래보다 낮거나 같은 높이를 입력해야 하며, 모르면 낮은 값을 입력하는 것이 안전합니다.
 
@@ -50,7 +54,7 @@ npm run dist
 생성물:
 
 - `dist/monejo.exe` — Windows Portable 단일 실행 파일
-- `dist/monejo-0.7.2-x64.zip` — ZIP 배포본
+- `dist/monejo-0.8.0-next-x64.zip` — ZIP 배포본
 - `dist/win-unpacked/`
 
 실행 중인 Portable EXE는 앱 시작 후 GitHub 릴리스 목록에서 가장 높은 버전의 안정 릴리스만 선택합니다. 새 릴리스의 `monejo.exe`와 SHA-256이 비교되면 별도 확인 없이 앱을 종료하고 새 EXE로 교체한 뒤 재실행합니다. draft와 pre-release는 제외합니다. 체크섬은 동일 GitHub 릴리스에서 함께 내려받으므로 독립 서명이나 코드 서명과 동등한 정품성 검증은 아닙니다.

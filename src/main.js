@@ -1,15 +1,15 @@
 const { app, BrowserWindow, ipcMain: electronIpcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
-const os = require('node:os');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
+const net = require('node:net');
 const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, splitMiningThreads, isAllowedNodeRedirect } = require('./core');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, isAllowedNodeRedirect } = require('./core');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
@@ -17,7 +17,13 @@ const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const XMRIG_VERSION = '6.26.0';
 const XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-windows-x64.zip';
 const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87d9e147';
+const P2POOL_API = 'https://api.github.com/repos/SChernykh/p2pool/releases/latest';
 const NETWORK = 'mainnet';
+const DEFAULT_MINING_POOLS = [
+  { id: 'hashvault', name: 'HashVault', host: 'pool.hashvault.pro:443', tls: true },
+  { id: 'supportxmr', name: 'SupportXMR', host: 'pool.supportxmr.com:443', tls: true },
+  { id: 'moneroocean', name: 'MoneroOcean', host: 'gulf.moneroocean.stream:443', tls: true }
+];
 const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
   'https://node.monerodevs.org:18089'
@@ -38,10 +44,12 @@ let daemonProcess = null;
 let daemonStatusTimer = null;
 let daemonPollInFlight = false;
 let miningProcesses = [];
+let p2poolProcess = null;
 let miningSession = null;
 let miningStopPromise = null;
 let miningStartRequest = null;
 let miningStartPromise = null;
+let activeMiningConfig = { mode: 'solo', poolUrl: null, poolTls: true, p2poolProfile: 'mini', p2poolEndpoint: null };
 let shutdownRequested = false;
 let miningError = null;
 let selectedWalletDir = null;
@@ -278,7 +286,7 @@ async function startLocalNode() {
   if (existing.state !== 'stopped') return existing;
   const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--zmq-pub', 'tcp://127.0.0.1:18083', '--out-peers', '32', '--in-peers', '64', '--enforce-dns-checkpointing', '--enable-dns-blocklist', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   daemonProcess.on('error', (error) => { console.warn('[monejo monerod]', error.message); daemonProcess = null; });
   daemonProcess.on('close', () => { daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
   daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
@@ -437,28 +445,24 @@ async function ensureSendableNode() {
   const info = await getNodeInfo(activeConfig.node);
   if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
-function miningThreadLimit() { return Math.min(64, os.cpus().length || 0); }
 function isMinerRunning(entry) { return Boolean(entry && entry.status === 'running' && entry.child.exitCode === null && entry.child.signalCode === null); }
 async function getMiningStatus() {
-  if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote', error: miningError };
+  const mode = activeMiningConfig.mode || 'solo';
+  if (mode === 'solo' && activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote', error: miningError, mode };
   const running = miningProcesses.filter(isMinerRunning);
-  const split = miningSession?.split || null;
   const starting = Boolean(miningStartRequest && !miningStartRequest.cancelled);
-  const state = running.length === 2 ? 'mining' : running.length === 1 ? 'partial' : starting ? 'starting' : 'stopped';
+  const state = running.length > 1 ? 'mining' : running.length === 1 ? 'partial' : starting ? 'starting' : 'stopped';
   return {
     active: running.length > 0 || starting,
-    supported: process.platform === 'win32' && miningThreadLimit() >= 20,
+    supported: process.platform === 'win32',
     state,
     error: miningError,
-    mode: 'xmrig-dual',
+    mode,
     processCount: running.length,
-    expectedProcesses: 2,
-    totalThreads: split?.totalThreads || 0,
-    userThreads: split?.userThreads || 0,
-    feeThreads: split?.feeThreads || 0,
-    userThreadPercent: split?.userThreadPercent || 0,
-    feeThreadPercent: split?.feeThreadPercent || 0,
-    feeRate: split ? split.feeThreadPercent / 100 : 0
+    expectedProcesses: mode === 'solo' ? 2 : 1,
+    totalThreads: miningSession?.threads || 0,
+    poolUrl: activeMiningConfig.poolUrl,
+    p2poolEndpoint: activeMiningConfig.p2poolEndpoint
   };
 }
 function emitMiningStatus() {
@@ -483,8 +487,72 @@ async function installXMRig() {
   if (!fs.existsSync(binary)) throw new Error('XMRig 설치 후 실행 파일을 찾지 못했습니다.');
   return binary;
 }
-function startXMRig(binary, address, role, threadCount, session) {
-  const args = ['--daemon', '-o', '127.0.0.1:18081', '-u', address, '--threads', String(threadCount), '--no-color'];
+function normalizePoolUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) throw new Error('채굴 풀 주소를 입력하거나 자동 선택을 사용하세요.');
+  const parsed = new URL(raw.includes('://') ? raw : `stratum+tcp://${raw}`);
+  if (!['stratum+tcp:', 'stratum+ssl:'].includes(parsed.protocol) || !parsed.hostname || !parsed.port) throw new Error('풀 주소는 host:port 또는 stratum+tcp://host:port 형식이어야 합니다.');
+  if (parsed.username || parsed.password || parsed.pathname !== '/') throw new Error('풀 주소에 사용자명, 비밀번호 또는 경로를 포함할 수 없습니다.');
+  return { url: `${parsed.protocol}//${parsed.hostname}:${parsed.port}`, host: parsed.hostname, port: Number(parsed.port), tls: parsed.protocol === 'stratum+ssl:' };
+}
+function probePool(pool) {
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    const socket = net.createConnection({ host: pool.host, port: pool.port });
+    const finish = (error) => { socket.destroy(); error ? reject(error) : resolve({ ...pool, latency: Date.now() - started }); };
+    socket.setTimeout(4500);
+    socket.once('connect', () => finish());
+    socket.once('timeout', () => finish(new Error('pool probe timeout')));
+    socket.once('error', (error) => finish(error));
+  });
+}
+async function chooseMiningPool() {
+  const results = await Promise.allSettled(DEFAULT_MINING_POOLS.map(probePool));
+  const available = results.filter((result) => result.status === 'fulfilled').map((result) => result.value).sort((a, b) => a.latency - b.latency);
+  if (!available.length) throw new Error('자동 선택할 수 있는 채굴 풀에 연결하지 못했습니다. 직접 풀 주소를 입력해 보세요.');
+  const selected = available[0];
+  return { ...selected, url: `${selected.tls ? 'stratum+ssl' : 'stratum+tcp'}://${selected.host}` };
+}
+function p2poolDataDir() { return path.join(portableDataDir(), 'p2pool'); }
+function p2poolBinaryPath() { return path.join(p2poolDataDir(), 'p2pool.exe'); }
+async function installP2Pool() {
+  if (process.platform !== 'win32') throw new Error('P2Pool 자동 설치는 Windows x64에서 지원됩니다.');
+  const dir = p2poolDataDir(); const binary = p2poolBinaryPath();
+  if (fs.existsSync(binary)) return binary;
+  await fs.promises.mkdir(dir, { recursive: true });
+  const release = JSON.parse((await requestUrl(P2POOL_API, { Accept: 'application/vnd.github+json' })).toString('utf8'));
+  const asset = release.assets?.find((candidate) => /^p2pool-v.*-windows-x64\.zip$/i.test(candidate.name));
+  if (!asset) throw new Error('P2Pool 최신 Windows x64 릴리스를 찾지 못했습니다.');
+  const archive = path.join(dir, asset.name); const extracted = path.join(dir, 'extracted');
+  const actualHash = await downloadFile(asset.browser_download_url, archive);
+  const expectedHash = String(asset.digest || '').replace(/^sha256:/i, '').toLowerCase();
+  if (!expectedHash || actualHash !== expectedHash) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 P2Pool ZIP의 SHA-256 검증에 실패했습니다.'); }
+  await extractZip(archive, extracted, () => shutdownRequested || Boolean(miningStartRequest?.cancelled));
+  const found = findFile(extracted, 'p2pool.exe');
+  if (!found) throw new Error('P2Pool ZIP에서 p2pool.exe를 찾지 못했습니다.');
+  await fs.promises.cp(path.dirname(found), dir, { recursive: true, force: true });
+  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
+  if (!fs.existsSync(binary)) throw new Error('P2Pool 설치 후 실행 파일을 찾지 못했습니다.');
+  return binary;
+}
+async function startP2Pool(address, profile, session) {
+  const binary = await installP2Pool();
+  const args = ['--host', '127.0.0.1', '--wallet', address, '--loglevel', '2'];
+  if (profile === 'mini') args.push('--mini');
+  if (profile === 'nano') args.push('--nano');
+  p2poolProcess = spawn(binary, args, { cwd: p2poolDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  p2poolProcess.stdout?.on('data', (chunk) => console.info('[monejo p2pool]', chunk.toString().trim()));
+  p2poolProcess.stderr?.on('data', (chunk) => console.warn('[monejo p2pool]', chunk.toString().trim()));
+  p2poolProcess.once('error', (error) => { if (miningSession === session && !session.stopping) miningError = `P2Pool 오류: ${error.message}`; emitMiningStatus(); });
+  p2poolProcess.once('close', (code) => { p2poolProcess = null; if (miningSession === session && !session.stopping) { miningError = `P2Pool이 종료되었습니다. (code ${code ?? '없음'})`; void stopMining(); } emitMiningStatus(); });
+  await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('P2Pool 시작 시간이 초과되었습니다.')), 15000); p2poolProcess.once('spawn', () => { clearTimeout(timer); resolve(); }); p2poolProcess.once('error', (error) => { clearTimeout(timer); reject(error); }); });
+  return '127.0.0.1:3333';
+}
+function startXMRig(binary, address, role, threadCount, session, config) {
+  const args = ['--threads', String(threadCount), '--no-color'];
+  if (config.mode === 'solo') args.push('--daemon', '-o', '127.0.0.1:18081', '-u', address);
+  else if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint || '127.0.0.1:3333');
+  else args.push('-o', config.poolUrl, '-u', address, '-p', 'monejo', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
   const entry = { child: processHandle, address, role, threads: threadCount, status: 'starting', error: null, closeSeen: false };
@@ -547,6 +615,12 @@ async function stopMining({ preserveStarting = false } = {}) {
     }
     await Promise.all(entries.map(waitForMinerClose));
     miningProcesses = [];
+    if (p2poolProcess) {
+      const processHandle = p2poolProcess;
+      p2poolProcess = null;
+      try { if (processHandle.exitCode === null && processHandle.signalCode === null) processHandle.kill('SIGTERM'); } catch (_) {}
+      await new Promise((resolve) => { if (processHandle.exitCode !== null || processHandle.signalCode !== null) return resolve(); processHandle.once('close', resolve); setTimeout(resolve, 8000); });
+    }
     emitMiningStatus();
   })();
   try { await miningStopPromise; } finally { miningStopPromise = null; }
@@ -588,7 +662,7 @@ async function makeWindow() {
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32', miningMaxThreads: miningThreadLimit() }));
+ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32', miningPools: DEFAULT_MINING_POOLS, p2poolProfiles: ['main', 'mini', 'nano'] }));
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
@@ -677,7 +751,7 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('mining-status', async () => getMiningStatus());
-ipcMain.handle('mining-start', async (_, { threads = 20, ignoreBattery = false } = {}) => {
+ipcMain.handle('mining-start', async (_, { threads = 1, ignoreBattery = false, mode = 'solo', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'local', p2poolNodeAddress } = {}) => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   if (miningStartRequest) throw new Error('채굴 시작 또는 중지가 이미 진행 중입니다.');
   const request = { cancelled: false };
@@ -690,37 +764,54 @@ ipcMain.handle('mining-start', async (_, { threads = 20, ignoreBattery = false }
       ensureWallet();
       activeWallet = wallet;
       sessionId = walletSessionId;
-      if (process.platform !== 'win32') throw new Error('XMRig 두 프로세스 채굴은 현재 Windows에서만 지원됩니다.');
-      if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
-      const split = splitMiningThreads(threads, miningThreadLimit());
+      if (process.platform !== 'win32') throw new Error('XMRig 채굴은 현재 Windows에서만 지원됩니다.');
+      if (!['solo', 'pool', 'auto', 'p2pool'].includes(mode)) throw new Error('지원하지 않는 채굴 모드입니다.');
+      const totalThreads = validateMiningThreads(threads);
       await stopMining({ preserveStarting: true });
       if (request.cancelled || shutdownRequested) return getMiningStatus();
-      session = { split, ignoreBattery: Boolean(ignoreBattery), mode: 'xmrig-dual', starting: true, stopping: false };
+      session = { threads: totalThreads, ignoreBattery: Boolean(ignoreBattery), mode, starting: true, stopping: false };
       miningSession = session;
       miningProcesses = [];
       miningError = null;
       emitMiningStatus();
-      await startLocalNode();
-      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
-      const status = await getLocalNodeStatus();
-      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
-      if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
       const address = await activeWallet.getPrimaryAddress();
       if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
       await assertMainnetAddress(address, '채굴 주소');
-      await assertMainnetAddress(FEE_ADDRESS, '채굴 수수료 주소');
+      const config = { mode, poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolProfile };
+      if (mode === 'solo') {
+        if (activeConfig.node !== LOCAL_NODE) throw new Error('Solo 채굴은 내 컴퓨터의 로컬 Monero 노드에서만 사용할 수 있습니다.');
+        await startLocalNode();
+        const status = await getLocalNodeStatus();
+        if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
+      } else if (mode === 'pool' || mode === 'auto') {
+        const selected = mode === 'auto' ? await chooseMiningPool() : normalizePoolUrl(String(poolUrl || '').includes('://') ? poolUrl : `${poolTls ? 'stratum+ssl' : 'stratum+tcp'}://${poolUrl}`);
+        config.poolUrl = selected.url;
+        config.poolTls = selected.tls;
+      } else {
+        if (!['main', 'mini', 'nano'].includes(p2poolProfile)) throw new Error('P2Pool 프로필이 올바르지 않습니다.');
+        if (p2poolNodeMode === 'remote') {
+          const remote = normalizePoolUrl(String(p2poolNodeAddress || '').includes('://') ? p2poolNodeAddress : `stratum+tcp://${p2poolNodeAddress}`);
+          config.p2poolEndpoint = remote.url.replace(/^stratum\+tcp:\/\//, '');
+        } else {
+          if (activeConfig.node !== LOCAL_NODE) throw new Error('P2Pool 로컬 모드는 로컬 Monero 노드가 필요합니다.');
+          await startLocalNode();
+          const status = await getLocalNodeStatus();
+          if (!status.synchronized) throw new Error('P2Pool을 시작하기 전에 Monero 노드 동기화를 끝내세요.');
+          config.p2poolEndpoint = await startP2Pool(address, p2poolProfile, session);
+        }
+      }
+      activeMiningConfig = config;
+      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
       const binary = await installXMRig();
       if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
       session.userAddress = address;
       session.starting = false;
-      const userProcess = startXMRig(binary, address, '사용자 주소', split.userThreads, session);
+      const userProcess = startXMRig(binary, address, '사용자 채굴', totalThreads, session, config);
       miningProcesses.push(userProcess);
-      const feeProcess = startXMRig(binary, FEE_ADDRESS, '수수료 주소', split.feeThreads, session);
-      miningProcesses.push(feeProcess);
       await Promise.all(miningProcesses.map((entry) => entry.spawned));
       if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
       const statusAfterStart = await getMiningStatus();
-      if (statusAfterStart.processCount !== 2) throw new Error('두 채굴 프로세스가 모두 실행되지 않았습니다.');
+      if (statusAfterStart.processCount !== 1) throw new Error('XMRig 채굴 프로세스가 실행되지 않았습니다.');
       emitMiningStatus();
       return statusAfterStart;
     } catch (error) {

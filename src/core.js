@@ -24,21 +24,10 @@ function calculateServiceFee(amountAtomic) {
   return computed > SERVICE_FEE_CAP_ATOMIC ? SERVICE_FEE_CAP_ATOMIC : computed;
 }
 
-function splitMiningThreads(count, limit) {
+function validateMiningThreads(count) {
   const threads = Number(count);
-  const maximum = Number(limit);
-  if (!Number.isSafeInteger(threads) || !Number.isSafeInteger(maximum) || maximum < 20 || threads < 20 || threads > maximum || threads % 20 !== 0) {
-    throw new RangeError(`5% 수수료 스레드 배분을 위해 총 CPU 스레드는 20개 이상, 20개 단위여야 합니다 (최대 ${maximum}).`);
-  }
-  const feeThreads = threads / 20;
-  const userThreads = threads - feeThreads;
-  return {
-    totalThreads: threads,
-    userThreads,
-    feeThreads,
-    userThreadPercent: (userThreads / threads) * 100,
-    feeThreadPercent: (feeThreads / threads) * 100
-  };
+  if (!Number.isSafeInteger(threads) || threads < 1) throw new RangeError('채굴 스레드는 1 이상의 정수여야 합니다.');
+  return threads;
 }
 
 function isAllowedNodeRedirect(fromUrl, toUrl) {
@@ -57,6 +46,6 @@ module.exports = {
   atomicToXmr,
   xmrToAtomic,
   calculateServiceFee,
-  splitMiningThreads,
+  validateMiningThreads,
   isAllowedNodeRedirect
 };

@@ -7,7 +7,7 @@ const {
   xmrToAtomic,
   calculateServiceFee,
   SERVICE_FEE_CAP_ATOMIC,
-  splitMiningThreads,
+  validateMiningThreads,
   isAllowedNodeRedirect
 } = require('../src/core');
 
@@ -31,26 +31,11 @@ test('service fee is 0.25 percent and capped at 0.05 XMR', () => {
   assert.throws(() => calculateServiceFee(-1n), RangeError);
 });
 
-test('dual-miner thread allocation keeps fee threads at exactly five percent', () => {
-  for (const count of [20, 40, 60]) {
-    const split = splitMiningThreads(count, 64);
-    assert.equal(split.userThreads + split.feeThreads, count);
-    assert.ok(split.userThreads >= 1);
-    assert.ok(split.feeThreads >= 1);
-    assert.equal(split.feeThreadPercent, 5);
-  }
-  assert.deepEqual(splitMiningThreads(20, 64), {
-    totalThreads: 20,
-    userThreads: 19,
-    feeThreads: 1,
-    userThreadPercent: 95,
-    feeThreadPercent: 5
-  });
-});
-
-test('dual-miner thread allocation rejects values that cannot preserve the 5% fee split', () => {
-  for (const count of [0, 1, 2, 19, 21, 39, 65, NaN]) assert.throws(() => splitMiningThreads(count, 64), RangeError);
-  assert.throws(() => splitMiningThreads(20, 19), RangeError);
+test('mining thread input accepts any positive safe integer without CPU-count or 20-step limits', () => {
+  assert.equal(validateMiningThreads(1), 1);
+  assert.equal(validateMiningThreads(21), 21);
+  assert.equal(validateMiningThreads(4097), 4097);
+  for (const value of [0, -1, 1.5, NaN, Infinity, 'threads']) assert.throws(() => validateMiningThreads(value), RangeError);
 });
 
 test('remote node redirects cannot downgrade protocol or change origin', () => {

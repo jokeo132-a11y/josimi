@@ -8,10 +8,10 @@ const LANG = {
 let language = localStorage.getItem('monejo.language') || 'ko';
 if (!LANG[language]) language = 'ko';
 const EXTRA_LANG = {
-  ko: { miningFine: '5% 수수료 스레드 배분을 위해 CPU 스레드 20개 이상이 필요합니다. 두 XMRig 프로세스로 채굴하며 CPU 사용량이 높을 수 있습니다.', miningPartial: '채굴 프로세스 일부 실패', miningUnsupported: 'Windows CPU 스레드 20개 이상 필요', miningUserThreads: '내 지갑', miningFeeThreads: '수수료', reviewRecipient: '받는 주소', reviewAmount: '보낼 금액', reviewServiceFee: '서비스 수수료 (0.25%, 최대 0.05 XMR)', reviewNetworkFee: '네트워크 수수료', reviewTotal: '총 차감액', reviewFeeAddress: '수수료 수취 주소' },
-  en: { miningFine: 'At least 20 CPU threads are required to keep the fee allocation at 5%. Two XMRig processes mine locally and may use substantial CPU.', miningPartial: 'One mining process failed', miningUnsupported: 'Windows CPU with at least 20 threads required', miningUserThreads: 'Your wallet', miningFeeThreads: 'Fee', reviewRecipient: 'Recipient address', reviewAmount: 'Amount', reviewServiceFee: 'Service fee (0.25%, max 0.05 XMR)', reviewNetworkFee: 'Network fee', reviewTotal: 'Total debit', reviewFeeAddress: 'Fee recipient' },
-  zh: { miningFine: '为保持手续费线程分配为 5%，至少需要 20 个 CPU 线程。两个 XMRig 进程在本地挖矿，可能会大量使用 CPU。', miningPartial: '一个挖矿进程失败', miningUnsupported: '需要至少 20 线程的 Windows CPU', miningUserThreads: '您的钱包', miningFeeThreads: '手续费', reviewRecipient: '收款地址', reviewAmount: '发送金额', reviewServiceFee: '服务费（0.25%，最高 0.05 XMR）', reviewNetworkFee: '网络手续费', reviewTotal: '总扣款', reviewFeeAddress: '手续费收款地址' },
-  ja: { miningFine: '手数料スレッド配分を5%に保つには、CPUスレッドが20個以上必要です。2つのXMRigプロセスでローカルマイニングを行い、CPU使用率が高くなる場合があります。', miningPartial: 'マイニングプロセスの一部が失敗', miningUnsupported: '20スレッド以上のWindows CPUが必要です', miningUserThreads: '自分のウォレット', miningFeeThreads: '手数料', reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewServiceFee: 'サービス手数料（0.25%、上限0.05 XMR）', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額', reviewFeeAddress: '手数料の受取先' }
+  ko: { miningFine: '스레드 수에는 인위적인 20개 단위 제한이 없습니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.', miningPartial: '채굴 프로세스 일부 실패', miningUnsupported: 'Windows에서만 지원', miningUserThreads: '내 지갑', miningFeeThreads: '수수료', reviewRecipient: '받는 주소', reviewAmount: '보낼 금액', reviewServiceFee: '서비스 수수료 (0.25%, 최대 0.05 XMR)', reviewNetworkFee: '네트워크 수수료', reviewTotal: '총 차감액', reviewFeeAddress: '수수료 수취 주소' },
+  en: { miningFine: 'There is no artificial 20-thread increment limit. Check power, heat, and what your operating system can handle.', miningPartial: 'One mining process failed', miningUnsupported: 'Supported on Windows only', miningUserThreads: 'Your wallet', miningFeeThreads: 'Fee', reviewRecipient: 'Recipient address', reviewAmount: 'Amount', reviewServiceFee: 'Service fee (0.25%, max 0.05 XMR)', reviewNetworkFee: 'Network fee', reviewTotal: 'Total debit', reviewFeeAddress: 'Fee recipient' },
+  zh: { miningFine: '线程数没有人为的 20 线程步进限制。请注意功耗、温度和操作系统的实际处理能力。', miningPartial: '一个挖矿进程失败', miningUnsupported: '仅支持 Windows', miningUserThreads: '您的钱包', miningFeeThreads: '手续费', reviewRecipient: '收款地址', reviewAmount: '发送金额', reviewServiceFee: '服务费（0.25%，最高 0.05 XMR）', reviewNetworkFee: '网络手续费', reviewTotal: '总扣款', reviewFeeAddress: '手续费收款地址' },
+  ja: { miningFine: 'スレッド数に20単位の人工的な制限はありません。電力、温度、OSの処理能力に注意してください。', miningPartial: 'マイニングプロセスの一部が失敗', miningUnsupported: 'Windowsのみ対応', miningUserThreads: '自分のウォレット', miningFeeThreads: '手数料', reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewServiceFee: 'サービス手数料（0.25%、上限0.05 XMR）', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額', reviewFeeAddress: '手数料の受取先' }
 };
 for (const code of Object.keys(EXTRA_LANG)) Object.assign(LANG[code], EXTRA_LANG[code]);
 Object.assign(LANG.ko, { miningStarting: '채굴 준비 중' });
@@ -26,6 +26,8 @@ Object.assign(LANG.ko, { miningMining: '두 채굴 프로세스 실행 중' });
 Object.assign(LANG.en, { miningMining: 'Both mining processes running' });
 Object.assign(LANG.zh, { miningMining: '两个挖矿进程均在运行' });
 Object.assign(LANG.ja, { miningMining: '2つのマイニングプロセスが実行中' });
+Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', miningSolo: '로컬 Solo', miningPool: '직접 풀', miningAuto: '자동으로 풀 선택', miningP2pool: 'P2Pool', poolAddress: '풀 주소', poolTls: 'TLS 사용', p2poolProfile: 'P2Pool 네트워크', p2poolNodeMode: 'P2Pool 노드', p2poolLocal: '내 컴퓨터에 다운로드·동기화', p2poolRemote: '원격 P2Pool stratum 사용', p2poolNodeAddress: 'P2Pool 주소', miningFine: '스레드 수에는 인위적인 20개 단위 제한이 없습니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.', miningRemote: '원격 노드 모드' });
+Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningSolo: 'Local solo', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolLocal: 'Download and sync locally', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningFine: 'There is no artificial 20-thread increment limit. Check power, heat, and what your operating system can handle.', miningRemote: 'Remote node mode' });
 function applyLanguage() {
   const dict = LANG[language];
   document.documentElement.lang = language;
@@ -93,7 +95,8 @@ syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncReque
 function renderMiningStatus(status) {
   const dict = LANG[language];
   if (status.state === 'mining') {
-    $('miningStatus').textContent = `${dict.miningMining} · ${dict.miningUserThreads} ${status.userThreads}/${status.totalThreads} (${status.userThreadPercent.toFixed(0)}%) · ${dict.miningFeeThreads} ${status.feeThreads}/${status.totalThreads} (${status.feeThreadPercent.toFixed(0)}%)`;
+    const endpoint = status.poolUrl || status.p2poolEndpoint || (status.mode === 'solo' ? '127.0.0.1:18081' : '');
+    $('miningStatus').textContent = `${dict.miningMining} · ${status.totalThreads} threads${endpoint ? ` · ${endpoint}` : ''}`;
   } else if (status.state === 'partial') {
     $('miningStatus').textContent = `${dict.miningPartial} · ${status.processCount}/${status.expectedProcesses}`;
   } else if (status.state === 'starting') {
@@ -113,18 +116,24 @@ async function refreshMiningStatus() { try { renderMiningStatus(await window.mon
 window.monejo.onMiningStatus(renderMiningStatus);
 async function configureMiningInput() {
   try {
-    const config = await window.monejo.config();
+    await window.monejo.config();
     const input = $('miningThreads');
-    const maximum = Number(config.miningMaxThreads) || 0;
-    const allowedMaximum = Math.floor(maximum / 20) * 20;
-    input.min = '20';
-    input.step = '20';
-    input.max = String(Math.max(allowedMaximum, 20));
-    input.value = '20';
-    input.disabled = allowedMaximum < 20;
+    input.min = '1';
+    input.step = '1';
+    input.removeAttribute('max');
+    input.value = '1';
   } catch (_) {}
 }
-$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const status = await window.monejo.miningStart({ threads: $('miningThreads').value, ignoreBattery: $('miningIgnoreBattery').checked }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } });
+function updateMiningModeFields() {
+  const mode = $('miningMode').value;
+  $('poolSettings').classList.toggle('hidden', mode !== 'pool');
+  $('p2poolSettings').classList.toggle('hidden', mode !== 'p2pool');
+  $('p2poolRemoteLabel').classList.toggle('hidden', mode !== 'p2pool' || $('p2poolNodeMode').value !== 'remote');
+}
+$('miningMode').addEventListener('change', updateMiningModeFields);
+$('p2poolNodeMode').addEventListener('change', updateMiningModeFields);
+updateMiningModeFields();
+$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const mode = $('miningMode').value; const status = await window.monejo.miningStart({ mode, threads: $('miningThreads').value, ignoreBattery: $('miningIgnoreBattery').checked, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, p2poolProfile: $('p2poolProfile').value, p2poolNodeMode: $('p2poolNodeMode').value, p2poolNodeAddress: $('p2poolNodeAddress').value }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { $('startMiningBtn').disabled = false; } });
 $('stopMiningBtn').addEventListener('click', async () => { clearError('miningError'); try { await window.monejo.miningStop(); showToast(LANG[language].miningStopped); await refreshMiningStatus(); } catch (e) { showError('miningError', e); } });
 configureMiningInput();
 refreshMiningStatus();
