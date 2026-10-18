@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain: electronIpcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
@@ -461,6 +462,7 @@ async function getMiningStatus() {
     processCount: running.length,
     expectedProcesses: mode === 'solo' ? 2 : 1,
     totalThreads: miningSession?.threads || 0,
+    cpuAuto100: Boolean(miningSession?.cpuAuto100),
     poolUrl: activeMiningConfig.poolUrl,
     p2poolEndpoint: activeMiningConfig.p2poolEndpoint
   };
@@ -549,7 +551,7 @@ async function startP2Pool(address, profile, session) {
   return '127.0.0.1:3333';
 }
 function startXMRig(binary, address, role, threadCount, session, config) {
-  const args = ['--threads', String(threadCount), '--no-color'];
+  const args = config.cpuAuto100 ? ['--cpu-max-threads-hint', '100', '--no-color'] : ['--threads', String(threadCount), '--no-color'];
   if (config.mode === 'solo') args.push('--daemon', '-o', '127.0.0.1:18081', '-u', address);
   else if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint || '127.0.0.1:3333');
   else args.push('-o', config.poolUrl, '-u', address, '-p', 'monejo', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
@@ -751,7 +753,7 @@ ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) =
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('mining-status', async () => getMiningStatus());
-ipcMain.handle('mining-start', async (_, { threads = 1, ignoreBattery = false, mode = 'solo', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'local', p2poolNodeAddress } = {}) => {
+ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, ignoreBattery = false, mode = 'solo', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'local', p2poolNodeAddress } = {}) => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   if (miningStartRequest) throw new Error('채굴 시작 또는 중지가 이미 진행 중입니다.');
   const request = { cancelled: false };
@@ -766,10 +768,10 @@ ipcMain.handle('mining-start', async (_, { threads = 1, ignoreBattery = false, m
       sessionId = walletSessionId;
       if (process.platform !== 'win32') throw new Error('XMRig 채굴은 현재 Windows에서만 지원됩니다.');
       if (!['solo', 'pool', 'auto', 'p2pool'].includes(mode)) throw new Error('지원하지 않는 채굴 모드입니다.');
-      const totalThreads = validateMiningThreads(threads);
+      const totalThreads = cpuAuto100 ? os.cpus().length : validateMiningThreads(threads);
       await stopMining({ preserveStarting: true });
       if (request.cancelled || shutdownRequested) return getMiningStatus();
-      session = { threads: totalThreads, ignoreBattery: Boolean(ignoreBattery), mode, starting: true, stopping: false };
+      session = { threads: totalThreads, cpuAuto100: Boolean(cpuAuto100), ignoreBattery: Boolean(ignoreBattery), mode, starting: true, stopping: false };
       miningSession = session;
       miningProcesses = [];
       miningError = null;
@@ -777,7 +779,7 @@ ipcMain.handle('mining-start', async (_, { threads = 1, ignoreBattery = false, m
       const address = await activeWallet.getPrimaryAddress();
       if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
       await assertMainnetAddress(address, '채굴 주소');
-      const config = { mode, poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolProfile };
+      const config = { mode, cpuAuto100: Boolean(cpuAuto100), poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolProfile };
       if (mode === 'solo') {
         if (activeConfig.node !== LOCAL_NODE) throw new Error('Solo 채굴은 내 컴퓨터의 로컬 Monero 노드에서만 사용할 수 있습니다.');
         await startLocalNode();

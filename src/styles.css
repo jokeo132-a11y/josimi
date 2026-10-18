@@ -97,3 +97,4 @@ dialog::backdrop{background:#000b}
 @media(max-width:480px){.topbar{padding:0 16px}.brand em{display:none}.auth-heading h1{font-size:22px}.auth-card{padding:20px}.card{padding:17px}.balance{font-size:35px}}
 
 .mining-settings{padding:10px 11px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;margin:10px 0}.mining-settings label{margin:10px 0!important}.mining-card select,.mining-card input[type="text"],.mining-card input[type="number"]{display:block;width:100%;margin-top:7px;height:40px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:0 10px}.mining-card select:focus,.mining-card input:focus{border-color:var(--orange);outline:none;box-shadow:0 0 0 2px #f2682222}.mining-card .check-row{margin:10px 0!important}.mining-card .fine{margin-top:10px}
+.mining-card input:disabled{opacity:.55;cursor:not-allowed}.auto100-row{border-top:1px solid var(--line);padding-top:10px}

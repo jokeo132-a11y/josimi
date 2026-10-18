@@ -26,8 +26,10 @@ Object.assign(LANG.ko, { miningMining: '두 채굴 프로세스 실행 중' });
 Object.assign(LANG.en, { miningMining: 'Both mining processes running' });
 Object.assign(LANG.zh, { miningMining: '两个挖矿进程均在运行' });
 Object.assign(LANG.ja, { miningMining: '2つのマイニングプロセスが実行中' });
-Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', miningSolo: '로컬 Solo', miningPool: '직접 풀', miningAuto: '자동으로 풀 선택', miningP2pool: 'P2Pool', poolAddress: '풀 주소', poolTls: 'TLS 사용', p2poolProfile: 'P2Pool 네트워크', p2poolNodeMode: 'P2Pool 노드', p2poolLocal: '내 컴퓨터에 다운로드·동기화', p2poolRemote: '원격 P2Pool stratum 사용', p2poolNodeAddress: 'P2Pool 주소', miningFine: '스레드 수에는 인위적인 20개 단위 제한이 없습니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.', miningRemote: '원격 노드 모드' });
-Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningSolo: 'Local solo', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolLocal: 'Download and sync locally', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningFine: 'There is no artificial 20-thread increment limit. Check power, heat, and what your operating system can handle.', miningRemote: 'Remote node mode' });
+Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', miningSolo: '로컬 Solo', miningPool: '직접 풀', miningAuto: '자동으로 풀 선택', miningP2pool: 'P2Pool', poolAddress: '풀 주소', poolTls: 'TLS 사용', p2poolProfile: 'P2Pool 네트워크', p2poolNodeMode: 'P2Pool 노드', p2poolLocal: '내 컴퓨터에 다운로드·동기화', p2poolRemote: '원격 P2Pool stratum 사용', p2poolNodeAddress: 'P2Pool 주소', miningAuto100: 'CPU 자동 100% 사용', miningFine: '스레드 수에는 인위적인 20개 단위 제한이 없습니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.', miningRemote: '원격 노드 모드' });
+Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningSolo: 'Local solo', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolLocal: 'Download and sync locally', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningAuto100: 'Automatically use 100% CPU', miningFine: 'There is no artificial 20-thread increment limit. Check power, heat, and what your operating system can handle.', miningRemote: 'Remote node mode' });
+Object.assign(LANG.zh, { miningAuto100: '自动使用 100% CPU' });
+Object.assign(LANG.ja, { miningAuto100: 'CPUを自動で100%使用' });
 function applyLanguage() {
   const dict = LANG[language];
   document.documentElement.lang = language;
@@ -96,7 +98,8 @@ function renderMiningStatus(status) {
   const dict = LANG[language];
   if (status.state === 'mining') {
     const endpoint = status.poolUrl || status.p2poolEndpoint || (status.mode === 'solo' ? '127.0.0.1:18081' : '');
-    $('miningStatus').textContent = `${dict.miningMining} · ${status.totalThreads} threads${endpoint ? ` · ${endpoint}` : ''}`;
+    const threadText = status.cpuAuto100 ? dict.miningAuto100 : `${status.totalThreads} threads`;
+    $('miningStatus').textContent = `${dict.miningMining} · ${threadText}${endpoint ? ` · ${endpoint}` : ''}`;
   } else if (status.state === 'partial') {
     $('miningStatus').textContent = `${dict.miningPartial} · ${status.processCount}/${status.expectedProcesses}`;
   } else if (status.state === 'starting') {
@@ -130,10 +133,15 @@ function updateMiningModeFields() {
   $('p2poolSettings').classList.toggle('hidden', mode !== 'p2pool');
   $('p2poolRemoteLabel').classList.toggle('hidden', mode !== 'p2pool' || $('p2poolNodeMode').value !== 'remote');
 }
+function updateAutoThreadsField() {
+  $('miningThreads').disabled = $('miningAuto100').checked;
+}
 $('miningMode').addEventListener('change', updateMiningModeFields);
 $('p2poolNodeMode').addEventListener('change', updateMiningModeFields);
+$('miningAuto100').addEventListener('change', updateAutoThreadsField);
 updateMiningModeFields();
-$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const mode = $('miningMode').value; const status = await window.monejo.miningStart({ mode, threads: $('miningThreads').value, ignoreBattery: $('miningIgnoreBattery').checked, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, p2poolProfile: $('p2poolProfile').value, p2poolNodeMode: $('p2poolNodeMode').value, p2poolNodeAddress: $('p2poolNodeAddress').value }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { $('startMiningBtn').disabled = false; } });
+updateAutoThreadsField();
+$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const mode = $('miningMode').value; const status = await window.monejo.miningStart({ mode, threads: $('miningThreads').value, cpuAuto100: $('miningAuto100').checked, ignoreBattery: $('miningIgnoreBattery').checked, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, p2poolProfile: $('p2poolProfile').value, p2poolNodeMode: $('p2poolNodeMode').value, p2poolNodeAddress: $('p2poolNodeAddress').value }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { $('startMiningBtn').disabled = false; } });
 $('stopMiningBtn').addEventListener('click', async () => { clearError('miningError'); try { await window.monejo.miningStop(); showToast(LANG[language].miningStopped); await refreshMiningStatus(); } catch (e) { showError('miningError', e); } });
 configureMiningInput();
 refreshMiningStatus();

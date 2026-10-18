@@ -26,6 +26,7 @@
 - Portable EXE/ZIP 실행 위치의 `monejo` 폴더에 지갑·노드 파일 저장
 - 공식 SHA-256을 검증한 XMRig 기반 Windows CPU 채굴
 - 20개 단위나 CPU 개수 상한 없이 양의 정수 스레드 수를 직접 입력
+- `CPU 자동 100% 사용`을 켜면 XMRig의 `--cpu-max-threads-hint 100`으로 논리 CPU 전체를 자동 선택
 - 직접 지정한 Stratum 풀, 기본 preset 중 TCP 지연이 가장 낮은 풀을 고르는 자동 풀 선택, 로컬 solo 채굴 지원
 - P2Pool main/mini/nano 선택, 공식 Windows x64 P2Pool ZIP의 GitHub SHA-256 digest 검증 후 자동 다운로드·실행
 - P2Pool을 로컬 Monero 노드와 함께 동기화하거나 원격 P2Pool stratum endpoint 선택
@@ -40,6 +41,8 @@ npm start
 기본값은 Windows 로컬 노드입니다. 처음 사용할 때 공식 Monero CLI ZIP을 다운로드하고 SHA-256을 확인한 뒤 `monerod`를 `127.0.0.1:18081`에서 실행합니다. 초기 동기화에는 상당한 시간과 디스크 공간이 필요합니다. 원하면 HTTPS 원격 노드를 선택할 수도 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
 지갑 화면의 **채굴** 패널에서 모드를 고를 수 있습니다. Solo는 동기화된 로컬 monerod에 XMRig daemon 모드로 연결하고, 직접 풀은 입력한 Stratum endpoint와 현재 지갑 주소를 사용합니다. 자동 풀은 기본 preset을 TCP probe해 가장 빠른 endpoint를 선택합니다. 수수료 주소로 별도 채굴 프로세스를 만들지 않으며, 채굴 보상은 선택한 풀·P2Pool·solo 설정에 따라 현재 지갑 주소로 귀속됩니다. XMRig 자체의 개발자 기부 수수료가 별도로 적용될 수 있으므로 사용 전에 확인하세요.
+
+`CPU 자동 100% 사용`을 활성화하면 수동 스레드 입력 대신 XMRig가 논리 CPU 전체를 선택합니다. 이 설정은 CPU 사용률을 보장하는 것이 아니라 채굴 스레드 힌트를 100으로 주는 방식이므로, 발열·전력·노트북 배터리 상태를 확인하고 필요하면 `배터리 상태 무시`를 끄세요.
 
 P2Pool 로컬 모드는 먼저 공식 Monero CLI를 `--zmq-pub tcp://127.0.0.1:18083` 옵션과 함께 시작하고, Monero 노드가 완전히 동기화된 뒤 공식 P2Pool Windows x64 릴리스를 GitHub digest로 검증해 설치합니다. P2Pool은 main/mini/nano 중 선택한 sidechain을 열고 XMRig는 `127.0.0.1:3333`에 연결합니다. 원격 모드는 `host:3333` endpoint로 바로 연결합니다. P2Pool은 지갑 주소가 공개되므로 전용 채굴 지갑 사용을 권장하며, 최초 동기화에는 상당한 시간·RAM·디스크가 필요합니다. 지갑 잠금·지갑 전환·앱 종료 시 XMRig와 로컬 P2Pool은 자동으로 중지됩니다.
 
