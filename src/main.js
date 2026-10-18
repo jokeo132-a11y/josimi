@@ -35,7 +35,7 @@ const MONERO_CLI_VERSION = '0.18.5.3';
 const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
 const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
 const MONERO_CLI_SHA256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a';
-const GITHUB_REPOSITORY = 'jokeo132-a11y/monejo';
+const GITHUB_REPOSITORY = 'jokeo132-a11y/josimi';
 const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100`;
 
 let mainWindow;
