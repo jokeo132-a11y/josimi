@@ -21,9 +21,9 @@ const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87
 const P2POOL_API = 'https://api.github.com/repos/SChernykh/p2pool/releases/latest';
 const NETWORK = 'mainnet';
 const DEFAULT_MINING_POOLS = [
-  { id: 'hashvault', name: 'HashVault', host: 'pool.hashvault.pro:443', tls: true },
-  { id: 'supportxmr', name: 'SupportXMR', host: 'pool.supportxmr.com:443', tls: true },
-  { id: 'moneroocean', name: 'MoneroOcean', host: 'gulf.moneroocean.stream:443', tls: true }
+  { id: 'hashvault', name: 'HashVault', host: 'pool.hashvault.pro', port: 443, tls: true },
+  { id: 'supportxmr', name: 'SupportXMR', host: 'pool.supportxmr.com', port: 443, tls: true },
+  { id: 'moneroocean', name: 'MoneroOcean', host: 'gulf.moneroocean.stream', port: 443, tls: true }
 ];
 const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
@@ -86,7 +86,7 @@ function compareVersions(left, right) {
 function requestUrl(url, headers = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('GitHub 다운로드 리디렉션이 너무 많습니다.'));
-    const request = https.get(url, { headers: { 'User-Agent': 'monejo-updater', ...headers } }, (response) => {
+    const request = https.get(url, { headers: { 'User-Agent': 'josimi-updater', ...headers } }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
         response.resume();
         return requestUrl(new URL(response.headers.location, url).toString(), headers, redirects + 1).then(resolve, reject);
@@ -108,7 +108,7 @@ async function downloadToFile(url, destination) {
 }
 
 function checksumForExe(checksumText) {
-    const match = String(checksumText).match(/([a-f0-9]{64})\s+.*(?:josimi|monejo)\.exe/i);
+  const match = String(checksumText).match(/([a-f0-9]{64})\s+.*josimi\.exe/i);
   return match ? match[1].toLowerCase() : null;
 }
 
@@ -137,12 +137,12 @@ function postJson(url, body, redirects = 0) {
 }
 
 function portableDataDir() {
-  if (!app.isPackaged) return path.join(app.getPath('userData'), 'monejo');
+  if (!app.isPackaged) return path.join(app.getPath('userData'), 'josimi');
   const executableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
-  return path.join(executableDir, 'monejo');
+  return path.join(executableDir, 'josimi');
 }
 function hasWalletData(dir) {
-  try { return fs.readdirSync(dir).some((name) => name === 'monejo-wallet.keys' || name.startsWith('monejo-wallet.')); } catch (_) { return false; }
+  try { return fs.readdirSync(dir).some((name) => name === 'josimi-wallet.keys' || name.startsWith('josimi-wallet.')); } catch (_) { return false; }
 }
 function hasNodeData(dir) {
   if (fs.existsSync(path.join(dir, 'bin', 'monerod.exe')) || fs.existsSync(path.join(dir, 'blockchain'))) return true;
@@ -172,7 +172,7 @@ function emitNodeStatus(status) {
 
 async function getLocalNodeStatus() {
   try {
-    const response = await postJson(`${LOCAL_NODE}/json_rpc`, { jsonrpc: '2.0', id: 'monejo', method: 'get_info' });
+    const response = await postJson(`${LOCAL_NODE}/json_rpc`, { jsonrpc: '2.0', id: 'josimi', method: 'get_info' });
     const info = response.result || {};
     const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
     return { mode: 'local', node: LOCAL_NODE, state: info.synchronized ? 'synced' : 'syncing', synchronized: Boolean(info.synchronized), height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0), databaseSize: Number(info.database_size || 0) };
@@ -182,7 +182,7 @@ async function getLocalNodeStatus() {
 }
 
 async function getNodeInfo(node) {
-  const response = await postJson(`${node}/json_rpc`, { jsonrpc: '2.0', id: 'monejo', method: 'get_info' });
+  const response = await postJson(`${node}/json_rpc`, { jsonrpc: '2.0', id: 'josimi', method: 'get_info' });
   return response.result || {};
 }
 
@@ -216,7 +216,7 @@ async function pollLocalNode() {
 async function downloadFile(url, destination, onProgress, redirects = 0) {
   if (redirects > 5) throw new Error('Monero CLI 다운로드 리디렉션이 너무 많습니다.');
   return new Promise((resolve, reject) => {
-    const request = https.get(url, { headers: { 'User-Agent': 'monejo-node-installer' } }, (response) => {
+    const request = https.get(url, { headers: { 'User-Agent': 'josimi-node-installer' } }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(new URL(response.headers.location, url).toString(), destination, onProgress, redirects + 1).then(resolve, reject); }
       if (response.statusCode !== 200) { response.resume(); return reject(new Error(`Monero CLI 다운로드 오류 (${response.statusCode})`)); }
       const total = Number(response.headers['content-length'] || 0); let received = 0;
@@ -288,7 +288,7 @@ async function startLocalNode() {
   const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--zmq-pub', 'tcp://127.0.0.1:18083', '--out-peers', '32', '--in-peers', '64', '--enforce-dns-checkpointing', '--enable-dns-blocklist', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  daemonProcess.on('error', (error) => { console.warn('[monejo monerod]', error.message); daemonProcess = null; });
+  daemonProcess.on('error', (error) => { console.warn('[josimi monerod]', error.message); daemonProcess = null; });
   daemonProcess.on('close', () => { daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
   daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
   const deadline = Date.now() + 30000;
@@ -308,7 +308,7 @@ async function stopLocalNode() { await stopMining(); if (daemonStatusTimer) clea
 async function schedulePortableReplacement(downloadedExe) {
   const currentExe = process.execPath;
   if (!app.isPackaged || process.platform !== 'win32' || !fs.existsSync(currentExe)) throw new Error('Portable Windows 실행 파일에서만 자동 업데이트할 수 있습니다.');
-  const scriptPath = path.join(app.getPath('temp'), `monejo-update-${Date.now()}.cmd`);
+  const scriptPath = path.join(app.getPath('temp'), `josimi-update-${Date.now()}.cmd`);
   const script = [
     '@echo off',
     'setlocal',
@@ -337,18 +337,18 @@ async function checkForUpdates() {
     if (!release) return;
     const latestVersion = String(release.tag_name || '').replace(/^v/i, '');
     if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return;
-  const exeAsset = release.assets?.find((asset) => asset.name === 'josimi.exe' || asset.name === 'monejo.exe');
+  const exeAsset = release.assets?.find((asset) => asset.name === 'josimi.exe');
     const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
     if (!exeAsset || !checksumAsset) return;
-    console.info(`[monejo updater] latest stable release v${latestVersion} detected; downloading automatically`);
-    updatePath = path.join(app.getPath('temp'), `monejo-update-${latestVersion}-${Date.now()}.exe`);
+    console.info(`[josimi updater] latest stable release v${latestVersion} detected; downloading automatically`);
+    updatePath = path.join(app.getPath('temp'), `josimi-update-${latestVersion}-${Date.now()}.exe`);
     const actualHash = await downloadToFile(exeAsset.browser_download_url, updatePath);
     const expectedHash = checksumForExe((await requestUrl(checksumAsset.browser_download_url)).toString('utf8'));
     if (!expectedHash || actualHash !== expectedHash) throw new Error('업데이트 파일의 SHA-256 검증에 실패했습니다.');
     await schedulePortableReplacement(updatePath);
     replacementScheduled = true;
   } catch (error) {
-    console.warn('[monejo updater]', error.message);
+    console.warn('[josimi updater]', error.message);
   } finally {
     if (updatePath && !replacementScheduled) await fs.promises.rm(updatePath, { force: true }).catch(() => {});
   }
@@ -362,14 +362,14 @@ function walletDir() {
   fs.mkdirSync(selectedWalletDir, { recursive: true });
   return selectedWalletDir;
 }
-function walletPath() { return path.join(walletDir(), 'monejo-wallet'); }
+function walletPath() { return path.join(walletDir(), 'josimi-wallet'); }
 function walletFiles(base = walletPath()) {
   return fs.readdirSync(walletDir()).filter((name) => name === path.basename(base) || name.startsWith(`${path.basename(base)}.`));
 }
 function archiveExistingWallet() {
   const files = walletFiles();
   if (!files.length) return null;
-  const archive = path.join(walletDir(), `monejo-wallet-before-restore-${Date.now()}`);
+  const archive = path.join(walletDir(), `josimi-wallet-before-restore-${Date.now()}`);
   fs.mkdirSync(archive);
   const moved = [];
   try {
@@ -394,7 +394,7 @@ function promoteWallet(tempPath) {
   try {
     const files = walletFiles(tempPath);
     if (!files.length) throw new Error('임시 지갑 파일이 없습니다.');
-    for (const file of files) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
+    for (const file of files) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'josimi-wallet')));
   } catch (error) {
     removeWalletFiles();
     removeWalletFiles(tempPath);
@@ -543,8 +543,8 @@ async function startP2Pool(address, profile, session) {
   if (profile === 'mini') args.push('--mini');
   if (profile === 'nano') args.push('--nano');
   p2poolProcess = spawn(binary, args, { cwd: p2poolDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  p2poolProcess.stdout?.on('data', (chunk) => console.info('[monejo p2pool]', chunk.toString().trim()));
-  p2poolProcess.stderr?.on('data', (chunk) => console.warn('[monejo p2pool]', chunk.toString().trim()));
+  p2poolProcess.stdout?.on('data', (chunk) => console.info('[josimi p2pool]', chunk.toString().trim()));
+  p2poolProcess.stderr?.on('data', (chunk) => console.warn('[josimi p2pool]', chunk.toString().trim()));
   p2poolProcess.once('error', (error) => { if (miningSession === session && !session.stopping) miningError = `P2Pool 오류: ${error.message}`; emitMiningStatus(); });
   p2poolProcess.once('close', (code) => { p2poolProcess = null; if (miningSession === session && !session.stopping) { miningError = `P2Pool이 종료되었습니다. (code ${code ?? '없음'})`; void stopMining(); } emitMiningStatus(); });
   await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('P2Pool 시작 시간이 초과되었습니다.')), 15000); p2poolProcess.once('spawn', () => { clearTimeout(timer); resolve(); }); p2poolProcess.once('error', (error) => { clearTimeout(timer); reject(error); }); });
@@ -563,10 +563,10 @@ function startXMRig(binary, address, role, threadCount, session, config) {
     processHandle.once('spawn', () => { clearTimeout(timer); entry.status = 'running'; resolve(); emitMiningStatus(); });
     processHandle.once('error', (error) => { clearTimeout(timer); entry.status = 'error'; entry.error = error.message; reject(error); });
   });
-  processHandle.stderr.on('data', (chunk) => console.warn('[monejo xmrig]', chunk.toString().trim()));
+  processHandle.stderr.on('data', (chunk) => console.warn('[josimi xmrig]', chunk.toString().trim()));
   processHandle.on('error', (error) => {
     entry.status = 'error'; entry.error = error.message;
-    console.warn('[monejo xmrig]', error.message);
+    console.warn('[josimi xmrig]', error.message);
     if (miningSession === session && !session.stopping) { miningError = `${role} 채굴 프로세스 오류: ${error.message}`; void stopMining(); }
     emitMiningStatus();
   });
@@ -677,7 +677,7 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
-  const creationPath = tempWalletPath('monejo-create');
+  const creationPath = tempWalletPath('josimi-create');
   let created; let archived = null;
   try {
     created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, server: activeConfig.node });
@@ -710,7 +710,7 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restore
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
-  const recoveryPath = tempWalletPath('monejo-recovery');
+  const recoveryPath = tempWalletPath('josimi-recovery');
   const normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
   let recovered; let archived = null;
   try {
@@ -1000,7 +1000,7 @@ ipcMain.handle('wallet-export-backup', async () => {
   const sessionId = walletSessionId;
   const source = walletPath() + '.keys';
   if (!fs.existsSync(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
-  const result = await dialog.showSaveDialog(mainWindow, { title: 'josimi 지갑 백업 저장', defaultPath: 'monejo-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
+  const result = await dialog.showSaveDialog(mainWindow, { title: 'josimi 지갑 백업 저장', defaultPath: 'josimi-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
   if (!wallet || sessionId !== walletSessionId) throw new Error('백업 저장 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
   if (path.resolve(result.filePath) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
@@ -1025,7 +1025,7 @@ async function shutdownRuntime() {
   const startPromise = miningStartPromise;
   let stopError = null;
   try { await stopMining(); } catch (error) { stopError = error; }
-  if (startPromise && !await waitForPromiseOrTimeout(startPromise, 45000)) console.warn('[monejo shutdown] mining setup did not settle within 45 seconds; shutdown flag prevents further miner starts');
+  if (startPromise && !await waitForPromiseOrTimeout(startPromise, 45000)) console.warn('[josimi shutdown] mining setup did not settle within 45 seconds; shutdown flag prevents further miner starts');
   try { await stopMining(); stopError = null; } catch (error) { if (!stopError) stopError = error; }
   if (stopError) throw stopError;
   await stopLocalNode();
@@ -1072,7 +1072,7 @@ app.on('before-quit', (event) => {
   }).catch(async (error) => {
     shutdownRequested = false;
     shutdownPromise = null;
-    console.error('[monejo shutdown]', error.message);
+    console.error('[josimi shutdown]', error.message);
     const options = { type: 'error', title: '앱 종료 전 프로세스 정리 실패', message: '채굴 프로세스가 종료되었는지 확인할 수 없어 앱을 계속 실행합니다.', detail: error.message, buttons: ['확인'], noLink: true };
     try {
       if (!mainWindow || mainWindow.isDestroyed()) await makeWindow();

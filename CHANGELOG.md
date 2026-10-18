@@ -68,15 +68,15 @@
 - seed 복구 화면에 선택 가능한 Monero restore height 입력 추가
 - 새 지갑 생성 시 현재 노드 블록 높이를 표시하고 복구용 높이로 안내
 - `restoreHeight`를 monero-ts 지갑 복구 옵션에 전달
-- Portable EXE/ZIP 실행 위치에 `monejo` 데이터 폴더 생성
-- 지갑과 로컬 노드를 `monejo` 폴더 아래에 보관
+- Portable EXE/ZIP 실행 위치에 `josimi` 데이터 폴더 생성
+- 지갑과 로컬 노드를 `josimi` 폴더 아래에 보관
 - 기존 AppData 지갑·노드 파일이 있으면 그대로 우선 사용하고 덮어쓰지 않음
 
 ## v0.4.2 — 2026-10-15
 
 - GitHub 릴리스 목록에서 draft·pre-release를 제외
 - 버전 번호가 가장 높은 최신 안정 릴리스를 자동 선택
-- 업데이트 확인 대화상자 없이 최신 `monejo.exe`를 SHA-256 검증 후 자동 교체
+- 업데이트 확인 대화상자 없이 최신 `josimi.exe`를 SHA-256 검증 후 자동 교체
 
 ## v0.4.1 — 2026-10-15
 
@@ -84,7 +84,7 @@
 
 - 지갑 생성·seed 복구 후 새 지갑 열기에 실패하면 기존 지갑을 자동 복원
 - 지갑 파일 승격 중 Windows 파일 이동 오류가 발생해도 롤백
-- 동일 지갑 파일을 두 개의 monejo 프로세스가 동시에 열지 못하도록 단일 인스턴스 잠금 추가
+- 동일 지갑 파일을 두 개의 josimi 프로세스가 동시에 열지 못하도록 단일 인스턴스 잠금 추가
 - 원격 노드 선택 시 빈 주소를 로컬 노드로 잘못 해석하지 않도록 입력 검증 추가
 
 ## v0.4.0 — 2026-10-15
@@ -108,7 +108,7 @@ Windows Portable 본체 안정성과 GitHub 자동 업데이트를 보강했습�
 
 - 설치형 타깃을 제거하고 Portable EXE 단일 타깃으로 빌드
 - 앱 시작 후 GitHub 최신 릴리스 확인
-- `monejo.exe`와 SHA-256 해시를 검증한 뒤 현재 Portable EXE를 교체
+- `josimi.exe`와 SHA-256 해시를 검증한 뒤 현재 Portable EXE를 교체
 - 업데이트는 현재 앱 종료 후 새 실행 파일을 재실행하는 방식으로 적용
 - mainnet 전용 설정을 IPC에서도 강제
 - 원격 노드는 HTTPS만 허용하고 localhost만 예외
@@ -153,7 +153,7 @@ Monero GUI와 Cake Wallet의 실제 제품 화면을 참고해 인터페이스�
 
 AppOnFly 실행 화면에서 확인된 `Cannot read properties of undefined (reading 'create')` 오류를 수정했습니다. 원인은 Electron sandbox preload에서 외부 모듈 `qrcode`를 require해 preload 전체가 로드되지 않은 것이었습니다.
 
-preload는 이제 Electron 내장 IPC만 사용하고, QR 생성은 main 프로세스의 IPC handler가 data URL을 반환하도록 변경했습니다. 실제 Electron 런타임에서 preload-error가 사라지고 `window.monejo`와 `window.monejo.create`가 정상 노출되는 것을 확인했습니다.
+preload는 이제 Electron 내장 IPC만 사용하고, QR 생성은 main 프로세스의 IPC handler가 data URL을 반환하도록 변경했습니다. 실제 Electron 런타임에서 preload-error가 사라지고 `window.josimi`와 `window.josimi.create`가 정상 노출되는 것을 확인했습니다.
 
 v0.3.4의 HTTPS 기본 노드, 임시 지갑 생성·복구, 기존 wallet 파일 보관 기능도 유지합니다. 공식 Monero CLI/GUI 소스의 복구 흐름인 seed 검증 → seed language 판별 → wallet generate 기준도 계속 유지합니다.
 

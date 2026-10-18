@@ -82,18 +82,18 @@ function renderSummary(summary) {
   if (summary.createdAtHeight !== undefined && summary.createdAtHeight !== null) $('walletHeight').textContent = `${LANG[language].createdAtHeight}: ${Number(summary.createdAtHeight).toLocaleString()}`;
   if (summary.restoreHeightUsed !== undefined && summary.restoreHeightUsed !== null) $('walletHeight').textContent = `${LANG[language].restoreHeight}: ${Number(summary.restoreHeightUsed).toLocaleString()}`;
 }
-async function refresh() { try { renderSummary(await window.monejo.refresh()); } catch (e) { showToast(e.message); } }
+async function refresh() { try { renderSummary(await window.josimi.refresh()); } catch (e) { showToast(e.message); } }
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
   if ($('appView').classList.contains('hidden')) return;
-  inactivityTimer = setTimeout(async () => { try { await window.monejo.lock(); location.reload(); } catch (error) { showToast(error.message); resetInactivityTimer(); } }, 15 * 60 * 1000);
+  inactivityTimer = setTimeout(async () => { try { await window.josimi.lock(); location.reload(); } catch (error) { showToast(error.message); resetInactivityTimer(); } }, 15 * 60 * 1000);
 }
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
  $('nodeMode').addEventListener('change', () => { const remote = $('nodeMode').value === 'remote'; $('remoteNodeLabel').classList.toggle('hidden', !remote); $('node').required = remote; });
-window.monejo.onNodeStatus(renderSync);
-syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.monejo.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
+window.josimi.onNodeStatus(renderSync);
+syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.josimi.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
 function renderMiningStatus(status) {
   const dict = LANG[language];
   if (status.state === 'mining') {
@@ -115,11 +115,11 @@ function renderMiningStatus(status) {
   $('stopMiningBtn').disabled = !status.active;
   if (status.error) showError('miningError', new Error(status.error));
 }
-async function refreshMiningStatus() { try { renderMiningStatus(await window.monejo.miningStatus()); } catch (_) {} }
-window.monejo.onMiningStatus(renderMiningStatus);
+async function refreshMiningStatus() { try { renderMiningStatus(await window.josimi.miningStatus()); } catch (_) {} }
+window.josimi.onMiningStatus(renderMiningStatus);
 async function configureMiningInput() {
   try {
-    await window.monejo.config();
+    await window.josimi.config();
     const input = $('miningThreads');
     input.min = '1';
     input.step = '1';
@@ -141,8 +141,8 @@ $('p2poolNodeMode').addEventListener('change', updateMiningModeFields);
 $('miningAuto100').addEventListener('change', updateAutoThreadsField);
 updateMiningModeFields();
 updateAutoThreadsField();
-$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const mode = $('miningMode').value; const status = await window.monejo.miningStart({ mode, threads: $('miningThreads').value, cpuAuto100: $('miningAuto100').checked, ignoreBattery: $('miningIgnoreBattery').checked, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, p2poolProfile: $('p2poolProfile').value, p2poolNodeMode: $('p2poolNodeMode').value, p2poolNodeAddress: $('p2poolNodeAddress').value }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { $('startMiningBtn').disabled = false; } });
-$('stopMiningBtn').addEventListener('click', async () => { clearError('miningError'); try { await window.monejo.miningStop(); showToast(LANG[language].miningStopped); await refreshMiningStatus(); } catch (e) { showError('miningError', e); } });
+$('startMiningBtn').addEventListener('click', async () => { clearError('miningError'); $('startMiningBtn').disabled = true; try { const mode = $('miningMode').value; const status = await window.josimi.miningStart({ mode, threads: $('miningThreads').value, cpuAuto100: $('miningAuto100').checked, ignoreBattery: $('miningIgnoreBattery').checked, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, p2poolProfile: $('p2poolProfile').value, p2poolNodeMode: $('p2poolNodeMode').value, p2poolNodeAddress: $('p2poolNodeAddress').value }); renderMiningStatus(status); showToast(status.state === 'mining' ? LANG[language].miningMining : LANG[language].miningStopped); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { $('startMiningBtn').disabled = false; } });
+$('stopMiningBtn').addEventListener('click', async () => { clearError('miningError'); try { await window.josimi.miningStop(); showToast(LANG[language].miningStopped); await refreshMiningStatus(); } catch (e) { showError('miningError', e); } });
 configureMiningInput();
 refreshMiningStatus();
 setInterval(refreshMiningStatus, 5000);
@@ -158,14 +158,14 @@ $('walletForm').addEventListener('submit', async (event) => {
   $('submitBtn').disabled = true;
   try {
     let result;
-    if (mode === 'create') result = await window.monejo.create(payload);
+    if (mode === 'create') result = await window.josimi.create(payload);
     else if (mode === 'restore') {
       const seed = $('seed').value.trim();
       if (!confirm('입력한 seed가 정확한지 확인했습니다. 복구를 시작할까요? 기존 지갑은 자동 보관됩니다.')) return;
       const seedOffset = $('seedOffset').value;
-      result = await window.monejo.restore({ ...payload, seed, seedOffset: seedOffset === '' ? undefined : seedOffset });
+      result = await window.josimi.restore({ ...payload, seed, seedOffset: seedOffset === '' ? undefined : seedOffset });
     }
-    else result = await window.monejo.open(payload);
+    else result = await window.josimi.open(payload);
     currentSeed = result.seed || null; renderSummary(result); await refreshMiningStatus();
     if (currentSeed) showToast(`지갑이 생성되었습니다. 복구에 사용할 블록 높이: ${result.createdAtHeight ?? '확인 불가'}`);
     else if (result.restored) showToast(result.recoveryNote || 'seed로 지갑을 복구했습니다.');
@@ -173,10 +173,10 @@ $('walletForm').addEventListener('submit', async (event) => {
   } catch (e) { showError('authError', e); } finally { $('submitBtn').disabled = false; setMode(mode); }
 });
  $('refreshBtn').addEventListener('click', refresh);
- $('lockBtn').addEventListener('click', async () => { try { await window.monejo.lock(); location.reload(); } catch (e) { showToast(e.message); } });
+ $('lockBtn').addEventListener('click', async () => { try { await window.josimi.lock(); location.reload(); } catch (e) { showToast(e.message); } });
  $('copyAddress').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('address').textContent); showToast('주소를 복사했습니다.'); } catch (e) { showToast(`주소 복사 실패: ${e.message}`); } });
- $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { try { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.monejo.qr($('address').textContent); } catch (e) { canvas.classList.add('hidden'); showToast(e.message); } } });
- $('backupBtn').addEventListener('click', async () => { try { const result = await window.monejo.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); } catch (e) { showToast(e.message); } });
+ $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { try { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.josimi.qr($('address').textContent); } catch (e) { canvas.classList.add('hidden'); showToast(e.message); } } });
+ $('backupBtn').addEventListener('click', async () => { try { const result = await window.josimi.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); } catch (e) { showToast(e.message); } });
 $('seedBtn').addEventListener('click', () => { if (!currentSeed) { showToast('현재 세션에서 생성된 seed가 없습니다. 복구 지갑은 원래 seed를 사용하세요.'); return; } if (confirm('seed를 화면에 표시합니다. 주변에 사람이 없고 기록 장치가 안전한지 확인했습니까?')) alert(currentSeed); });
 function renderSendReview(preview) {
   const dict = LANG[language];
@@ -189,16 +189,16 @@ $('sendForm').addEventListener('submit', async (event) => {
     pendingSend = { address: $('sendAddress').value.trim(), amount: $('sendAmount').value.trim(), priority: $('priority').value };
     $('sendForm').querySelector('button[type="submit"]').disabled = true;
     const request = { ...pendingSend };
-    const preview = await window.monejo.previewSend(request);
+    const preview = await window.josimi.previewSend(request);
     pendingSend = { pendingId: preview.pendingId };
     renderSendReview(preview);
     clearError('sendDialogError');
     $('confirmDialog').showModal();
   } catch (e) { pendingSend = null; showError('sendError', e); } finally { $('sendForm').querySelector('button[type="submit"]').disabled = false; }
 });
- $('cancelSend').addEventListener('click', async () => { const pending = pendingSend; if (pending?.pendingId) { const cancelled = await window.monejo.cancelSend(pending).catch(() => false); if (!cancelled) { showError('sendDialogError', new Error('송금 전파 여부가 불확실합니다. 취소하거나 새 송금을 만들지 말고, 같은 거래를 다시 확인하세요.')); return; } } pendingSend = null; $('confirmDialog').close(); });
+ $('cancelSend').addEventListener('click', async () => { const pending = pendingSend; if (pending?.pendingId) { const cancelled = await window.josimi.cancelSend(pending).catch(() => false); if (!cancelled) { showError('sendDialogError', new Error('송금 전파 여부가 불확실합니다. 취소하거나 새 송금을 만들지 말고, 같은 거래를 다시 확인하세요.')); return; } } pendingSend = null; $('confirmDialog').close(); });
  $('confirmDialog').addEventListener('cancel', (event) => { event.preventDefault(); $('cancelSend').click(); });
- $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.monejo.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.monejo.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); try { await refresh(); } catch (e) { showToast(`송금은 완료됐지만 새로고침에 실패했습니다: ${e.message}`); } } catch (e) { showError('sendDialogError', e); } finally { sendCallInProgress = false; $('confirmSend').disabled = false; } });
+ $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); try { await refresh(); } catch (e) { showToast(`송금은 완료됐지만 새로고침에 실패했습니다: ${e.message}`); } } catch (e) { showError('sendDialogError', e); } finally { sendCallInProgress = false; $('confirmSend').disabled = false; } });
 setMode('open');
 applyLanguage();
 async function applyPendingSendStatus(status) {
@@ -207,7 +207,7 @@ async function applyPendingSendStatus(status) {
     const id = status.pendingId;
     pendingSend = null;
     if ($('confirmDialog').open) $('confirmDialog').close();
-    await window.monejo.ackSend({ pendingId: id }).catch(() => false);
+    await window.josimi.ackSend({ pendingId: id }).catch(() => false);
     showToast(`송금 완료 · ${status.txHashes?.join(', ') || ''}`);
     await refresh();
     return;
@@ -218,17 +218,17 @@ async function applyPendingSendStatus(status) {
 }
 async function pollPendingSendStatus() {
   if (sendCallInProgress || !pendingSend?.pendingId || !$('confirmDialog').open) return;
-  try { await applyPendingSendStatus(await window.monejo.pendingSend()); } catch (_) {}
+  try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {}
 }
 setInterval(pollPendingSendStatus, 5000);
 async function resumeOpenWalletAndPendingSend() {
   try {
-    renderSummary(await window.monejo.refresh());
+    renderSummary(await window.josimi.refresh());
     resetInactivityTimer();
     await refreshMiningStatus();
   } catch (_) {}
   try {
-    const pending = await window.monejo.pendingSend();
+    const pending = await window.josimi.pendingSend();
     if (!pending) return;
     pendingSend = { pendingId: pending.pendingId };
     if (pending.state === 'relayed') {

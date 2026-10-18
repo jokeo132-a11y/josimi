@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('monejo', {
+contextBridge.exposeInMainWorld('josimi', {
   config: () => ipcRenderer.invoke('app-config'),
   create: (payload) => ipcRenderer.invoke('wallet-create', payload),
   restore: (payload) => ipcRenderer.invoke('wallet-restore', payload),
