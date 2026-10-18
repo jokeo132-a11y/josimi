@@ -1,10 +1,10 @@
-# monejo
+# josimi
 
-비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.8.0-next)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v0.8.1-next)**입니다.
 
 ## 현재 구현
 
-- Electron 기반 Windows x64 ZIP (`monejo.exe` 포함)
+- Electron 기반 Windows x64 ZIP (`josimi.exe` 포함)
 - 한국어 / English / 中文 / 日本語 언어 선택
 - 로컬 wallet 파일 저장 및 비밀번호 잠금
 - 새 지갑 생성 / Monero seed 복구 / 지갑 열기
@@ -16,14 +16,14 @@
 - 로컬 지갑 파일 백업
 - 자동 잠금의 기반이 되는 세션 잠금 버튼
 - 한국어 UI
-- 송금액의 0.25% monejo 서비스 수수료
+- 송금액의 0.25% josimi 서비스 수수료
   - 상한 0.05 XMR
 - 송금 서비스 수수료 수취 주소: `42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT`
 - 송금 확인 전에 받는 주소, 서비스 수수료, 실제 네트워크 수수료 및 총 차감액을 표시
 - relay 응답이 불확실하면 같은 서명 거래를 보존해 재시도하며, 해결 전 새 송금·지갑 전환을 막음; 여러 건으로 분할되는 송금은 차단
 - 로컬 Monero 노드 자동 다운로드·실행·동기화 진행 표시
 - seed 복구 시 restore height 입력 및 생성 시 복구 높이 표시
-- Portable EXE/ZIP 실행 위치의 `monejo` 폴더에 지갑·노드 파일 저장
+- Portable EXE/ZIP 실행 위치의 기존 호환용 `monejo` 데이터 폴더에 지갑·노드 파일 저장
 - 공식 SHA-256을 검증한 XMRig 기반 Windows CPU 채굴
 - 20개 단위나 CPU 개수 상한 없이 양의 정수 스레드 수를 직접 입력
 - `CPU 자동 100% 사용`을 켜면 XMRig의 `--cpu-max-threads-hint 100`으로 논리 CPU 전체를 자동 선택
@@ -46,7 +46,7 @@ npm start
 
 P2Pool 로컬 모드는 먼저 공식 Monero CLI를 `--zmq-pub tcp://127.0.0.1:18083` 옵션과 함께 시작하고, Monero 노드가 완전히 동기화된 뒤 공식 P2Pool Windows x64 릴리스를 GitHub digest로 검증해 설치합니다. P2Pool은 main/mini/nano 중 선택한 sidechain을 열고 XMRig는 `127.0.0.1:3333`에 연결합니다. 원격 모드는 `host:3333` endpoint로 바로 연결합니다. P2Pool은 지갑 주소가 공개되므로 전용 채굴 지갑 사용을 권장하며, 최초 동기화에는 상당한 시간·RAM·디스크가 필요합니다. 지갑 잠금·지갑 전환·앱 종료 시 XMRig와 로컬 P2Pool은 자동으로 중지됩니다.
 
-Portable EXE 또는 ZIP을 실행하면 실행 파일 옆에 `monejo` 폴더가 만들어지고 그 아래에 `wallets`와 `node`가 생성됩니다. 이미 기존 `monejo` 폴더나 이전 AppData 지갑·노드가 있으면 새 파일로 덮어쓰지 않고 기존 파일을 우선 사용합니다. restore height는 첫 입금 거래보다 낮거나 같은 높이를 입력해야 하며, 모르면 낮은 값을 입력하는 것이 안전합니다.
+Portable EXE 또는 ZIP을 실행하면 실행 파일 옆에 기존 호환용 `monejo` 데이터 폴더가 만들어지고 그 아래에 `wallets`와 `node`가 생성됩니다. 이미 기존 `monejo` 데이터 폴더나 이전 AppData 지갑·노드가 있으면 새 파일로 덮어쓰지 않고 기존 파일을 우선 사용합니다. restore height는 첫 입금 거래보다 낮거나 같은 높이를 입력해야 하며, 모르면 낮은 값을 입력하는 것이 안전합니다.
 
 ## Windows 빌드
 
@@ -56,15 +56,15 @@ npm run dist
 
 생성물:
 
-- `dist/monejo.exe` — Windows Portable 단일 실행 파일
-- `dist/monejo-0.8.0-next-x64.zip` — ZIP 배포본
+- `dist/josimi.exe` — Windows Portable 단일 실행 파일
+- `dist/josimi-0.8.1-next-x64.zip` — ZIP 배포본
 - `dist/win-unpacked/`
 
-실행 중인 Portable EXE는 앱 시작 후 GitHub 릴리스 목록에서 가장 높은 버전의 안정 릴리스만 선택합니다. 새 릴리스의 `monejo.exe`와 SHA-256이 비교되면 별도 확인 없이 앱을 종료하고 새 EXE로 교체한 뒤 재실행합니다. draft와 pre-release는 제외합니다. 체크섬은 동일 GitHub 릴리스에서 함께 내려받으므로 독립 서명이나 코드 서명과 동등한 정품성 검증은 아닙니다.
+실행 중인 Portable EXE는 앱 시작 후 GitHub 릴리스 목록에서 가장 높은 버전의 안정 릴리스만 선택합니다. 새 릴리스의 `josimi.exe`와 SHA-256이 비교되면 별도 확인 없이 앱을 종료하고 새 EXE로 교체한 뒤 재실행합니다. draft와 pre-release는 제외합니다. 체크섬은 동일 GitHub 릴리스에서 함께 내려받으므로 독립 서명이나 코드 서명과 동등한 정품성 검증은 아닙니다.
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
 
-Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 사용하므로 packaged EXE에서도 `window.monejo`가 정상 노출됩니다.
+josimi Electron preload는 외부 QR 모듈을 직접 require하지 않고 main IPC를 사용하므로 packaged EXE에서도 `window.monejo`가 정상 노출됩니다.
 
 ## 중요한 보안 고지
 

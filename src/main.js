@@ -108,7 +108,7 @@ async function downloadToFile(url, destination) {
 }
 
 function checksumForExe(checksumText) {
-  const match = String(checksumText).match(/([a-f0-9]{64})\s+.*monejo\.exe/i);
+    const match = String(checksumText).match(/([a-f0-9]{64})\s+.*(?:josimi|monejo)\.exe/i);
   return match ? match[1].toLowerCase() : null;
 }
 
@@ -337,7 +337,7 @@ async function checkForUpdates() {
     if (!release) return;
     const latestVersion = String(release.tag_name || '').replace(/^v/i, '');
     if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return;
-    const exeAsset = release.assets?.find((asset) => asset.name === 'monejo.exe');
+  const exeAsset = release.assets?.find((asset) => asset.name === 'josimi.exe' || asset.name === 'monejo.exe');
     const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
     if (!exeAsset || !checksumAsset) return;
     console.info(`[monejo updater] latest stable release v${latestVersion} detected; downloading automatically`);
@@ -421,7 +421,7 @@ function normalizeNode(node) {
   return parsed.toString().replace(/\/$/, '');
 }
 function assertMainnetNetwork(network) {
-  if (network !== NETWORK) throw new Error('monejo는 mainnet 전용 지갑입니다.');
+  if (network !== NETWORK) throw new Error('josimi는 mainnet 전용 지갑입니다.');
 }
 async function assertMainnetAddress(address, label) {
   if (!(await monerojs.MoneroUtils.isValidAddress(address, 'mainnet'))) throw new Error(`${label}가 유효한 Monero mainnet 주소가 아닙니다.`);
@@ -554,7 +554,7 @@ function startXMRig(binary, address, role, threadCount, session, config) {
   const args = config.cpuAuto100 ? ['--cpu-max-threads-hint', '100', '--no-color'] : ['--threads', String(threadCount), '--no-color'];
   if (config.mode === 'solo') args.push('--daemon', '-o', '127.0.0.1:18081', '-u', address);
   else if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint || '127.0.0.1:3333');
-  else args.push('-o', config.poolUrl, '-u', address, '-p', 'monejo', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
+  else args.push('-o', config.poolUrl, '-u', address, '-p', 'josimi', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
   const entry = { child: processHandle, address, role, threads: threadCount, status: 'starting', error: null, closeSeen: false };
@@ -731,7 +731,7 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restore
   return { ...(await loadSummary()), restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
 });
 ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
-  if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
+  if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 josimi 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
@@ -1000,7 +1000,7 @@ ipcMain.handle('wallet-export-backup', async () => {
   const sessionId = walletSessionId;
   const source = walletPath() + '.keys';
   if (!fs.existsSync(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
-  const result = await dialog.showSaveDialog(mainWindow, { title: 'monejo 지갑 백업 저장', defaultPath: 'monejo-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
+  const result = await dialog.showSaveDialog(mainWindow, { title: 'josimi 지갑 백업 저장', defaultPath: 'monejo-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
   if (!wallet || sessionId !== walletSessionId) throw new Error('백업 저장 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
   if (path.resolve(result.filePath) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');

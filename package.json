@@ -1,9 +1,9 @@
 {
-  "name": "monejo",
-  "version": "0.8.0-next",
-  "description": "monejo — non-custodial Monero wallet",
+  "name": "josimi",
+  "version": "0.8.1-next",
+  "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
-  "author": "monejo",
+  "author": "josimi",
   "license": "MIT",
   "private": true,
   "scripts": {
@@ -24,9 +24,9 @@
     "electron-builder": "26.15.3"
   },
   "build": {
-    "appId": "com.monejo.wallet",
-    "productName": "monejo",
-    "artifactName": "monejo-${version}-${arch}.${ext}",
+    "appId": "com.josimi.wallet",
+    "productName": "josimi",
+    "artifactName": "josimi-${version}-${arch}.${ext}",
     "files": [
       "src/**/*",
       "package.json"
@@ -35,7 +35,7 @@
       "target": "portable"
     },
     "portable": {
-      "artifactName": "monejo.${ext}"
+      "artifactName": "josimi.${ext}"
     }
   }
 }
