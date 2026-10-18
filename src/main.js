@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain: electronIpcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -6,23 +6,24 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
 const { spawn } = require('node:child_process');
+const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, splitMiningThreads, isAllowedNodeRedirect } = require('./core');
 
-const FEE_ADDRESS = '42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu';
+const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
-const SERVICE_FEE_CAP_ATOMIC = 50000000000n; // 0.05 XMR
-const MINING_FEE_RATE = 0.05;
+const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const XMRIG_VERSION = '6.26.0';
 const XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-windows-x64.zip';
 const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87d9e147';
-const ATOMIC_PER_XMR = 1000000000000n;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
   'https://node.monerodevs.org:18089'
 ];
 const LOCAL_NODE = 'http://127.0.0.1:18081';
+const APP_URL = pathToFileURL(path.join(__dirname, 'index.html')).href;
 const MONERO_CLI_VERSION = '0.18.5.3';
 const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
 const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
@@ -32,15 +33,36 @@ const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/r
 
 let mainWindow;
 let wallet = null;
-let sessionPassword = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
 let daemonProcess = null;
 let daemonStatusTimer = null;
 let daemonPollInFlight = false;
 let miningProcesses = [];
 let miningSession = null;
+let miningStopPromise = null;
+let miningStartRequest = null;
+let miningStartPromise = null;
+let shutdownRequested = false;
+let miningError = null;
 let selectedWalletDir = null;
 let selectedNodeDir = null;
+let pendingTransactions = new Map();
+let walletSessionId = 0;
+let lastCompletedSend = null;
+let sendPreviewInFlight = false;
+const pendingRelaySettlements = new Set();
+let shutdownPromise = null;
+let shutdownComplete = false;
+
+function registerIpcHandler(channel, handler) {
+  electronIpcMain.handle(channel, (event, ...args) => {
+    const frame = event.senderFrame;
+    if (!frame || frame !== event.sender.mainFrame || frame.url !== APP_URL) throw new Error('허용되지 않은 IPC 요청입니다.');
+    return handler(event, ...args);
+  });
+}
+const ipcMain = { handle: registerIpcHandler };
+
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
 else app.on('second-instance', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
@@ -88,7 +110,12 @@ function postJson(url, body, redirects = 0) {
     const transport = parsed.protocol === 'https:' ? https : http;
     const payload = Buffer.from(JSON.stringify(body));
     const request = transport.request(parsed, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': payload.length }, timeout: 5000 }, (response) => {
-      if ([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return postJson(new URL(response.headers.location, url).toString(), body, redirects + 1).then(resolve, reject); }
+      if ([301, 302, 307, 308].includes(response.statusCode) && response.headers.location) {
+        const nextUrl = new URL(response.headers.location, url).toString();
+        response.resume();
+        if (!isAllowedNodeRedirect(url, nextUrl)) return reject(new Error('노드 RPC 리디렉션의 프로토콜 또는 주소가 변경되어 연결을 차단했습니다.'));
+        return postJson(nextUrl, body, redirects + 1).then(resolve, reject);
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) { response.resume(); return reject(new Error(`노드 RPC 응답 오류 (${response.statusCode})`)); }
       const chunks = [];
       response.on('data', (chunk) => chunks.push(chunk));
@@ -195,14 +222,20 @@ async function downloadFile(url, destination, onProgress, redirects = 0) {
   });
 }
 
-async function extractZip(zipPath, destination) {
+async function extractZip(zipPath, destination, shouldCancel = () => false) {
   await fs.promises.mkdir(destination, { recursive: true });
+  if (shouldCancel()) throw new Error('설치 작업이 취소되었습니다.');
   await new Promise((resolve, reject) => {
     const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
     const command = `$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath ${quote(zipPath)} -DestinationPath ${quote(destination)} -Force`;
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true });
-    let errorText = ''; child.stderr.on('data', (chunk) => { errorText += chunk.toString(); });
-    child.on('error', reject); child.on('close', (code) => code === 0 ? resolve() : reject(new Error(`Monero CLI 압축 해제 실패: ${errorText.trim()}`)));
+    let errorText = ''; let settled = false;
+    const finish = (error) => { if (settled) return; settled = true; clearTimeout(timeout); clearInterval(cancelPoll); error ? reject(error) : resolve(); };
+    const timeout = setTimeout(() => { child.kill(); finish(new Error('ZIP 압축 해제 시간이 60초를 초과했습니다.')); }, 60000);
+    const cancelPoll = setInterval(() => { if (shouldCancel()) { child.kill(); finish(new Error('설치 작업이 취소되었습니다.')); } }, 200);
+    child.stderr?.on('data', (chunk) => { errorText += chunk.toString(); });
+    child.on('error', finish);
+    child.on('close', (code) => code === 0 ? finish() : finish(new Error(`ZIP 압축 해제 실패: ${errorText.trim()}`)));
   });
 }
 
@@ -214,11 +247,12 @@ async function installLocalNode() {
   const archive = path.join(dir, `monero-cli-${MONERO_CLI_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
   emitNodeStatus({ mode: 'local', state: 'downloading', progress: 0, height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE });
   const actualHash = await downloadFile(MONERO_CLI_URL, archive, (progress) => emitNodeStatus({ mode: 'local', state: 'downloading', progress: Math.floor(progress * 100), height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE }));
+  if (shutdownRequested) { await fs.promises.rm(archive, { force: true }); throw new Error('Monero CLI 설치가 취소되었습니다.'); }
   const hashes = (await requestUrl(MONERO_HASHES_URL)).toString('utf8');
   const escapedVersion = MONERO_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const expectedMatch = hashes.match(new RegExp(`([a-f0-9]{64})\\s+monero-win-x64-v${escapedVersion}\\.zip`, 'i'));
   if (!expectedMatch || expectedMatch[1].toLowerCase() !== MONERO_CLI_SHA256 || actualHash !== MONERO_CLI_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 Monero CLI ZIP의 SHA-256 검증에 실패했습니다.'); }
-  await extractZip(archive, extracted);
+  await extractZip(archive, extracted, () => shutdownRequested);
   const found = findFile(extracted, 'monerod.exe');
   if (!found) throw new Error('Monero CLI ZIP에서 monerod.exe를 찾지 못했습니다.');
   await fs.promises.mkdir(path.dirname(binary), { recursive: true });
@@ -228,16 +262,34 @@ async function installLocalNode() {
   return binary;
 }
 
+function withTimeout(promise, timeoutMs, message) {
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(message)), timeoutMs); })
+  ]).finally(() => clearTimeout(timer));
+}
+
 async function startLocalNode() {
+  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   const binary = await installLocalNode();
+  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   const existing = await getLocalNodeStatus();
   if (existing.state !== 'stopped') return existing;
   const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
+  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   daemonProcess.on('error', (error) => { console.warn('[monejo monerod]', error.message); daemonProcess = null; });
   daemonProcess.on('close', () => { daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
   daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
-  for (let attempt = 0; attempt < 30; attempt += 1) { const status = await getLocalNodeStatus(); if (status.state !== 'stopped' && status.state !== 'starting') return status; await new Promise((resolve) => setTimeout(resolve, 1000)); }
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
+    const remaining = deadline - Date.now();
+    const status = await withTimeout(getLocalNodeStatus(), Math.min(5000, remaining), '로컬 노드 상태 확인 시간이 초과되었습니다.');
+    if (status.state !== 'stopped' && status.state !== 'starting') return status;
+    await new Promise((resolve) => setTimeout(resolve, Math.min(1000, Math.max(0, deadline - Date.now()))));
+  }
   throw new Error('로컬 Monero 노드가 시작되지 않았습니다. 로그와 방화벽 설정을 확인하세요.');
 }
 
@@ -310,16 +362,33 @@ function archiveExistingWallet() {
   if (!files.length) return null;
   const archive = path.join(walletDir(), `monejo-wallet-before-restore-${Date.now()}`);
   fs.mkdirSync(archive);
-  for (const file of files) fs.renameSync(path.join(walletDir(), file), path.join(archive, file));
-  return archive;
+  const moved = [];
+  try {
+    for (const file of files) {
+      fs.renameSync(path.join(walletDir(), file), path.join(archive, file));
+      moved.push(file);
+    }
+    return archive;
+  } catch (error) {
+    const rollbackErrors = [];
+    for (const file of moved.reverse()) {
+      try { fs.renameSync(path.join(archive, file), path.join(walletDir(), file)); } catch (rollbackError) { rollbackErrors.push(rollbackError); }
+    }
+    if (!rollbackErrors.length) fs.rmSync(archive, { recursive: true, force: true });
+    if (rollbackErrors.length) throw new Error(`기존 지갑 보관에 실패했고 ${rollbackErrors.length}개 파일의 롤백도 실패했습니다. 보관 폴더를 삭제하지 말고 수동 복구하세요. (${error.message})`);
+    throw error;
+  }
 }
 function tempWalletPath(prefix) { return path.join(walletDir(), `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`); }
 function promoteWallet(tempPath) {
   const archived = archiveExistingWallet();
   try {
-    for (const file of walletFiles(tempPath)) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
+    const files = walletFiles(tempPath);
+    if (!files.length) throw new Error('임시 지갑 파일이 없습니다.');
+    for (const file of files) fs.renameSync(path.join(walletDir(), file), path.join(walletDir(), file.replace(path.basename(tempPath), 'monejo-wallet')));
   } catch (error) {
     removeWalletFiles();
+    removeWalletFiles(tempPath);
     restoreArchivedWallet(archived);
     throw error;
   }
@@ -333,32 +402,26 @@ function restoreArchivedWallet(archive) {
 function removeWalletFiles(base) {
   for (const file of walletFiles(base)) fs.rmSync(path.join(walletDir(), file), { force: true });
 }
-function atomicToXmr(value) { return (BigInt(value) / 1000000000000n).toString() + '.' + (BigInt(value) % 1000000000000n).toString().padStart(12, '0').replace(/0+$/, '').padEnd(1, '0'); }
-function xmrToAtomic(value) {
-  const normalized = String(value).trim();
-  if (!/^\d+(\.\d{1,12})?$/.test(normalized)) throw new Error('XMR 금액 형식이 올바르지 않습니다.');
-  const [whole, fraction = ''] = normalized.split('.');
-  return BigInt(whole) * ATOMIC_PER_XMR + BigInt((fraction + '000000000000').slice(0, 12));
-}
 function normalizeNode(node) {
   const value = String(node || DEFAULT_NODES[0]).trim();
   let parsed;
   try { parsed = new URL(value); } catch (_) { throw new Error('노드 주소 형식이 올바르지 않습니다.'); }
   const local = ['localhost', '127.0.0.1', '::1', '[::1]'].includes(parsed.hostname);
+  if (parsed.username || parsed.password) throw new Error('노드 주소에 사용자명이나 비밀번호를 포함할 수 없습니다.');
   if (parsed.protocol !== 'https:' && !local) throw new Error('개인정보 보호를 위해 HTTPS 노드만 사용할 수 있습니다.');
   return parsed.toString().replace(/\/$/, '');
 }
 function assertMainnetNetwork(network) {
   if (network !== NETWORK) throw new Error('monejo는 mainnet 전용 지갑입니다.');
 }
-function calculateServiceFee(amountAtomic) {
-  const computed = (amountAtomic * 25n) / 10000n;
-  return computed > SERVICE_FEE_CAP_ATOMIC ? SERVICE_FEE_CAP_ATOMIC : computed;
-}
 async function assertMainnetAddress(address, label) {
   if (!(await monerojs.MoneroUtils.isValidAddress(address, 'mainnet'))) throw new Error(`${label}가 유효한 Monero mainnet 주소가 아닙니다.`);
 }
 function ensureWallet() { if (!wallet) throw new Error('먼저 지갑을 열거나 생성해 주세요.'); }
+function hasUnresolvedRelay() { return Boolean(lastCompletedSend) || [...pendingTransactions.values()].some((pending) => ['relaying', 'relay-unknown'].includes(pending.state)); }
+function assertNoUnresolvedRelay() {
+  if (hasUnresolvedRelay()) throw new Error('앞선 송금 결과를 먼저 확인해야 합니다. 완료된 거래는 해시를 확인하고, 미확정 거래는 같은 서명 거래로 재시도하기 전에는 지갑 전환이나 새 송금을 할 수 없습니다.');
+}
 function normalizePriority(priority) {
   const value = Number(priority);
   if (![1, 2, 3].includes(value)) throw new Error('송금 우선순위가 올바르지 않습니다.');
@@ -374,11 +437,32 @@ async function ensureSendableNode() {
   const info = await getNodeInfo(activeConfig.node);
   if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
-function miningThreadLimit() { return Math.max(1, Math.min(64, os.cpus().length || 1)); }
+function miningThreadLimit() { return Math.min(64, os.cpus().length || 0); }
+function isMinerRunning(entry) { return Boolean(entry && entry.status === 'running' && entry.child.exitCode === null && entry.child.signalCode === null); }
 async function getMiningStatus() {
-  if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote' };
-  const active = miningProcesses.some((process) => !process.killed && process.exitCode === null);
-  return { active, supported: true, state: active ? 'mining' : 'stopped', feeRate: miningSession ? MINING_FEE_RATE : 0, mode: 'xmrig-dual', userShare: 95, feeShare: 5 };
+  if (activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote', error: miningError };
+  const running = miningProcesses.filter(isMinerRunning);
+  const split = miningSession?.split || null;
+  const starting = Boolean(miningStartRequest && !miningStartRequest.cancelled);
+  const state = running.length === 2 ? 'mining' : running.length === 1 ? 'partial' : starting ? 'starting' : 'stopped';
+  return {
+    active: running.length > 0 || starting,
+    supported: process.platform === 'win32' && miningThreadLimit() >= 20,
+    state,
+    error: miningError,
+    mode: 'xmrig-dual',
+    processCount: running.length,
+    expectedProcesses: 2,
+    totalThreads: split?.totalThreads || 0,
+    userThreads: split?.userThreads || 0,
+    feeThreads: split?.feeThreads || 0,
+    userThreadPercent: split?.userThreadPercent || 0,
+    feeThreadPercent: split?.feeThreadPercent || 0,
+    feeRate: split ? split.feeThreadPercent / 100 : 0
+  };
+}
+function emitMiningStatus() {
+  if (mainWindow && !mainWindow.isDestroyed()) getMiningStatus().then((status) => mainWindow?.webContents.send('mining-status', status)).catch(() => {});
 }
 function minerDataDir() { return path.join(portableDataDir(), 'miner'); }
 function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig.exe'); }
@@ -389,8 +473,9 @@ async function installXMRig() {
   await fs.promises.mkdir(dir, { recursive: true });
   const archive = path.join(dir, `xmrig-${XMRIG_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
   const actualHash = await downloadFile(XMRIG_URL, archive);
+  if (shutdownRequested || miningStartRequest?.cancelled) { await fs.promises.rm(archive, { force: true }); throw new Error('채굴 설치가 취소되었습니다.'); }
   if (actualHash !== XMRIG_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 XMRig ZIP의 SHA-256 검증에 실패했습니다.'); }
-  await extractZip(archive, extracted);
+  await extractZip(archive, extracted, () => shutdownRequested || Boolean(miningStartRequest?.cancelled));
   const found = findFile(extracted, 'xmrig.exe');
   if (!found) throw new Error('XMRig ZIP에서 xmrig.exe를 찾지 못했습니다.');
   await fs.promises.cp(path.dirname(found), dir, { recursive: true, force: true });
@@ -398,18 +483,73 @@ async function installXMRig() {
   if (!fs.existsSync(binary)) throw new Error('XMRig 설치 후 실행 파일을 찾지 못했습니다.');
   return binary;
 }
-function startXMRig(binary, address, threadCount, session) {
+function startXMRig(binary, address, role, threadCount, session) {
   const args = ['--daemon', '-o', '127.0.0.1:18081', '-u', address, '--threads', String(threadCount), '--no-color'];
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  const entry = { child: processHandle, address, role, threads: threadCount, status: 'starting', error: null, closeSeen: false };
+  entry.spawned = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${role} XMRig 프로세스 시작 시간이 초과되었습니다.`)), 10000);
+    processHandle.once('spawn', () => { clearTimeout(timer); entry.status = 'running'; resolve(); emitMiningStatus(); });
+    processHandle.once('error', (error) => { clearTimeout(timer); entry.status = 'error'; entry.error = error.message; reject(error); });
+  });
   processHandle.stderr.on('data', (chunk) => console.warn('[monejo xmrig]', chunk.toString().trim()));
-  processHandle.on('error', (error) => console.warn('[monejo xmrig]', error.message));
-  return processHandle;
+  processHandle.on('error', (error) => {
+    entry.status = 'error'; entry.error = error.message;
+    console.warn('[monejo xmrig]', error.message);
+    if (miningSession === session && !session.stopping) { miningError = `${role} 채굴 프로세스 오류: ${error.message}`; void stopMining(); }
+    emitMiningStatus();
+  });
+  processHandle.on('close', (code, signal) => {
+    entry.closeSeen = true;
+    entry.status = 'stopped';
+    if (miningSession === session && !session.stopping) {
+      miningError = `${role} 채굴 프로세스가 예기치 않게 종료되었습니다. (code ${code ?? '없음'}, signal ${signal || '없음'})`;
+      void stopMining();
+    }
+    emitMiningStatus();
+  });
+  return entry;
 }
-async function stopMining() {
-  for (const processHandle of miningProcesses) { if (!processHandle.killed) processHandle.kill(); }
-  miningProcesses = [];
+function waitForMinerClose(entry) {
+  if (!entry) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const child = entry.child;
+    if (entry.closeSeen || child.exitCode !== null || child.signalCode !== null) return resolve();
+    let termTimer; let forceTimer; let deadlineTimer;
+    const finish = () => { clearTimeout(termTimer); clearTimeout(forceTimer); clearTimeout(deadlineTimer); child.removeListener('close', finish); resolve(); };
+    child.once('close', finish);
+    termTimer = setTimeout(() => {
+      try { if (child.exitCode === null && child.signalCode === null) child.kill('SIGTERM'); } catch (_) {}
+      forceTimer = setTimeout(() => {
+        try { if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL'); } catch (_) {}
+      }, 2000);
+    }, 5000);
+    deadlineTimer = setTimeout(() => {
+      child.removeListener('close', finish);
+      clearTimeout(termTimer); clearTimeout(forceTimer);
+      const error = new Error(`XMRig ${entry.role} 종료를 확인하지 못했습니다.`);
+      error.code = 'MINER_CLOSE_UNCONFIRMED';
+      reject(error);
+    }, 10000);
+  });
+}
+async function stopMining({ preserveStarting = false } = {}) {
+  if (miningStartRequest && !preserveStarting) miningStartRequest.cancelled = true;
+  if (miningStopPromise) return miningStopPromise;
+  const session = miningSession;
+  if (session) session.stopping = true;
   miningSession = null;
+  const entries = [...miningProcesses];
+  miningStopPromise = (async () => {
+    for (const entry of entries) {
+      try { if (entry.child.exitCode === null && entry.child.signalCode === null) entry.child.kill('SIGTERM'); } catch (_) {}
+    }
+    await Promise.all(entries.map(waitForMinerClose));
+    miningProcesses = [];
+    emitMiningStatus();
+  })();
+  try { await miningStopPromise; } finally { miningStopPromise = null; }
 }
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
@@ -426,19 +566,25 @@ function normalizeRestoreHeight(value) {
 function safeTx(tx) {
   return { hash: tx.getHash?.(), fee: tx.getFee?.()?.toString?.() || '0', amount: tx.getAmount?.()?.toString?.() || '0', height: tx.getHeight?.(), isConfirmed: tx.isConfirmed?.(), isLocked: tx.isLocked?.(), timestamp: tx.getTimestamp?.() };
 }
+function makeSendResult(pending, txHashes) {
+  return { txs: pending.txs.map(safeTx), txHashes, serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic), networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic) };
+}
 async function loadSummary() {
   ensureWallet();
-  const address = await wallet.getPrimaryAddress();
-  const balance = await wallet.getBalance(0);
+  const activeWallet = wallet;
+  const sessionId = walletSessionId;
+  const address = await activeWallet.getPrimaryAddress();
+  const balance = await activeWallet.getBalance(0);
   let txs = [];
-  try { txs = await wallet.getTxs({ accountIndex: 0 }); } catch (_) {}
+  try { txs = await activeWallet.getTxs({ accountIndex: 0 }); } catch (_) {}
   const sync = activeConfig.node === LOCAL_NODE ? await getLocalNodeStatus() : await getRemoteNodeStatus(activeConfig.node);
+  if (activeWallet !== wallet || sessionId !== walletSessionId) throw new Error('요약을 불러오는 중 지갑 세션이 변경되었습니다. 다시 열어 주세요.');
   return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node, sync };
 }
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
-  mainWindow.webContents.on('will-navigate', (event, url) => { if (!url.startsWith('file://')) event.preventDefault(); });
+  mainWindow.webContents.on('will-navigate', (event, url) => { if (url !== APP_URL) event.preventDefault(); });
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
@@ -446,7 +592,13 @@ ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_
 ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
-  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
+  assertNoUnresolvedRelay();
+  const previousWallet = wallet;
+  wallet = null;
+  walletSessionId += 1;
+  pendingTransactions.clear();
+  await stopMining();
+  if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
   const creationPath = tempWalletPath('monejo-create');
@@ -458,7 +610,6 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     await created.close(true);
     archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    sessionPassword = password;
     const summary = await loadSummary();
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, seed, createdAtHeight: creationHeight, restoreHeight: creationHeight, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
@@ -474,13 +625,20 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restore
   if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
-  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
+  assertNoUnresolvedRelay();
+  const previousWallet = wallet;
+  wallet = null;
+  walletSessionId += 1;
+  pendingTransactions.clear();
+  await stopMining();
+  if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
   const recoveryPath = tempWalletPath('monejo-recovery');
+  const normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
   let recovered; let archived = null;
   try {
-    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: String(seedOffset || '').trim() || undefined, restoreHeight: normalizedRestoreHeight, server: activeConfig.node });
+    recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: normalizedSeedOffset, restoreHeight: normalizedRestoreHeight, server: activeConfig.node });
     const recoveredAddress = await recovered.getPrimaryAddress();
     await recovered.close(true);
     archived = promoteWallet(recoveryPath);
@@ -494,92 +652,343 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restore
     throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
   }
   if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-  sessionPassword = password;
   return { ...(await loadSummary()), restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
 });
 ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 monejo 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
   assertMainnetNetwork(network);
-  if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
+  assertNoUnresolvedRelay();
+  const previousWallet = wallet;
+  wallet = null;
+  walletSessionId += 1;
+  pendingTransactions.clear();
+  await stopMining();
+  if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   try {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    sessionPassword = password;
     return await loadSummary();
   } catch (error) {
     if (wallet) await wallet.close(true).catch(() => {});
     wallet = null;
-    sessionPassword = null;
     throw error;
   }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('mining-status', async () => getMiningStatus());
-ipcMain.handle('mining-start', async (_, { threads = 1, background = true, ignoreBattery = false } = {}) => {
-  ensureWallet();
-  if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
-  const limit = miningThreadLimit(); const count = Number(threads);
-  if (!Number.isSafeInteger(count) || count < 2 || count > limit) throw new Error(`두 채굴 프로세스에 사용할 CPU 스레드 수는 2에서 ${limit} 사이여야 합니다.`);
-  await stopMining();
-  await startLocalNode();
-  const status = await getLocalNodeStatus();
-  if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
-  const address = await wallet.getPrimaryAddress();
-  await assertMainnetAddress(address, '채굴 주소');
-  await assertMainnetAddress(FEE_ADDRESS, '채굴 수수료 주소');
-  const binary = await installXMRig();
-  miningSession = { userAddress: address, threads: count, background: Boolean(background), ignoreBattery: Boolean(ignoreBattery), mode: 'xmrig-dual' };
+ipcMain.handle('mining-start', async (_, { threads = 20, ignoreBattery = false } = {}) => {
+  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
+  if (miningStartRequest) throw new Error('채굴 시작 또는 중지가 이미 진행 중입니다.');
+  const request = { cancelled: false };
+  miningStartRequest = request;
+  const operation = (async () => {
+    let session = null;
+    let activeWallet = null;
+    let sessionId = null;
+    try {
+      ensureWallet();
+      activeWallet = wallet;
+      sessionId = walletSessionId;
+      if (process.platform !== 'win32') throw new Error('XMRig 두 프로세스 채굴은 현재 Windows에서만 지원됩니다.');
+      if (activeConfig.node !== LOCAL_NODE) throw new Error('채굴은 내 컴퓨터의 로컬 노드에서만 사용할 수 있습니다.');
+      const split = splitMiningThreads(threads, miningThreadLimit());
+      await stopMining({ preserveStarting: true });
+      if (request.cancelled || shutdownRequested) return getMiningStatus();
+      session = { split, ignoreBattery: Boolean(ignoreBattery), mode: 'xmrig-dual', starting: true, stopping: false };
+      miningSession = session;
+      miningProcesses = [];
+      miningError = null;
+      emitMiningStatus();
+      await startLocalNode();
+      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
+      const status = await getLocalNodeStatus();
+      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
+      if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
+      const address = await activeWallet.getPrimaryAddress();
+      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
+      await assertMainnetAddress(address, '채굴 주소');
+      await assertMainnetAddress(FEE_ADDRESS, '채굴 수수료 주소');
+      const binary = await installXMRig();
+      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
+      session.userAddress = address;
+      session.starting = false;
+      const userProcess = startXMRig(binary, address, '사용자 주소', split.userThreads, session);
+      miningProcesses.push(userProcess);
+      const feeProcess = startXMRig(binary, FEE_ADDRESS, '수수료 주소', split.feeThreads, session);
+      miningProcesses.push(feeProcess);
+      await Promise.all(miningProcesses.map((entry) => entry.spawned));
+      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
+      const statusAfterStart = await getMiningStatus();
+      if (statusAfterStart.processCount !== 2) throw new Error('두 채굴 프로세스가 모두 실행되지 않았습니다.');
+      emitMiningStatus();
+      return statusAfterStart;
+    } catch (error) {
+      if (!request.cancelled && !shutdownRequested && !miningError) miningError = error.message;
+      await stopMining({ preserveStarting: true });
+      if (request.cancelled || shutdownRequested) return getMiningStatus();
+      throw error;
+    }
+  })();
+  miningStartPromise = operation;
   try {
-    const userThreads = Math.min(count - 1, Math.max(1, Math.round(count * 0.95)));
-    const feeThreads = Math.max(1, count - userThreads);
-    miningProcesses = [startXMRig(binary, address, userThreads, miningSession), startXMRig(binary, FEE_ADDRESS, feeThreads, miningSession)];
-    return getMiningStatus();
-  } catch (error) {
-    await stopMining();
-    throw error;
+    return await operation;
+  } finally {
+    if (miningStartPromise === operation) miningStartPromise = null;
+    if (miningStartRequest === request) miningStartRequest = null;
+    emitMiningStatus();
   }
 });
-ipcMain.handle('mining-stop', async () => { await stopMining(); return getMiningStatus(); });
-ipcMain.handle('wallet-lock', async () => { await stopMining(); if (wallet) await wallet.close(true).catch(() => {}); wallet = null; sessionPassword = null; return true; });
-ipcMain.handle('wallet-send-preview', async (_, { address, amount }) => {
-  ensureWallet();
-  const amountAtomic = xmrToAtomic(amount);
-  if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
-  const serviceFeeAtomic = calculateServiceFee(amountAtomic);
-  if (!address || address.length < 90) throw new Error('Monero 주소를 확인해 주세요.');
-  await assertMainnetAddress(address, '받는 주소');
-  await assertMainnetAddress(FEE_ADDRESS, '서비스 수수료 주소');
-  return { address, amountXmr: amount, amountAtomic: amountAtomic.toString(), serviceFeeXmr: atomicToXmr(serviceFeeAtomic), serviceFeeAtomic: serviceFeeAtomic.toString(), feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', feeAddress: FEE_ADDRESS, totalBeforeNetworkFeeXmr: atomicToXmr(amountAtomic + serviceFeeAtomic) };
+ipcMain.handle('mining-stop', async () => { miningError = null; await stopMining(); return getMiningStatus(); });
+ipcMain.handle('wallet-lock', async () => {
+  assertNoUnresolvedRelay();
+  const previousWallet = wallet;
+  wallet = null;
+  walletSessionId += 1;
+  pendingTransactions.clear();
+  await stopMining();
+  if (previousWallet) await previousWallet.close(true).catch(() => {});
+  return true;
 });
-ipcMain.handle('wallet-send', async (_, { address, amount, priority = 2 }) => {
+ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 } = {}) => {
+  if (sendPreviewInFlight) throw new Error('송금 미리보기를 준비 중입니다. 잠시 기다리세요.');
+  if ([...pendingTransactions.values()].some((pending) => pending.state === 'ready')) throw new Error('앞선 송금 검토를 먼저 취소하거나 완료하세요.');
+  sendPreviewInFlight = true;
+  try {
   ensureWallet();
+  assertNoUnresolvedRelay();
+  const activeWallet = wallet;
+  const sessionId = walletSessionId;
+  pendingTransactions.clear();
   const amountAtomic = xmrToAtomic(amount);
   if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
   const txPriority = normalizePriority(priority);
   await ensureSendableNode();
+  if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 새 지갑에서 거래를 다시 검토하세요.');
   const serviceFeeAtomic = calculateServiceFee(amountAtomic);
+  if (typeof address !== 'string' || address.length < 90) throw new Error('Monero 주소를 확인해 주세요.');
   await assertMainnetAddress(address, '받는 주소');
   await assertMainnetAddress(FEE_ADDRESS, '서비스 수수료 주소');
-  const destinations = [{ address, amount: amountAtomic.toString() }];
-  if (serviceFeeAtomic > 0n) destinations.push({ address: FEE_ADDRESS, amount: serviceFeeAtomic.toString() });
-  const txs = await wallet.createTxs({ accountIndex: 0, destinations, priority: txPriority, relay: true });
-  return { txs: txs.map(safeTx), serviceFeeXmr: atomicToXmr(serviceFeeAtomic) };
+  const destinations = [{ address, amount: amountAtomic }];
+  if (serviceFeeAtomic > 0n && address === FEE_ADDRESS) destinations[0].amount += serviceFeeAtomic;
+  else if (serviceFeeAtomic > 0n) destinations.push({ address: FEE_ADDRESS, amount: serviceFeeAtomic });
+  const txs = await activeWallet.createTxs({ accountIndex: 0, destinations, priority: txPriority, relay: false });
+  if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 생성한 미전송 거래를 폐기했습니다.');
+  if (!Array.isArray(txs) || txs.length === 0) throw new Error('거래 미리보기를 만들지 못했습니다.');
+  if (txs.length !== 1) throw new Error('한 번의 송금 요청이 여러 거래로 나뉘어 안전하게 미리보기할 수 없습니다. 금액을 줄여 다시 검토하세요.');
+  const networkFeeAtomic = txs.reduce((sum, tx) => {
+    const fee = tx.getFee?.();
+    if (fee === undefined || fee === null) throw new Error('네트워크 수수료를 확인하지 못해 송금을 중단했습니다.');
+    return sum + BigInt(fee);
+  }, 0n);
+  const now = Date.now();
+  const pendingId = crypto.randomBytes(24).toString('hex');
+  pendingTransactions.set(pendingId, {
+    txs, address, amountAtomic, serviceFeeAtomic, networkFeeAtomic, priority: txPriority,
+    walletSessionId: sessionId, state: 'ready',
+    expiresAt: now + SEND_PREVIEW_TTL_MS
+  });
+  return {
+    pendingId,
+    address,
+    amountXmr: atomicToXmr(amountAtomic),
+    serviceFeeXmr: atomicToXmr(serviceFeeAtomic),
+    networkFeeXmr: atomicToXmr(networkFeeAtomic),
+    totalXmr: atomicToXmr(amountAtomic + serviceFeeAtomic + networkFeeAtomic),
+    priority: txPriority,
+    txCount: txs.length,
+    feeRate: SERVICE_FEE_RATE,
+    feeCapXmr: '0.05',
+    feeAddress: FEE_ADDRESS
+  };
+  } finally {
+    sendPreviewInFlight = false;
+  }
+});
+ipcMain.handle('wallet-send-cancel', async (_, { pendingId } = {}) => {
+  const id = String(pendingId || '');
+  if (lastCompletedSend?.pendingId === id) return false;
+  const pending = pendingTransactions.get(id);
+  if (!pending) return true;
+  if (['relaying', 'relay-unknown'].includes(pending.state)) return false;
+  pendingTransactions.delete(id);
+  return true;
+});
+ipcMain.handle('wallet-send-pending', async () => {
+  if (lastCompletedSend && lastCompletedSend.walletSessionId === walletSessionId) {
+    return { state: 'relayed', pendingId: lastCompletedSend.pendingId, ...lastCompletedSend.result };
+  }
+  for (const [pendingId, pending] of pendingTransactions) {
+    if (!['ready', 'relaying', 'relay-unknown'].includes(pending.state) || pending.walletSessionId !== walletSessionId) continue;
+    return {
+      state: pending.state,
+      relayInProgress: Boolean(pending.relayInProgress),
+      pendingId,
+      address: pending.address,
+      amountXmr: atomicToXmr(pending.amountAtomic),
+      serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic),
+      networkFeeXmr: atomicToXmr(pending.networkFeeAtomic),
+      totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic),
+      priority: pending.priority,
+      txCount: pending.txs.length,
+      feeAddress: FEE_ADDRESS
+    };
+  }
+  return null;
+});
+ipcMain.handle('wallet-send-ack', async (_, { pendingId } = {}) => {
+  if (lastCompletedSend && lastCompletedSend.pendingId === String(pendingId || '')) { lastCompletedSend = null; return true; }
+  return false;
+});
+ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
+  ensureWallet();
+  const activeWallet = wallet;
+  const sessionId = walletSessionId;
+  const id = String(pendingId || '');
+  if (lastCompletedSend && lastCompletedSend.pendingId === id && lastCompletedSend.walletSessionId === sessionId) return lastCompletedSend.result;
+  const pending = pendingTransactions.get(id);
+  if (!pending) throw new Error('송금 미리보기가 없거나 만료되었습니다. 다시 검토해 주세요.');
+  if (pending.walletSessionId !== sessionId || activeWallet !== wallet) throw new Error('지갑 세션이 변경되어 이 거래를 전송할 수 없습니다.');
+  if (pending.state === 'relaying') throw new Error('같은 거래의 전파 결과를 기다리고 있습니다.');
+  if (pending.state !== 'relay-unknown' && pending.expiresAt <= Date.now()) { pendingTransactions.delete(id); throw new Error('송금 미리보기가 만료되었습니다. 다시 검토해 주세요.'); }
+  pending.state = 'relaying';
+  pending.relayInProgress = false;
+  let settleRelay;
+  const relaySettlement = new Promise((resolve) => { settleRelay = resolve; });
+  pendingRelaySettlements.add(relaySettlement);
+  try {
+    await withTimeout(ensureSendableNode(), 15000, '송금 노드 상태 확인 시간이 초과되었습니다.');
+    if (pendingTransactions.get(id) !== pending) throw new Error('송금 미리보기가 취소되거나 교체되었습니다. 다시 검토해 주세요.');
+    if (wallet !== activeWallet || walletSessionId !== sessionId || pending.walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 새 지갑에서 거래를 다시 검토하세요.');
+    const relayPromise = activeWallet.relayTxs(pending.txs);
+    pending.relayAttemptsInFlight = (pending.relayAttemptsInFlight || 0) + 1;
+    pending.relayInProgress = true;
+    void relayPromise.then((hashes) => {
+      pending.relayAttemptsInFlight = Math.max(0, (pending.relayAttemptsInFlight || 1) - 1);
+      pending.relayInProgress = pending.relayAttemptsInFlight > 0;
+      if (Array.isArray(hashes) && hashes.length === pending.txs.length && hashes.every((hash) => typeof hash === 'string' && hash) && pendingTransactions.get(id) === pending && pending.walletSessionId === walletSessionId) {
+        pending.state = 'relayed';
+        pending.txHashes = hashes;
+        lastCompletedSend = { pendingId: id, walletSessionId: sessionId, result: makeSendResult(pending, hashes) };
+        pendingTransactions.delete(id);
+      }
+    }, () => {
+      pending.relayAttemptsInFlight = Math.max(0, (pending.relayAttemptsInFlight || 1) - 1);
+      pending.relayInProgress = pending.relayAttemptsInFlight > 0;
+    }).catch(() => {});
+    const txHashes = await withTimeout(relayPromise, 30000, 'Monero 노드가 30초 안에 송금 전파 결과를 반환하지 않았습니다.');
+    if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('relay 도중 지갑 세션이 바뀌어 결과를 확정하지 못했습니다.');
+    if (!Array.isArray(txHashes) || txHashes.length !== pending.txs.length || txHashes.some((hash) => typeof hash !== 'string' || !hash)) {
+      throw new Error('Monero 노드가 모든 거래 해시를 반환하지 않았습니다.');
+    }
+    pending.state = 'relayed';
+    pending.txHashes = txHashes;
+    pending.relayInProgress = false;
+    lastCompletedSend = { pendingId: id, walletSessionId: sessionId, result: makeSendResult(pending, txHashes) };
+    pendingTransactions.delete(id);
+    return lastCompletedSend.result;
+  } catch (error) {
+    if (pending.state === 'relaying') {
+      pending.state = 'relay-unknown';
+      pending.lastError = error.message;
+    }
+    if (pending.state === 'relayed' && lastCompletedSend?.pendingId === id) return lastCompletedSend.result;
+    if (pending.state === 'relay-unknown') {
+      throw new Error(`거래가 노드에 전파되었는지 확인되지 않았습니다. 새 송금을 만들지 마세요. 이 화면에서 같은 서명 거래를 다시 시도할 수 있습니다. (${error.message})`);
+    }
+    throw error;
+  } finally {
+    settleRelay();
+    pendingRelaySettlements.delete(relaySettlement);
+  }
 });
 ipcMain.handle('wallet-export-backup', async () => {
   ensureWallet();
+  const sessionId = walletSessionId;
   const source = walletPath() + '.keys';
   if (!fs.existsSync(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
   const result = await dialog.showSaveDialog(mainWindow, { title: 'monejo 지갑 백업 저장', defaultPath: 'monejo-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
+  if (!wallet || sessionId !== walletSessionId) throw new Error('백업 저장 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
   if (path.resolve(result.filePath) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
   fs.copyFileSync(source, result.filePath);
   return { canceled: false, path: result.filePath };
 });
 ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
 
+async function waitForPendingRelaySettlements() {
+  while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
+}
+async function waitForPromiseOrTimeout(promise, timeoutMs) {
+  let timer;
+  const settled = await Promise.race([
+    Promise.resolve(promise).then(() => true, () => true),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs); })
+  ]);
+  clearTimeout(timer);
+  return settled;
+}
+async function shutdownRuntime() {
+  const startPromise = miningStartPromise;
+  let stopError = null;
+  try { await stopMining(); } catch (error) { stopError = error; }
+  if (startPromise && !await waitForPromiseOrTimeout(startPromise, 45000)) console.warn('[monejo shutdown] mining setup did not settle within 45 seconds; shutdown flag prevents further miner starts');
+  try { await stopMining(); stopError = null; } catch (error) { if (!stopError) stopError = error; }
+  if (stopError) throw stopError;
+  await stopLocalNode();
+  const previousWallet = wallet;
+  wallet = null;
+  walletSessionId += 1;
+  if (previousWallet) await previousWallet.close(true).catch(() => {});
+  pendingTransactions.clear();
+  lastCompletedSend = null;
+}
+app.on('before-quit', (event) => {
+  if (shutdownComplete) return;
+  event.preventDefault();
+  if (shutdownPromise) return;
+  shutdownRequested = true;
+  shutdownPromise = (async () => {
+    await waitForPendingRelaySettlements();
+    if (hasUnresolvedRelay()) {
+      const completedButUnseen = Boolean(lastCompletedSend);
+      const options = {
+        type: 'warning',
+        title: completedButUnseen ? '송금 결과 확인 필요' : '송금 전파 결과 미확정',
+        message: completedButUnseen ? '송금은 노드가 받아들였지만 결과 해시가 아직 화면에서 확인되지 않았습니다.' : '네트워크에 전파되었는지 확인되지 않은 송금이 있습니다.',
+        detail: completedButUnseen ? '앱으로 돌아오면 거래 해시와 결과를 복원합니다. 종료 후에도 지갑 거래 기록에서 확인할 수 있지만, 계속 진행하기 전에 결과를 확인하는 편이 안전합니다.' : '노드 응답은 30초 제한에 도달했습니다. 앱으로 돌아오면 같은 서명 거래를 다시 확인할 수 있습니다. 종료하면 이 임시 거래를 다시 시도할 수 없으니 새 송금을 만들지 말고, 가능하면 앱으로 돌아오세요.',
+        buttons: ['앱으로 돌아가기', '확인 후 종료'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+      };
+      const result = mainWindow && !mainWindow.isDestroyed()
+        ? await dialog.showMessageBox(mainWindow, options)
+        : await dialog.showMessageBox(options);
+      if (result.response === 0) {
+        if (!mainWindow || mainWindow.isDestroyed()) await makeWindow();
+        return false;
+      }
+    }
+    await shutdownRuntime();
+    return true;
+  })().then((shouldQuit) => {
+    if (!shouldQuit) { shutdownRequested = false; shutdownPromise = null; return; }
+    shutdownComplete = true;
+    app.quit();
+  }).catch(async (error) => {
+    shutdownRequested = false;
+    shutdownPromise = null;
+    console.error('[monejo shutdown]', error.message);
+    const options = { type: 'error', title: '앱 종료 전 프로세스 정리 실패', message: '채굴 프로세스가 종료되었는지 확인할 수 없어 앱을 계속 실행합니다.', detail: error.message, buttons: ['확인'], noLink: true };
+    try {
+      if (!mainWindow || mainWindow.isDestroyed()) await makeWindow();
+      if (mainWindow && !mainWindow.isDestroyed()) await dialog.showMessageBox(mainWindow, options);
+    } catch (_) {}
+  });
+});
+app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 if (singleInstanceLock) app.whenReady().then(async () => {
   await makeWindow();
   setTimeout(() => { checkForUpdates(); }, 4000);
 });
-app.on('window-all-closed', async () => { if (wallet) await wallet.close(true).catch(() => {}); await stopLocalNode(); if (process.platform !== 'darwin') app.quit(); });

@@ -1,5 +1,6 @@
 node_modules/
 web/node_modules/
+dist/
 _pkg/
 dist/win-unpacked/
 web/dist/
