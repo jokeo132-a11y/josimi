@@ -98,3 +98,19 @@ dialog::backdrop{background:#000b}
 
 .mining-settings{padding:10px 11px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;margin:10px 0}.mining-settings label{margin:10px 0!important}.mining-card select,.mining-card input[type="text"],.mining-card input[type="number"]{display:block;width:100%;margin-top:7px;height:40px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:0 10px}.mining-card select:focus,.mining-card input:focus{border-color:var(--orange);outline:none;box-shadow:0 0 0 2px #f2682222}.mining-card .check-row{margin:10px 0!important}.mining-card .fine{margin-top:10px}
 .mining-card input:disabled{opacity:.55;cursor:not-allowed}.auto100-row{border-top:1px solid var(--line);padding-top:10px}
+
+
+/* Product polish: deliberate focus, readable states, and resilient small windows. */
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+textarea{font:inherit;resize:vertical;line-height:1.5}
+.auth-card textarea,.send-card textarea{display:block;width:100%;margin-top:7px;background:#121310;color:var(--text);border:1px solid var(--line-strong);border-radius:6px;padding:10px 12px;font-size:13px;outline:none}
+.auth-card textarea:focus,.send-card textarea:focus{border-color:var(--orange);box-shadow:0 0 0 3px #f2682230}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,dialog:focus-visible{outline:3px solid #ff9b61;outline-offset:2px}
+button:disabled,.tool:disabled,.address-actions button:disabled{opacity:.48;cursor:not-allowed;border-color:var(--line);color:var(--muted)}
+.primary:disabled{cursor:wait}
+.fee-note{padding:10px 12px;border-left:2px solid var(--orange);background:#24201b;color:var(--text-soft);border-radius:0 6px 6px 0}
+.dashboard-head>div:first-child{min-width:0;flex:1}
+.balance{overflow-wrap:anywhere}
+.address-card canvas{max-width:100%;height:auto}
+.dialog-actions button{min-height:42px}
+@media(max-width:480px){.topbar{height:56px}.dashboard-head{gap:12px}.balance{font-size:clamp(26px,9vw,35px)}.review-row{display:block}.review-row strong{display:block;max-width:none;text-align:left;margin-top:5px}.dialog-inner{padding:20px}.address-actions{flex-wrap:wrap}.address-actions button{flex:1}.mining-actions{flex-direction:column}.mining-actions button{width:100%}}

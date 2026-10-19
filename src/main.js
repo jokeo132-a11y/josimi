@@ -35,8 +35,6 @@ const MONERO_CLI_VERSION = '0.18.5.3';
 const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
 const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
 const MONERO_CLI_SHA256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a';
-const GITHUB_REPOSITORY = 'jokeo132-a11y/josimi';
-const GITHUB_API_RELEASES = `https://api.github.com/repos/${GITHUB_REPOSITORY}/releases?per_page=100`;
 
 let mainWindow;
 let wallet = null;
@@ -76,17 +74,10 @@ const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
 else app.on('second-instance', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
 
-function compareVersions(left, right) {
-  const parse = (value) => String(value).replace(/^v/i, '').split('.').map((part) => Number.parseInt(part, 10) || 0);
-  const a = parse(left); const b = parse(right);
-  for (let i = 0; i < 3; i += 1) if ((a[i] || 0) !== (b[i] || 0)) return (a[i] || 0) - (b[i] || 0);
-  return 0;
-}
-
 function requestUrl(url, headers = {}, redirects = 0) {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('GitHub 다운로드 리디렉션이 너무 많습니다.'));
-    const request = https.get(url, { headers: { 'User-Agent': 'josimi-updater', ...headers } }, (response) => {
+    const request = https.get(url, { headers: { 'User-Agent': 'josimi-client', ...headers } }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
         response.resume();
         return requestUrl(new URL(response.headers.location, url).toString(), headers, redirects + 1).then(resolve, reject);
@@ -101,16 +92,6 @@ function requestUrl(url, headers = {}, redirects = 0) {
   });
 }
 
-async function downloadToFile(url, destination) {
-  const data = await requestUrl(url, { Accept: 'application/octet-stream' });
-  await fs.promises.writeFile(destination, data, { mode: 0o700 });
-  return crypto.createHash('sha256').update(data).digest('hex');
-}
-
-function checksumForExe(checksumText) {
-  const match = String(checksumText).match(/([a-f0-9]{64})\s+.*josimi\.exe/i);
-  return match ? match[1].toLowerCase() : null;
-}
 
 function postJson(url, body, redirects = 0) {
   return new Promise((resolve, reject) => {
@@ -287,9 +268,11 @@ async function startLocalNode() {
   if (existing.state !== 'stopped') return existing;
   const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--zmq-pub', 'tcp://127.0.0.1:18083', '--out-peers', '32', '--in-peers', '64', '--enforce-dns-checkpointing', '--enable-dns-blocklist', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  if (daemonStatusTimer) clearInterval(daemonStatusTimer);
+  daemonStatusTimer = null;
+  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--zmq-pub', 'tcp://127.0.0.1:18083', '--out-peers', '32', '--in-peers', '64', '--enforce-dns-checkpointing', '--enable-dns-blocklist', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'] });
   daemonProcess.on('error', (error) => { console.warn('[josimi monerod]', error.message); daemonProcess = null; });
-  daemonProcess.on('close', () => { daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
+  daemonProcess.on('close', () => { if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
   daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
   const deadline = Date.now() + 30000;
   while (Date.now() < deadline) {
@@ -305,54 +288,6 @@ async function startLocalNode() {
 async function resolveNode(node) { return String(node || '').trim() ? normalizeNode(node) : (await startLocalNode(), LOCAL_NODE); }
 async function stopLocalNode() { await stopMining(); if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; if (daemonProcess) { daemonProcess.kill(); daemonProcess = null; } }
 
-async function schedulePortableReplacement(downloadedExe) {
-  const currentExe = process.execPath;
-  if (!app.isPackaged || process.platform !== 'win32' || !fs.existsSync(currentExe)) throw new Error('Portable Windows 실행 파일에서만 자동 업데이트할 수 있습니다.');
-  const scriptPath = path.join(app.getPath('temp'), `josimi-update-${Date.now()}.cmd`);
-  const script = [
-    '@echo off',
-    'setlocal',
-    `set "TARGET=${currentExe}"`,
-    `set "NEW=${downloadedExe}"`,
-    `set "PID_TO_WAIT=${process.pid}"`,
-    ':wait',
-    'tasklist /FI "PID eq %PID_TO_WAIT%" | findstr /I "%PID_TO_WAIT%" >nul',
-    'if not errorlevel 1 (timeout /t 1 /nobreak >nul & goto wait)',
-    'move /Y "%NEW%" "%TARGET%" >nul',
-    'start "" "%TARGET%"',
-    'del "%~f0"'
-  ].join('\r\n');
-  await fs.promises.writeFile(scriptPath, script, 'utf8');
-  spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/c', 'start', '', '/b', scriptPath], { detached: true, windowsHide: true, stdio: 'ignore' }).unref();
-  app.quit();
-}
-
-async function checkForUpdates() {
-  if (!app.isPackaged || process.platform !== 'win32' || !mainWindow) return;
-  let updatePath = null;
-  let replacementScheduled = false;
-  try {
-    const releases = JSON.parse((await requestUrl(GITHUB_API_RELEASES, { Accept: 'application/vnd.github+json' })).toString('utf8'));
-    const release = releases.filter((candidate) => !candidate.draft && !candidate.prerelease && /^v?\d+\.\d+\.\d+$/.test(String(candidate.tag_name || ''))).sort((a, b) => compareVersions(b.tag_name, a.tag_name))[0];
-    if (!release) return;
-    const latestVersion = String(release.tag_name || '').replace(/^v/i, '');
-    if (!latestVersion || compareVersions(latestVersion, app.getVersion()) <= 0) return;
-  const exeAsset = release.assets?.find((asset) => asset.name === 'josimi.exe');
-    const checksumAsset = release.assets?.find((asset) => /^SHA256SUMS.*\.txt$/i.test(asset.name));
-    if (!exeAsset || !checksumAsset) return;
-    console.info(`[josimi updater] latest stable release v${latestVersion} detected; downloading automatically`);
-    updatePath = path.join(app.getPath('temp'), `josimi-update-${latestVersion}-${Date.now()}.exe`);
-    const actualHash = await downloadToFile(exeAsset.browser_download_url, updatePath);
-    const expectedHash = checksumForExe((await requestUrl(checksumAsset.browser_download_url)).toString('utf8'));
-    if (!expectedHash || actualHash !== expectedHash) throw new Error('업데이트 파일의 SHA-256 검증에 실패했습니다.');
-    await schedulePortableReplacement(updatePath);
-    replacementScheduled = true;
-  } catch (error) {
-    console.warn('[josimi updater]', error.message);
-  } finally {
-    if (updatePath && !replacementScheduled) await fs.promises.rm(updatePath, { force: true }).catch(() => {});
-  }
-}
 
 function walletDir() {
   if (selectedWalletDir) return selectedWalletDir;
@@ -431,6 +366,12 @@ function hasUnresolvedRelay() { return Boolean(lastCompletedSend) || [...pending
 function assertNoUnresolvedRelay() {
   if (hasUnresolvedRelay()) throw new Error('앞선 송금 결과를 먼저 확인해야 합니다. 완료된 거래는 해시를 확인하고, 미확정 거래는 같은 서명 거래로 재시도하기 전에는 지갑 전환이나 새 송금을 할 수 없습니다.');
 }
+function pruneExpiredPreviews() {
+  const now = Date.now();
+  for (const [pendingId, pending] of pendingTransactions) {
+    if (pending.state === 'ready' && pending.expiresAt <= now) pendingTransactions.delete(pendingId);
+  }
+}
 function normalizePriority(priority) {
   const value = Number(priority);
   if (![1, 2, 3].includes(value)) throw new Error('송금 우선순위가 올바르지 않습니다.');
@@ -452,7 +393,7 @@ async function getMiningStatus() {
   if (mode === 'solo' && activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote', error: miningError, mode };
   const running = miningProcesses.filter(isMinerRunning);
   const starting = Boolean(miningStartRequest && !miningStartRequest.cancelled);
-  const state = running.length > 1 ? 'mining' : running.length === 1 ? 'partial' : starting ? 'starting' : 'stopped';
+  const state = running.length >= 1 ? 'mining' : starting ? 'starting' : 'stopped';
   return {
     active: running.length > 0 || starting,
     supported: process.platform === 'win32',
@@ -460,7 +401,7 @@ async function getMiningStatus() {
     error: miningError,
     mode,
     processCount: running.length,
-    expectedProcesses: mode === 'solo' ? 2 : 1,
+    expectedProcesses: 1,
     totalThreads: miningSession?.threads || 0,
     cpuAuto100: Boolean(miningSession?.cpuAuto100),
     poolUrl: activeMiningConfig.poolUrl,
@@ -665,8 +606,9 @@ async function makeWindow() {
 }
 
 ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32', miningPools: DEFAULT_MINING_POOLS, p2poolProfiles: ['main', 'mini', 'nano'] }));
-ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK }) => {
-  if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+ipcMain.handle('wallet-create', async (_, payload = {}) => {
+  const { password, node, network = NETWORK } = payload || {};
+  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
@@ -697,8 +639,9 @@ ipcMain.handle('wallet-create', async (_, { password, node, network = NETWORK })
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
-ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restoreHeight, node, network = NETWORK }) => {
-  if (!password || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+ipcMain.handle('wallet-restore', async (_, payload = {}) => {
+  const { password, seed, seedOffset, restoreHeight, node, network = NETWORK } = payload || {};
+  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
   assertNoUnresolvedRelay();
@@ -730,7 +673,9 @@ ipcMain.handle('wallet-restore', async (_, { password, seed, seedOffset, restore
   if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
   return { ...(await loadSummary()), restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
 });
-ipcMain.handle('wallet-open', async (_, { password, node, network = NETWORK }) => {
+ipcMain.handle('wallet-open', async (_, payload = {}) => {
+  const { password, node, network = NETWORK } = payload || {};
+  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 josimi 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
@@ -844,6 +789,7 @@ ipcMain.handle('wallet-lock', async () => {
   return true;
 });
 ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 } = {}) => {
+  pruneExpiredPreviews();
   if (sendPreviewInFlight) throw new Error('송금 미리보기를 준비 중입니다. 잠시 기다리세요.');
   if ([...pendingTransactions.values()].some((pending) => pending.state === 'ready')) throw new Error('앞선 송금 검토를 먼저 취소하거나 완료하세요.');
   sendPreviewInFlight = true;
@@ -908,6 +854,7 @@ ipcMain.handle('wallet-send-cancel', async (_, { pendingId } = {}) => {
   return true;
 });
 ipcMain.handle('wallet-send-pending', async () => {
+  pruneExpiredPreviews();
   if (lastCompletedSend && lastCompletedSend.walletSessionId === walletSessionId) {
     return { state: 'relayed', pendingId: lastCompletedSend.pendingId, ...lastCompletedSend.result };
   }
@@ -968,7 +915,10 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
     }, () => {
       pending.relayAttemptsInFlight = Math.max(0, (pending.relayAttemptsInFlight || 1) - 1);
       pending.relayInProgress = pending.relayAttemptsInFlight > 0;
-    }).catch(() => {});
+    }).catch(() => {}).finally(() => {
+      settleRelay();
+      pendingRelaySettlements.delete(relaySettlement);
+    });
     const txHashes = await withTimeout(relayPromise, 30000, 'Monero 노드가 30초 안에 송금 전파 결과를 반환하지 않았습니다.');
     if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('relay 도중 지갑 세션이 바뀌어 결과를 확정하지 못했습니다.');
     if (!Array.isArray(txHashes) || txHashes.length !== pending.txs.length || txHashes.some((hash) => typeof hash !== 'string' || !hash)) {
@@ -991,8 +941,10 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
     }
     throw error;
   } finally {
-    settleRelay();
-    pendingRelaySettlements.delete(relaySettlement);
+    if (!pending.relayInProgress && pending.state !== 'relay-unknown') {
+      settleRelay();
+      pendingRelaySettlements.delete(relaySettlement);
+    }
   }
 });
 ipcMain.handle('wallet-export-backup', async () => {
@@ -1007,7 +959,10 @@ ipcMain.handle('wallet-export-backup', async () => {
   fs.copyFileSync(source, result.filePath);
   return { canceled: false, path: result.filePath };
 });
-ipcMain.handle('wallet-qr', async (_, text) => QRCode.toDataURL(String(text), { width: 220, margin: 1 }));
+ipcMain.handle('wallet-qr', async (_, text) => {
+  if (typeof text !== 'string' || text.length < 10 || text.length > 512) throw new Error('QR 데이터가 올바르지 않습니다.');
+  return QRCode.toDataURL(text, { width: 220, margin: 1 });
+});
 
 async function waitForPendingRelaySettlements() {
   while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
@@ -1083,5 +1038,4 @@ app.on('before-quit', (event) => {
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
 if (singleInstanceLock) app.whenReady().then(async () => {
   await makeWindow();
-  setTimeout(() => { checkForUpdates(); }, 4000);
 });

@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const {
   atomicToXmr,
   xmrToAtomic,
+  MAX_ATOMIC,
   calculateServiceFee,
   SERVICE_FEE_CAP_ATOMIC,
   validateMiningThreads,
@@ -22,6 +23,13 @@ test('XMR amount parsing rejects invalid and over-precision values', () => {
   for (const value of ['', '-1', '1e-3', '1.0000000000001', '.5', '1.']) {
     assert.throws(() => xmrToAtomic(value), { message: 'XMR 금액 형식이 올바르지 않습니다.' });
   }
+});
+
+test('XMR conversion rejects negative and uint64-overflow values', () => {
+  assert.equal(xmrToAtomic('18446744.073709551615'), MAX_ATOMIC);
+  assert.throws(() => xmrToAtomic('18446744.073709551616'), RangeError);
+  assert.throws(() => atomicToXmr(-1n), RangeError);
+  assert.throws(() => atomicToXmr(MAX_ATOMIC + 1n), RangeError);
 });
 
 test('service fee is 0.25 percent and capped at 0.05 XMR', () => {

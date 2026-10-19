@@ -1,6 +1,6 @@
 # josimi
 
-비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.0.0)**입니다.
+비수탁형 Monero 지갑 MVP입니다. 현재 소스 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.0.1)**입니다.
 
 ## 현재 구현
 
@@ -57,10 +57,10 @@ npm run dist
 생성물:
 
 - `dist/josimi.exe` — Windows Portable 단일 실행 파일
-- `dist/josimi-1.0.0-x64.zip` — ZIP 배포본
+- `dist/josimi-1.0.1-x64.zip` — ZIP 배포본
 - `dist/win-unpacked/`
 
-실행 중인 Portable EXE는 앱 시작 후 GitHub 릴리스 목록에서 가장 높은 버전의 안정 릴리스만 선택합니다. 새 릴리스의 `josimi.exe`와 SHA-256이 비교되면 별도 확인 없이 앱을 종료하고 새 EXE로 교체한 뒤 재실행합니다. draft와 pre-release는 제외합니다. 체크섬은 동일 GitHub 릴리스에서 함께 내려받으므로 독립 서명이나 코드 서명과 동등한 정품성 검증은 아닙니다.
+앱은 자동 업데이트를 수행하지 않습니다. 새 버전은 GitHub 릴리스 페이지에서 사용자가 직접 내려받고, 배포된 체크섬을 별도로 확인한 뒤 교체하세요.
 
 복구 흐름을 비교한 소스 참고 기록은 [`RESEARCH.md`](RESEARCH.md)에 있습니다.
 
