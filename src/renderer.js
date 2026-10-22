@@ -45,6 +45,7 @@ let cancelCallInProgress = false;
 let miningCallInProgress = false;
 let toastTimer;
 let currentSeed = null;
+let selectedWalletFile = null;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
@@ -67,6 +68,16 @@ function setMode(next) {
   $('restoreHeightLabel').classList.toggle('hidden', next !== 'restore');
   const dict = LANG[language];
   $('submitBtn').textContent = next === 'create' ? dict.createWallet : next === 'restore' ? dict.restoreWallet : dict.openWallet;
+}
+function showWalletFileStatus(fileName = '') {
+  $('walletFileStatus').textContent = fileName ? `선택한 key 파일: ${fileName}` : '';
+}
+async function chooseWalletFile(action) {
+  const result = await window.josimi.chooseWalletFile(action);
+  if (!result || result.canceled) return false;
+  selectedWalletFile = result;
+  showWalletFileStatus(result.fileName);
+  return true;
 }
 function renderTxs(txs = []) {
   if (!txs.length) { $('txList').innerHTML = '<div class="empty">아직 거래가 없습니다.</div>'; return; }
@@ -94,6 +105,13 @@ function resetInactivityTimer() {
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
+$('walletChoiceBtn').addEventListener('click', () => $('walletChoiceDialog').showModal());
+$('chooseExistingKeyBtn').addEventListener('click', async () => {
+  $('walletChoiceDialog').close();
+  setMode('open');
+  try { await chooseWalletFile('open'); } catch (error) { showError('authError', error); }
+});
+$('chooseNewKeyBtn').addEventListener('click', () => { $('walletChoiceDialog').close(); selectedWalletFile = null; showWalletFileStatus(); setMode('create'); });
 window.josimi.onNodeStatus(renderSync);
 syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.josimi.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
 function renderMiningStatus(status) {
@@ -156,6 +174,10 @@ setInterval(refreshMiningStatus, 5000);
 $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); refreshMiningStatus(); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
+  try {
+    if (mode === 'open' && !selectedWalletFile && !(await chooseWalletFile('open'))) return;
+    if ((mode === 'create' || mode === 'restore') && !(await chooseWalletFile('save'))) return;
+  } catch (error) { showError('authError', error); return; }
   const nodeValue = $('node').value.trim();
   if (!nodeValue) { showError('authError', new Error('원격 노드 주소를 입력하세요.')); return; }
   const restoreHeightValue = $('restoreHeight').value.trim();

@@ -43,6 +43,7 @@ let activeMiningConfig = { mode: 'pool', poolUrl: null, poolTls: true, p2poolPro
 let shutdownRequested = false;
 let miningError = null;
 let selectedWalletDir = null;
+let selectedWalletPath = null;
 let pendingTransactions = new Map();
 let walletSessionId = 0;
 let lastCompletedSend = null;
@@ -209,9 +210,16 @@ function walletDir() {
   fs.mkdirSync(selectedWalletDir, { recursive: true });
   return selectedWalletDir;
 }
-function walletPath() { return path.join(walletDir(), 'josimi-wallet'); }
+function walletPath() { return selectedWalletPath || path.join(walletDir(), 'josimi-wallet'); }
 function walletFiles(base = walletPath()) {
-  return fs.readdirSync(walletDir()).filter((name) => name === path.basename(base) || name.startsWith(`${path.basename(base)}.`));
+  const dir = path.dirname(base);
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir).filter((name) => name === path.basename(base) || name.startsWith(`${path.basename(base)}.`));
+}
+function normalizeWalletBase(filePath) {
+  if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('key 파일 경로가 선택되지 않았습니다.');
+  const resolved = path.resolve(filePath.trim());
+  return resolved.toLowerCase().endsWith('.keys') ? resolved.slice(0, -5) : resolved;
 }
 function archiveExistingWallet() {
   const files = walletFiles();
@@ -256,7 +264,9 @@ function restoreArchivedWallet(archive) {
   fs.rmSync(archive, { recursive: true, force: true });
 }
 function removeWalletFiles(base) {
-  for (const file of walletFiles(base)) fs.rmSync(path.join(walletDir(), file), { force: true });
+  const target = base || walletPath();
+  const dir = path.dirname(target);
+  for (const file of walletFiles(target)) fs.rmSync(path.join(dir, file), { force: true });
 }
 function normalizeNode(node) {
   const value = String(node || DEFAULT_NODES[0]).trim();
@@ -475,6 +485,30 @@ async function makeWindow() {
 }
 
 ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: true, miningPools: DEFAULT_MINING_POOLS, p2poolProfiles: ['main', 'mini', 'nano'] }));
+ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
+  if (action === 'save') {
+    const result = await dialog.showSaveDialog(mainWindow, {
+      title: '새 josimi key 파일 저장 위치 선택',
+      defaultPath: path.join(app.getPath('documents'), 'josimi-wallet.keys'),
+      filters: [{ name: 'josimi key file', extensions: ['keys'] }]
+    });
+    if (result.canceled || !result.filePath) return { canceled: true };
+    const base = normalizeWalletBase(result.filePath);
+    if (fs.existsSync(`${base}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 기존 파일은 열기에서 선택하거나 다른 이름을 사용하세요.');
+    selectedWalletPath = base;
+    return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
+  }
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'josimi key 파일 선택',
+    properties: ['openFile'],
+    filters: [{ name: 'josimi key file', extensions: ['keys'] }]
+  });
+  if (result.canceled || !result.filePaths[0]) return { canceled: true };
+  const base = normalizeWalletBase(result.filePaths[0]);
+  if (!fs.existsSync(`${base}.keys`)) throw new Error('선택한 key 파일을 찾을 수 없습니다.');
+  selectedWalletPath = base;
+  return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
+});
 ipcMain.handle('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
@@ -488,14 +522,16 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
-  const creationPath = tempWalletPath('josimi-create');
+  const customPath = selectedWalletPath;
+  if (customPath && fs.existsSync(`${customPath}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  const creationPath = customPath || tempWalletPath('josimi-create');
   let created; let archived = null;
   try {
     created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, server: activeConfig.node });
     const seed = await created.getSeed();
     const createdAddress = await created.getPrimaryAddress();
     await created.close(true);
-    archived = promoteWallet(creationPath);
+    if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     const summary = await loadSummary();
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
@@ -505,6 +541,7 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
     if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
     removeWalletFiles(creationPath);
     if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
+    if (customPath) selectedWalletPath = null;
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
@@ -522,14 +559,16 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
-  const recoveryPath = tempWalletPath('josimi-recovery');
+  const customPath = selectedWalletPath;
+  if (customPath && fs.existsSync(`${customPath}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  const recoveryPath = customPath || tempWalletPath('josimi-recovery');
   const normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
   let recovered; let archived = null;
   try {
     recovered = await monerojs.createWalletFull({ path: recoveryPath, password, networkType: network, seed: normalizedSeed, seedOffset: normalizedSeedOffset, restoreHeight: normalizedRestoreHeight, server: activeConfig.node });
     const recoveredAddress = await recovered.getPrimaryAddress();
     await recovered.close(true);
-    archived = promoteWallet(recoveryPath);
+    if (!customPath) archived = promoteWallet(recoveryPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     if (await wallet.getPrimaryAddress() !== recoveredAddress) throw new Error('복구 후 파일 주소 검증에 실패했습니다.');
   } catch (error) {
@@ -537,6 +576,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
     if (recovered) await recovered.close(true).catch(() => {});
     removeWalletFiles(recoveryPath);
     if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
+    if (customPath) selectedWalletPath = null;
     throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
   }
   if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
@@ -545,7 +585,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
 ipcMain.handle('wallet-open', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
-  if (!fs.existsSync(walletPath() + '.keys')) throw new Error('저장된 josimi 지갑이 없습니다. 새로 만들거나 seed로 복구하세요.');
+  if (!fs.existsSync(walletPath() + '.keys')) throw new Error('선택한 key 파일을 찾을 수 없습니다. key 파일을 선택한 뒤 다시 시도하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
@@ -643,6 +683,7 @@ ipcMain.handle('wallet-lock', async () => {
   pendingTransactions.clear();
   await stopMining();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
+  selectedWalletPath = null;
   return true;
 });
 ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 } = {}) => {

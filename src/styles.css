@@ -51,6 +51,9 @@ main{max-width:1160px;margin:0 auto;padding:56px 28px 70px}
 .primary:hover{background:var(--orange-soft)}
 .primary:disabled{opacity:.55;cursor:wait}
 .fine{font-size:11px;color:var(--muted);line-height:1.55;margin:15px 0 0}
+.wallet-file-status{min-height:18px;margin-top:10px;word-break:break-all}
+.link-button{display:block;width:100%;margin-top:12px;padding:5px 0;background:none;border:0;color:var(--orange-soft);font-size:12px;text-align:left;text-decoration:underline;text-underline-offset:3px}
+.link-button:hover{color:var(--text)}
 .error{margin-top:14px;background:#311c19;color:#f0a293;border:1px solid #71342b;border-radius:6px;padding:10px 11px;font-size:12px}
 .hidden{display:none!important}
 .dashboard-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
