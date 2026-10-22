@@ -1,6 +1,6 @@
 {
   "name": "josimi",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "josimi",
@@ -26,10 +26,12 @@
   "build": {
     "appId": "com.josimi.wallet",
     "productName": "josimi",
+    "icon": "assets/josimi.ico",
     "artifactName": "josimi-${version}-${arch}.${ext}",
     "files": [
       "src/**/*",
-      "package.json"
+      "package.json",
+      "assets/josimi.ico"
     ],
     "win": {
       "target": "portable"
