@@ -18,7 +18,6 @@ const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const XMRIG_VERSION = '6.26.0';
 const XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-windows-x64.zip';
 const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87d9e147';
-const P2POOL_API = 'https://api.github.com/repos/SChernykh/p2pool/releases/latest';
 const NETWORK = 'mainnet';
 const DEFAULT_MINING_POOLS = [
   { id: 'hashvault', name: 'HashVault', host: 'pool.hashvault.pro', port: 443, tls: true },
@@ -29,30 +28,21 @@ const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
   'https://node.monerodevs.org:18089'
 ];
-const LOCAL_NODE = 'http://127.0.0.1:18081';
 const APP_URL = pathToFileURL(path.join(__dirname, 'index.html')).href;
-const MONERO_CLI_VERSION = '0.18.5.3';
-const MONERO_CLI_URL = 'https://downloads.getmonero.org/cli/win64';
-const MONERO_HASHES_URL = 'https://www.getmonero.org/downloads/hashes.txt';
-const MONERO_CLI_SHA256 = 'f58f8f803f0141c77f40f327c516e4721f61d112084eb3d6644028cb9680b82a';
 
 let mainWindow;
 let wallet = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
-let daemonProcess = null;
-let daemonStatusTimer = null;
-let daemonPollInFlight = false;
 let miningProcesses = [];
 let p2poolProcess = null;
 let miningSession = null;
 let miningStopPromise = null;
 let miningStartRequest = null;
 let miningStartPromise = null;
-let activeMiningConfig = { mode: 'solo', poolUrl: null, poolTls: true, p2poolProfile: 'mini', p2poolEndpoint: null };
+let activeMiningConfig = { mode: 'pool', poolUrl: null, poolTls: true, p2poolProfile: 'mini', p2poolEndpoint: null };
 let shutdownRequested = false;
 let miningError = null;
 let selectedWalletDir = null;
-let selectedNodeDir = null;
 let pendingTransactions = new Map();
 let walletSessionId = 0;
 let lastCompletedSend = null;
@@ -125,18 +115,6 @@ function portableDataDir() {
 function hasWalletData(dir) {
   try { return fs.readdirSync(dir).some((name) => name === 'josimi-wallet.keys' || name.startsWith('josimi-wallet.')); } catch (_) { return false; }
 }
-function hasNodeData(dir) {
-  if (fs.existsSync(path.join(dir, 'bin', 'monerod.exe')) || fs.existsSync(path.join(dir, 'blockchain'))) return true;
-  try { return fs.readdirSync(dir).length > 0; } catch (_) { return false; }
-}
-function nodeDataDir() {
-  if (selectedNodeDir) return selectedNodeDir;
-  const legacy = path.join(app.getPath('userData'), 'monero-node');
-  const current = path.join(portableDataDir(), 'node');
-  selectedNodeDir = hasNodeData(legacy) && !hasNodeData(current) ? legacy : current;
-  return selectedNodeDir;
-}
-function nodeBinaryPath() { return path.join(nodeDataDir(), 'bin', 'monerod.exe'); }
 function findFile(root, filename) {
   if (!fs.existsSync(root)) return null;
   for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
@@ -149,17 +127,6 @@ function findFile(root, filename) {
 
 function emitNodeStatus(status) {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('node-status', status);
-}
-
-async function getLocalNodeStatus() {
-  try {
-    const response = await postJson(`${LOCAL_NODE}/json_rpc`, { jsonrpc: '2.0', id: 'josimi', method: 'get_info' });
-    const info = response.result || {};
-    const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
-    return { mode: 'local', node: LOCAL_NODE, state: info.synchronized ? 'synced' : 'syncing', synchronized: Boolean(info.synchronized), height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0), databaseSize: Number(info.database_size || 0) };
-  } catch (_) {
-    return { mode: 'local', node: LOCAL_NODE, state: daemonProcess ? 'starting' : 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, peers: 0 };
-  }
 }
 
 async function getNodeInfo(node) {
@@ -188,18 +155,12 @@ async function getRemoteNodeStatus(node) {
   }
 }
 
-async function pollLocalNode() {
-  if (daemonPollInFlight) return;
-  daemonPollInFlight = true;
-  try { const status = await getLocalNodeStatus(); emitNodeStatus(status); return status; } finally { daemonPollInFlight = false; }
-}
-
 async function downloadFile(url, destination, onProgress, redirects = 0) {
-  if (redirects > 5) throw new Error('Monero CLI 다운로드 리디렉션이 너무 많습니다.');
+  if (redirects > 5) throw new Error('다운로드 리디렉션이 너무 많습니다.');
   return new Promise((resolve, reject) => {
     const request = https.get(url, { headers: { 'User-Agent': 'josimi-node-installer' } }, (response) => {
       if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(new URL(response.headers.location, url).toString(), destination, onProgress, redirects + 1).then(resolve, reject); }
-      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`Monero CLI 다운로드 오류 (${response.statusCode})`)); }
+      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`다운로드 오류 (${response.statusCode})`)); }
       const total = Number(response.headers['content-length'] || 0); let received = 0;
       const output = fs.createWriteStream(destination); const hash = crypto.createHash('sha256');
       response.on('data', (chunk) => { received += chunk.length; hash.update(chunk); if (onProgress) onProgress(total ? received / total : 0); });
@@ -207,7 +168,7 @@ async function downloadFile(url, destination, onProgress, redirects = 0) {
       output.on('finish', () => output.close(() => resolve(hash.digest('hex'))));
       output.on('error', (error) => { response.destroy(); reject(error); });
     });
-    request.setTimeout(30000, () => request.destroy(new Error('Monero CLI 다운로드 시간이 초과되었습니다.')));
+    request.setTimeout(30000, () => request.destroy(new Error('다운로드 시간이 초과되었습니다.')));
     request.on('error', reject);
   });
 }
@@ -229,29 +190,6 @@ async function extractZip(zipPath, destination, shouldCancel = () => false) {
   });
 }
 
-async function installLocalNode() {
-  if (process.platform !== 'win32') throw new Error('현재 로컬 노드 자동 설치는 Windows에서 지원됩니다.');
-  const dir = nodeDataDir(); const binary = nodeBinaryPath();
-  if (fs.existsSync(binary)) return binary;
-  await fs.promises.mkdir(dir, { recursive: true });
-  const archive = path.join(dir, `monero-cli-${MONERO_CLI_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
-  emitNodeStatus({ mode: 'local', state: 'downloading', progress: 0, height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE });
-  const actualHash = await downloadFile(MONERO_CLI_URL, archive, (progress) => emitNodeStatus({ mode: 'local', state: 'downloading', progress: Math.floor(progress * 100), height: 0, targetHeight: 0, synchronized: false, node: LOCAL_NODE }));
-  if (shutdownRequested) { await fs.promises.rm(archive, { force: true }); throw new Error('Monero CLI 설치가 취소되었습니다.'); }
-  const hashes = (await requestUrl(MONERO_HASHES_URL)).toString('utf8');
-  const escapedVersion = MONERO_CLI_VERSION.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const expectedMatch = hashes.match(new RegExp(`([a-f0-9]{64})\\s+monero-win-x64-v${escapedVersion}\\.zip`, 'i'));
-  if (!expectedMatch || expectedMatch[1].toLowerCase() !== MONERO_CLI_SHA256 || actualHash !== MONERO_CLI_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 Monero CLI ZIP의 SHA-256 검증에 실패했습니다.'); }
-  await extractZip(archive, extracted, () => shutdownRequested);
-  const found = findFile(extracted, 'monerod.exe');
-  if (!found) throw new Error('Monero CLI ZIP에서 monerod.exe를 찾지 못했습니다.');
-  await fs.promises.mkdir(path.dirname(binary), { recursive: true });
-  await fs.promises.cp(path.dirname(found), path.dirname(binary), { recursive: true, force: true });
-  if (!fs.existsSync(binary)) throw new Error('Monero CLI 파일을 설치했지만 monerod.exe가 없습니다.');
-  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
-  return binary;
-}
-
 function withTimeout(promise, timeoutMs, message) {
   let timer;
   return Promise.race([
@@ -260,33 +198,7 @@ function withTimeout(promise, timeoutMs, message) {
   ]).finally(() => clearTimeout(timer));
 }
 
-async function startLocalNode() {
-  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  const binary = await installLocalNode();
-  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  const existing = await getLocalNodeStatus();
-  if (existing.state !== 'stopped') return existing;
-  const dataDir = path.join(nodeDataDir(), 'blockchain'); await fs.promises.mkdir(dataDir, { recursive: true });
-  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  if (daemonStatusTimer) clearInterval(daemonStatusTimer);
-  daemonStatusTimer = null;
-  daemonProcess = spawn(binary, ['--data-dir', dataDir, '--prune-blockchain', '--rpc-bind-ip', '127.0.0.1', '--rpc-bind-port', '18081', '--zmq-pub', 'tcp://127.0.0.1:18083', '--out-peers', '32', '--in-peers', '64', '--enforce-dns-checkpointing', '--enable-dns-blocklist', '--non-interactive', '--no-igd'], { cwd: path.dirname(binary), windowsHide: true, stdio: ['ignore', 'ignore', 'ignore'] });
-  daemonProcess.on('error', (error) => { console.warn('[josimi monerod]', error.message); daemonProcess = null; });
-  daemonProcess.on('close', () => { if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; daemonProcess = null; emitNodeStatus({ mode: 'local', state: 'stopped', synchronized: false, height: 0, targetHeight: 0, progress: 0, node: LOCAL_NODE }); });
-  daemonStatusTimer = setInterval(() => { pollLocalNode(); }, 3000); daemonStatusTimer.unref?.();
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-    const remaining = deadline - Date.now();
-    const status = await withTimeout(getLocalNodeStatus(), Math.min(5000, remaining), '로컬 노드 상태 확인 시간이 초과되었습니다.');
-    if (status.state !== 'stopped' && status.state !== 'starting') return status;
-    await new Promise((resolve) => setTimeout(resolve, Math.min(1000, Math.max(0, deadline - Date.now()))));
-  }
-  throw new Error('로컬 Monero 노드가 시작되지 않았습니다. 로그와 방화벽 설정을 확인하세요.');
-}
-
-async function resolveNode(node) { return String(node || '').trim() ? normalizeNode(node) : (await startLocalNode(), LOCAL_NODE); }
-async function stopLocalNode() { await stopMining(); if (daemonStatusTimer) clearInterval(daemonStatusTimer); daemonStatusTimer = null; if (daemonProcess) { daemonProcess.kill(); daemonProcess = null; } }
+async function resolveNode(node) { return normalizeNode(String(node || DEFAULT_NODES[0]).trim()); }
 
 
 function walletDir() {
@@ -378,20 +290,13 @@ function normalizePriority(priority) {
   return value;
 }
 async function ensureSendableNode() {
-  if (activeConfig.node === LOCAL_NODE) {
-    const status = await getLocalNodeStatus();
-    if (status.state === 'stopped' || status.state === 'starting') throw new Error('로컬 Monero 노드가 아직 시작되지 않았습니다.');
-    if (!status.synchronized) throw new Error(`노드 동기화가 끝날 때까지 송금할 수 없습니다. 현재 ${status.progress || 0}%입니다.`);
-    return;
-  }
   const info = await getNodeInfo(activeConfig.node);
   if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
 function isMinerRunning(entry) { return Boolean(entry && entry.status === 'running' && entry.child.exitCode === null && entry.child.signalCode === null); }
 async function getMiningStatus() {
-  const mode = activeMiningConfig.mode || 'solo';
-  if (mode === 'solo' && activeConfig.node !== LOCAL_NODE) return { active: false, supported: false, state: 'remote', error: miningError, mode };
-  const running = miningProcesses.filter(isMinerRunning);
+  const mode = activeMiningConfig.mode || 'pool';
+    const running = miningProcesses.filter(isMinerRunning);
   const starting = Boolean(miningStartRequest && !miningStartRequest.cancelled);
   const state = running.length >= 1 ? 'mining' : starting ? 'starting' : 'stopped';
   return {
@@ -456,45 +361,9 @@ async function chooseMiningPool() {
   const selected = available[0];
   return { ...selected, url: `${selected.tls ? 'stratum+ssl' : 'stratum+tcp'}://${selected.host}` };
 }
-function p2poolDataDir() { return path.join(portableDataDir(), 'p2pool'); }
-function p2poolBinaryPath() { return path.join(p2poolDataDir(), 'p2pool.exe'); }
-async function installP2Pool() {
-  if (process.platform !== 'win32') throw new Error('P2Pool 자동 설치는 Windows x64에서 지원됩니다.');
-  const dir = p2poolDataDir(); const binary = p2poolBinaryPath();
-  if (fs.existsSync(binary)) return binary;
-  await fs.promises.mkdir(dir, { recursive: true });
-  const release = JSON.parse((await requestUrl(P2POOL_API, { Accept: 'application/vnd.github+json' })).toString('utf8'));
-  const asset = release.assets?.find((candidate) => /^p2pool-v.*-windows-x64\.zip$/i.test(candidate.name));
-  if (!asset) throw new Error('P2Pool 최신 Windows x64 릴리스를 찾지 못했습니다.');
-  const archive = path.join(dir, asset.name); const extracted = path.join(dir, 'extracted');
-  const actualHash = await downloadFile(asset.browser_download_url, archive);
-  const expectedHash = String(asset.digest || '').replace(/^sha256:/i, '').toLowerCase();
-  if (!expectedHash || actualHash !== expectedHash) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 P2Pool ZIP의 SHA-256 검증에 실패했습니다.'); }
-  await extractZip(archive, extracted, () => shutdownRequested || Boolean(miningStartRequest?.cancelled));
-  const found = findFile(extracted, 'p2pool.exe');
-  if (!found) throw new Error('P2Pool ZIP에서 p2pool.exe를 찾지 못했습니다.');
-  await fs.promises.cp(path.dirname(found), dir, { recursive: true, force: true });
-  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
-  if (!fs.existsSync(binary)) throw new Error('P2Pool 설치 후 실행 파일을 찾지 못했습니다.');
-  return binary;
-}
-async function startP2Pool(address, profile, session) {
-  const binary = await installP2Pool();
-  const args = ['--host', '127.0.0.1', '--wallet', address, '--loglevel', '2'];
-  if (profile === 'mini') args.push('--mini');
-  if (profile === 'nano') args.push('--nano');
-  p2poolProcess = spawn(binary, args, { cwd: p2poolDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  p2poolProcess.stdout?.on('data', (chunk) => console.info('[josimi p2pool]', chunk.toString().trim()));
-  p2poolProcess.stderr?.on('data', (chunk) => console.warn('[josimi p2pool]', chunk.toString().trim()));
-  p2poolProcess.once('error', (error) => { if (miningSession === session && !session.stopping) miningError = `P2Pool 오류: ${error.message}`; emitMiningStatus(); });
-  p2poolProcess.once('close', (code) => { p2poolProcess = null; if (miningSession === session && !session.stopping) { miningError = `P2Pool이 종료되었습니다. (code ${code ?? '없음'})`; void stopMining(); } emitMiningStatus(); });
-  await new Promise((resolve, reject) => { const timer = setTimeout(() => reject(new Error('P2Pool 시작 시간이 초과되었습니다.')), 15000); p2poolProcess.once('spawn', () => { clearTimeout(timer); resolve(); }); p2poolProcess.once('error', (error) => { clearTimeout(timer); reject(error); }); });
-  return '127.0.0.1:3333';
-}
 function startXMRig(binary, address, role, threadCount, session, config) {
   const args = config.cpuAuto100 ? ['--cpu-max-threads-hint', '100', '--no-color'] : ['--threads', String(threadCount), '--no-color'];
-  if (config.mode === 'solo') args.push('--daemon', '-o', '127.0.0.1:18081', '-u', address);
-  else if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint || '127.0.0.1:3333');
+  if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint);
   else args.push('-o', config.poolUrl, '-u', address, '-p', 'josimi', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
@@ -594,7 +463,7 @@ async function loadSummary() {
   const balance = await activeWallet.getBalance(0);
   let txs = [];
   try { txs = await activeWallet.getTxs({ accountIndex: 0 }); } catch (_) {}
-  const sync = activeConfig.node === LOCAL_NODE ? await getLocalNodeStatus() : await getRemoteNodeStatus(activeConfig.node);
+  const sync = await getRemoteNodeStatus(activeConfig.node);
   if (activeWallet !== wallet || sessionId !== walletSessionId) throw new Error('요약을 불러오는 중 지갑 세션이 변경되었습니다. 다시 열어 주세요.');
   return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node, sync };
 }
@@ -605,7 +474,7 @@ async function makeWindow() {
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, localNode: LOCAL_NODE, localNodeSupported: process.platform === 'win32', miningPools: DEFAULT_MINING_POOLS, p2poolProfiles: ['main', 'mini', 'nano'] }));
+ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: true, miningPools: DEFAULT_MINING_POOLS, p2poolProfiles: ['main', 'mini', 'nano'] }));
 ipcMain.handle('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
@@ -696,9 +565,9 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
-ipcMain.handle('node-status', async () => activeConfig.node === LOCAL_NODE ? getLocalNodeStatus() : getRemoteNodeStatus(activeConfig.node));
+ipcMain.handle('node-status', async () => getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('mining-status', async () => getMiningStatus());
-ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, ignoreBattery = false, mode = 'solo', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'local', p2poolNodeAddress } = {}) => {
+ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, ignoreBattery = false, mode = 'pool', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'remote', p2poolNodeAddress } = {}) => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   if (miningStartRequest) throw new Error('채굴 시작 또는 중지가 이미 진행 중입니다.');
   const request = { cancelled: false };
@@ -712,7 +581,7 @@ ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, igno
       activeWallet = wallet;
       sessionId = walletSessionId;
       if (process.platform !== 'win32') throw new Error('XMRig 채굴은 현재 Windows에서만 지원됩니다.');
-      if (!['solo', 'pool', 'auto', 'p2pool'].includes(mode)) throw new Error('지원하지 않는 채굴 모드입니다.');
+      if (!['pool', 'auto', 'p2pool'].includes(mode)) throw new Error('원격 풀 또는 원격 P2Pool 채굴만 지원합니다.');
       const totalThreads = cpuAuto100 ? os.cpus().length : validateMiningThreads(threads);
       await stopMining({ preserveStarting: true });
       if (request.cancelled || shutdownRequested) return getMiningStatus();
@@ -725,27 +594,15 @@ ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, igno
       if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
       await assertMainnetAddress(address, '채굴 주소');
       const config = { mode, cpuAuto100: Boolean(cpuAuto100), poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolProfile };
-      if (mode === 'solo') {
-        if (activeConfig.node !== LOCAL_NODE) throw new Error('Solo 채굴은 내 컴퓨터의 로컬 Monero 노드에서만 사용할 수 있습니다.');
-        await startLocalNode();
-        const status = await getLocalNodeStatus();
-        if (!status.synchronized) throw new Error('노드 동기화가 끝난 뒤 채굴을 시작하세요.');
-      } else if (mode === 'pool' || mode === 'auto') {
+      if (mode === 'pool' || mode === 'auto') {
         const selected = mode === 'auto' ? await chooseMiningPool() : normalizePoolUrl(String(poolUrl || '').includes('://') ? poolUrl : `${poolTls ? 'stratum+ssl' : 'stratum+tcp'}://${poolUrl}`);
         config.poolUrl = selected.url;
         config.poolTls = selected.tls;
       } else {
         if (!['main', 'mini', 'nano'].includes(p2poolProfile)) throw new Error('P2Pool 프로필이 올바르지 않습니다.');
-        if (p2poolNodeMode === 'remote') {
-          const remote = normalizePoolUrl(String(p2poolNodeAddress || '').includes('://') ? p2poolNodeAddress : `stratum+tcp://${p2poolNodeAddress}`);
-          config.p2poolEndpoint = remote.url.replace(/^stratum\+tcp:\/\//, '');
-        } else {
-          if (activeConfig.node !== LOCAL_NODE) throw new Error('P2Pool 로컬 모드는 로컬 Monero 노드가 필요합니다.');
-          await startLocalNode();
-          const status = await getLocalNodeStatus();
-          if (!status.synchronized) throw new Error('P2Pool을 시작하기 전에 Monero 노드 동기화를 끝내세요.');
-          config.p2poolEndpoint = await startP2Pool(address, p2poolProfile, session);
-        }
+        if (p2poolNodeMode !== 'remote') throw new Error('원격 P2Pool 주소를 입력해야 합니다. 로컬 monerod는 지원하지 않습니다.');
+        const remote = normalizePoolUrl(String(p2poolNodeAddress || '').includes('://') ? p2poolNodeAddress : `stratum+tcp://${p2poolNodeAddress}`);
+        config.p2poolEndpoint = remote.url.replace(/^stratum\+tcp:\/\//, '');
       }
       activeMiningConfig = config;
       if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
@@ -983,7 +840,6 @@ async function shutdownRuntime() {
   if (startPromise && !await waitForPromiseOrTimeout(startPromise, 45000)) console.warn('[josimi shutdown] mining setup did not settle within 45 seconds; shutdown flag prevents further miner starts');
   try { await stopMining(); stopError = null; } catch (error) { if (!stopError) stopError = error; }
   if (stopError) throw stopError;
-  await stopLocalNode();
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
