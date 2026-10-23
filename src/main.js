@@ -211,6 +211,8 @@ function walletDir() {
   return selectedWalletDir;
 }
 function walletPath() { return selectedWalletPath || path.join(walletDir(), 'josimi-wallet'); }
+function keyFilePath(base) { return `${base}.keys`; }
+function isRegularFile(filePath) { try { return fs.statSync(filePath).isFile(); } catch (_) { return false; } }
 function walletFiles(base = walletPath()) {
   const dir = path.dirname(base);
   if (!fs.existsSync(dir)) return [];
@@ -219,7 +221,12 @@ function walletFiles(base = walletPath()) {
 function normalizeWalletBase(filePath) {
   if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('key 파일 경로가 선택되지 않았습니다.');
   const resolved = path.resolve(filePath.trim());
-  return resolved.toLowerCase().endsWith('.keys') ? resolved.slice(0, -5) : resolved;
+  const hasKeysExtension = resolved.toLowerCase().endsWith('.keys');
+  const originalName = path.basename(resolved);
+  const stem = hasKeysExtension ? originalName.slice(0, -5) : originalName;
+  if (!stem || stem === '.' || stem === '..') throw new Error('key 파일 이름이 올바르지 않습니다.');
+  const base = hasKeysExtension ? resolved.slice(0, -5) : resolved;
+  return base;
 }
 function archiveExistingWallet() {
   const files = walletFiles();
@@ -502,7 +509,7 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
     });
     if (result.canceled || !result.filePath) return { canceled: true };
     const base = normalizeWalletBase(result.filePath);
-    if (fs.existsSync(`${base}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 기존 파일은 열기에서 선택하거나 다른 이름을 사용하세요.');
+    if (fs.existsSync(keyFilePath(base))) throw new Error('이미 존재하는 key 파일입니다. 기존 파일은 열기에서 선택하거나 다른 이름을 사용하세요.');
     selectedWalletPath = base;
     return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
   }
@@ -513,11 +520,11 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
   const base = normalizeWalletBase(result.filePaths[0]);
-  if (!fs.existsSync(`${base}.keys`)) throw new Error('선택한 key 파일을 찾을 수 없습니다.');
+  if (!isRegularFile(keyFilePath(base))) throw new Error('선택한 항목이 올바른 .keys 파일이 아닙니다. key 파일을 다시 선택하세요.');
   selectedWalletPath = base;
   return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
 });
-ipcMain.handle('wallet-create', async (_, payload = {}) => {
+  ipcMain.handle('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
   assertMainnetNetwork(network);
@@ -531,7 +538,7 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
   const customPath = selectedWalletPath;
-  if (customPath && fs.existsSync(`${customPath}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  if (customPath && fs.existsSync(keyFilePath(customPath))) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
   const creationPath = customPath || tempWalletPath('josimi-create');
   let created; let archived = null;
   try {
@@ -568,7 +575,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
   const customPath = selectedWalletPath;
-  if (customPath && fs.existsSync(`${customPath}.keys`)) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  if (customPath && fs.existsSync(keyFilePath(customPath))) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
   const recoveryPath = customPath || tempWalletPath('josimi-recovery');
   const normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
   let recovered; let archived = null;
@@ -593,7 +600,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
 ipcMain.handle('wallet-open', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
-  if (!fs.existsSync(walletPath() + '.keys')) throw new Error('선택한 key 파일을 찾을 수 없습니다. key 파일을 선택한 뒤 다시 시도하세요.');
+  if (!isRegularFile(keyFilePath(walletPath()))) throw new Error('선택한 .keys 파일을 찾을 수 없습니다. 파일 선택에서 실제 key 파일을 선택한 뒤 다시 시도하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
@@ -609,7 +616,7 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   } catch (error) {
     if (wallet) await wallet.close(true).catch(() => {});
     wallet = null;
-    throw error;
+    throw new Error(`key 파일을 열 수 없습니다. 비밀번호가 맞는지, 파일이 손상되지 않았는지 확인하세요. (${error.message})`);
   }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
@@ -857,14 +864,20 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
 ipcMain.handle('wallet-export-backup', async () => {
   ensureWallet();
   const sessionId = walletSessionId;
-  const source = walletPath() + '.keys';
-  if (!fs.existsSync(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
+  const sourceBase = walletPath();
+  const source = keyFilePath(sourceBase);
+  if (!isRegularFile(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
   const result = await dialog.showSaveDialog(mainWindow, { title: 'josimi 지갑 백업 저장', defaultPath: 'josimi-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
   if (!wallet || sessionId !== walletSessionId) throw new Error('백업 저장 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
-  if (path.resolve(result.filePath) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
-  fs.copyFileSync(source, result.filePath);
-  return { canceled: false, path: result.filePath };
+  const destinationBase = normalizeWalletBase(result.filePath);
+  const destination = keyFilePath(destinationBase);
+  if (path.resolve(destination) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
+  if (fs.existsSync(destination)) throw new Error('같은 이름의 key 파일이 이미 있습니다. 다른 백업 이름을 선택하세요.');
+  fs.copyFileSync(source, destination);
+  const sourceAddress = `${sourceBase}.address.txt`;
+  if (isRegularFile(sourceAddress)) fs.copyFileSync(sourceAddress, `${destinationBase}.address.txt`);
+  return { canceled: false, path: destination };
 });
 ipcMain.handle('wallet-qr', async (_, text) => {
   if (typeof text !== 'string' || text.length < 10 || text.length > 512) throw new Error('QR 데이터가 올바르지 않습니다.');
