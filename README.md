@@ -1,13 +1,14 @@
 # josimi
 
-비수탁형 Monero 지갑입니다. 현재 작업 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.1.0)**입니다.
+비수탁형 Monero 지갑입니다. 현재 작업 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.1.1)**입니다.
 
 ## 현재 구현
 
 - Electron 기반 Windows x64 ZIP (`josimi.exe` 포함)
 - 한국어 / English / 中文 / 日本語 언어 선택
 - 로컬 wallet 파일 저장 및 비밀번호 잠금
-- 새 지갑 생성 / Monero seed 복구 / 지갑 열기
+- 첫 실행은 새 지갑 만들기로 시작하며, 기존 지갑 열기는 `.keys` 파일을 선택한 뒤 비밀번호를 입력
+- Monero seed 복구
 - 복구 전 seed 형식 확인 및 기존 지갑 자동 보관
 - 주소 표시·복사 / QR
 - Monero GUI 방식의 여러 계정 및 계정별 하위 주소 생성·이름 변경·잔액 표시

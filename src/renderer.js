@@ -41,6 +41,10 @@ Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', min
 Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningAuto100: 'Automatically use 100% CPU', miningFine: 'Uses remote nodes and remote pools without local monerod. Check power, heat, and what your operating system can handle.', miningRemote: 'Remote node mode' });
 Object.assign(LANG.zh, { miningAuto100: '自动使用 100% CPU' });
 Object.assign(LANG.ja, { miningAuto100: 'CPUを自動で100%使用' });
+Object.assign(LANG.ko, { walletSubtitle: '새 지갑 만들기부터 시작하세요.', existingKeysOpen: '이미 지갑이 있나요? .keys 파일 열기', selectedKeyFile: '선택한 .keys 파일' });
+Object.assign(LANG.en, { walletSubtitle: 'Start by creating a new wallet.', existingKeysOpen: 'Already have a wallet? Open a .keys file', selectedKeyFile: 'Selected .keys file' });
+Object.assign(LANG.zh, { walletSubtitle: '请先创建一个新钱包。', existingKeysOpen: '已有钱包？打开 .keys 文件', selectedKeyFile: '已选 .keys 文件' });
+Object.assign(LANG.ja, { walletSubtitle: 'まず新しいウォレットを作成してください。', existingKeysOpen: '既にウォレットがありますか？.keys ファイルを開く', selectedKeyFile: '選択した .keys ファイル' });
 function applyLanguage() {
   const dict = LANG[language];
   document.documentElement.lang = language;
@@ -85,7 +89,7 @@ function setMode(next) {
   $('submitBtn').textContent = next === 'create' ? dict.createWallet : next === 'restore' ? dict.restoreWallet : dict.openWallet;
 }
 function showWalletFileStatus(fileName = '') {
-  $('walletFileStatus').textContent = fileName ? `선택한 지갑 이름: ${fileName} (본체 파일 + ${fileName}.keys)` : '';
+  $('walletFileStatus').textContent = fileName ? `${LANG[language].selectedKeyFile}: ${fileName}.keys` : '';
 }
 async function chooseWalletFile(action) {
   const result = await window.josimi.chooseWalletFile(action);
@@ -164,13 +168,15 @@ function resetInactivityTimer() {
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
 document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
-$('walletChoiceBtn').addEventListener('click', () => $('walletChoiceDialog').showModal());
-$('chooseExistingKeyBtn').addEventListener('click', async () => {
-  $('walletChoiceDialog').close();
-  setMode('open');
-  try { await chooseWalletFile('open'); } catch (error) { showError('authError', error); }
+$('walletChoiceBtn').addEventListener('click', async () => {
+  clearError('authError');
+  try {
+    if (!(await chooseWalletFile('open'))) return;
+    document.querySelector('[data-tab="open"]').classList.remove('hidden');
+    setMode('open');
+    $('password').focus();
+  } catch (error) { showError('authError', error); }
 });
-$('chooseNewKeyBtn').addEventListener('click', () => { $('walletChoiceDialog').close(); selectedWalletFile = null; showWalletFileStatus(); setMode('create'); });
 window.josimi.onNodeStatus(renderSync);
  $('receiveAccount').addEventListener('change', () => renderAccountManagement(currentAccounts, currentAddressBook));
  $('receiveSubaddress').addEventListener('change', renderReceiveAddress);
@@ -378,7 +384,7 @@ $('sendForm').addEventListener('submit', async (event) => {
  $('cancelSend').addEventListener('click', async () => { if (cancelCallInProgress || sendCallInProgress) return; cancelCallInProgress = true; $('cancelSend').disabled = true; const pending = pendingSend; try { if (pending?.pendingId) { const cancelled = await window.josimi.cancelSend(pending).catch(() => false); if (!cancelled) { showError('sendDialogError', new Error('송금 전파 여부가 불확실합니다. 취소하거나 새 송금을 만들지 말고, 같은 거래를 다시 확인하세요.')); return; } } pendingSend = null; $('confirmDialog').close(); } finally { cancelCallInProgress = false; $('cancelSend').disabled = false; } });
  $('confirmDialog').addEventListener('cancel', (event) => { event.preventDefault(); $('cancelSend').click(); });
  $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); try { await refresh(); } catch (e) { showToast(`송금은 완료됐지만 새로고침에 실패했습니다: ${e.message}`); } } catch (e) { showError('sendDialogError', e); } finally { sendCallInProgress = false; $('confirmSend').disabled = false; $('cancelSend').disabled = false; } });
-setMode('open');
+setMode('create');
 applyLanguage();
 async function applyPendingSendStatus(status) {
   if (!status || status.pendingId !== pendingSend?.pendingId) return;

@@ -12,6 +12,7 @@ const {
   normalizeWalletIndex,
   normalizeWalletLabel,
   normalizeTransactionNote,
+  isMoneroKeysFile,
   isAllowedNodeRedirect
 } = require('../src/core');
 
@@ -70,4 +71,12 @@ test('wallet labels and transaction notes are trimmed and bounded', () => {
   assert.throws(() => normalizeWalletLabel('x'.repeat(81)), RangeError);
   assert.throws(() => normalizeTransactionNote('x'.repeat(501)), RangeError);
   assert.throws(() => normalizeWalletLabel({}), TypeError);
+});
+
+test('opening an existing wallet accepts only a .keys file', () => {
+  assert.equal(isMoneroKeysFile('C:\\Wallets\\Savings.keys'), true);
+  assert.equal(isMoneroKeysFile('/home/user/Wallet.keys'), true);
+  assert.equal(isMoneroKeysFile('Wallet'), false);
+  assert.equal(isMoneroKeysFile('Wallet.address.txt'), false);
+  assert.equal(isMoneroKeysFile(null), false);
 });

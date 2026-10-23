@@ -10,7 +10,7 @@ const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, isAllowedNodeRedirect } = require('./core');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, isAllowedNodeRedirect, isMoneroKeysFile } = require('./core');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
@@ -570,12 +570,14 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
     return { canceled: false, path: base, fileName: path.basename(base) };
   }
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'josimi 지갑 파일 선택',
-    properties: ['openFile']
+    title: 'Monero 지갑 .keys 파일 선택',
+    properties: ['openFile'],
+    filters: [{ name: 'Monero wallet keys (*.keys)', extensions: ['keys'] }]
   });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
+  if (!isMoneroKeysFile(result.filePaths[0])) throw new Error('Monero GUI 지갑의 .keys 파일을 선택하세요.');
   const base = normalizeWalletBase(result.filePaths[0]);
-  if (!isRegularFile(base) && !isRegularFile(keyFilePath(base))) throw new Error('선택한 파일은 Monero 지갑 파일이 아닙니다. 본체 파일 또는 .keys 파일을 선택하세요.');
+  if (!isRegularFile(keyFilePath(base))) throw new Error('선택한 .keys 파일을 찾을 수 없습니다.');
   selectedWalletPath = base;
   return { canceled: false, path: base, fileName: path.basename(base) };
 });

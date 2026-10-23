@@ -60,6 +60,10 @@ function normalizeTransactionNote(value) {
   return note;
 }
 
+function isMoneroKeysFile(filePath) {
+  return typeof filePath === 'string' && filePath.toLowerCase().endsWith('.keys');
+}
+
 function isAllowedNodeRedirect(fromUrl, toUrl) {
   try {
     const from = new URL(fromUrl);
@@ -83,5 +87,6 @@ module.exports = {
   normalizeWalletIndex,
   normalizeWalletLabel,
   normalizeTransactionNote,
+  isMoneroKeysFile,
   isAllowedNodeRedirect
 };
