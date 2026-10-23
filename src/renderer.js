@@ -70,7 +70,7 @@ function setMode(next) {
   $('submitBtn').textContent = next === 'create' ? dict.createWallet : next === 'restore' ? dict.restoreWallet : dict.openWallet;
 }
 function showWalletFileStatus(fileName = '') {
-  $('walletFileStatus').textContent = fileName ? `선택한 key 파일: ${fileName}` : '';
+  $('walletFileStatus').textContent = fileName ? `선택한 지갑 이름: ${fileName} (본체 파일 + ${fileName}.keys)` : '';
 }
 async function chooseWalletFile(action) {
   const result = await window.josimi.chooseWalletFile(action);

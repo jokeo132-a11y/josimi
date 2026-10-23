@@ -213,6 +213,9 @@ function walletDir() {
 function walletPath() { return selectedWalletPath || path.join(walletDir(), 'josimi-wallet'); }
 function keyFilePath(base) { return `${base}.keys`; }
 function isRegularFile(filePath) { try { return fs.statSync(filePath).isFile(); } catch (_) { return false; } }
+function walletFamilyExists(base) {
+  return isRegularFile(base) || isRegularFile(keyFilePath(base)) || isRegularFile(`${base}.address.txt`);
+}
 function walletFiles(base = walletPath()) {
   const dir = path.dirname(base);
   if (!fs.existsSync(dir)) return [];
@@ -221,11 +224,14 @@ function walletFiles(base = walletPath()) {
 function normalizeWalletBase(filePath) {
   if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('key 파일 경로가 선택되지 않았습니다.');
   const resolved = path.resolve(filePath.trim());
-  const hasKeysExtension = resolved.toLowerCase().endsWith('.keys');
+  const lower = resolved.toLowerCase();
+  const hasKeysExtension = lower.endsWith('.keys');
+  const hasAddressExtension = lower.endsWith('.address.txt');
   const originalName = path.basename(resolved);
-  const stem = hasKeysExtension ? originalName.slice(0, -5) : originalName;
+  const suffixLength = hasKeysExtension ? 5 : hasAddressExtension ? 12 : 0;
+  const stem = suffixLength ? originalName.slice(0, -suffixLength) : originalName;
   if (!stem || stem === '.' || stem === '..') throw new Error('key 파일 이름이 올바르지 않습니다.');
-  const base = hasKeysExtension ? resolved.slice(0, -5) : resolved;
+  const base = suffixLength ? resolved.slice(0, -suffixLength) : resolved;
   return base;
 }
 function archiveExistingWallet() {
@@ -503,26 +509,24 @@ ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_
 ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   if (action === 'save') {
     const result = await dialog.showSaveDialog(mainWindow, {
-      title: '새 josimi key 파일 저장 위치 선택',
-      defaultPath: path.join(app.getPath('documents'), 'josimi-wallet.keys'),
-      filters: [{ name: 'josimi key file', extensions: ['keys'] }]
+      title: '새 josimi 지갑 파일 저장 위치 선택',
+      defaultPath: path.join(app.getPath('documents'), 'josimi-wallet')
     });
     if (result.canceled || !result.filePath) return { canceled: true };
     const base = normalizeWalletBase(result.filePath);
-    if (fs.existsSync(keyFilePath(base))) throw new Error('이미 존재하는 key 파일입니다. 기존 파일은 열기에서 선택하거나 다른 이름을 사용하세요.');
+    if (walletFamilyExists(base)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 다른 이름을 사용하세요.');
     selectedWalletPath = base;
-    return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
+    return { canceled: false, path: base, fileName: path.basename(base) };
   }
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'josimi key 파일 선택',
-    properties: ['openFile'],
-    filters: [{ name: 'josimi key file', extensions: ['keys'] }]
+    title: 'josimi 지갑 파일 선택',
+    properties: ['openFile']
   });
   if (result.canceled || !result.filePaths[0]) return { canceled: true };
   const base = normalizeWalletBase(result.filePaths[0]);
-  if (!isRegularFile(keyFilePath(base))) throw new Error('선택한 항목이 올바른 .keys 파일이 아닙니다. key 파일을 다시 선택하세요.');
+  if (!isRegularFile(base) && !isRegularFile(keyFilePath(base))) throw new Error('선택한 파일은 Monero 지갑 파일이 아닙니다. 본체 파일 또는 .keys 파일을 선택하세요.');
   selectedWalletPath = base;
-  return { canceled: false, path: base, fileName: path.basename(`${base}.keys`) };
+  return { canceled: false, path: base, fileName: path.basename(base) };
 });
   ipcMain.handle('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
@@ -538,7 +542,7 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
   const customPath = selectedWalletPath;
-  if (customPath && fs.existsSync(keyFilePath(customPath))) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
   const creationPath = customPath || tempWalletPath('josimi-create');
   let created; let archived = null;
   try {
@@ -575,7 +579,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
   const customPath = selectedWalletPath;
-  if (customPath && fs.existsSync(keyFilePath(customPath))) throw new Error('이미 존재하는 key 파일입니다. 열기에서 사용하거나 새 파일명을 선택하세요.');
+  if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
   const recoveryPath = customPath || tempWalletPath('josimi-recovery');
   const normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
   let recovered; let archived = null;
@@ -600,7 +604,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
 ipcMain.handle('wallet-open', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
-  if (!isRegularFile(keyFilePath(walletPath()))) throw new Error('선택한 .keys 파일을 찾을 수 없습니다. 파일 선택에서 실제 key 파일을 선택한 뒤 다시 시도하세요.');
+  if (!isRegularFile(walletPath()) && !isRegularFile(keyFilePath(walletPath()))) throw new Error('선택한 파일은 Monero 지갑 파일이 아닙니다. 본체 파일 또는 .keys 파일을 선택하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
