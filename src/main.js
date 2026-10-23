@@ -328,22 +328,18 @@ function emitMiningStatus() {
 }
 function minerDataDir() { return path.join(portableDataDir(), 'miner'); }
 function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig.exe'); }
+function bundledRuntimePath(...parts) {
+  const root = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked') : path.join(__dirname, '..');
+  return path.join(root, 'assets', 'runtime', ...parts);
+}
+function bundledXMRigPath() { return bundledRuntimePath('xmrig', 'xmrig-6.26.0', 'xmrig.exe'); }
+function bundledP2PoolPath() { return bundledRuntimePath('p2pool', 'p2pool-v4.18.1-windows-x64', 'p2pool.exe'); }
 async function installXMRig() {
   if (process.platform !== 'win32') throw new Error('XMRig 채굴은 Windows에서 지원됩니다.');
-  const dir = minerDataDir(); const binary = minerBinaryPath();
-  if (fs.existsSync(binary)) return binary;
-  await fs.promises.mkdir(dir, { recursive: true });
-  const archive = path.join(dir, `xmrig-${XMRIG_VERSION}.zip`); const extracted = path.join(dir, 'extracted');
-  const actualHash = await downloadFile(XMRIG_URL, archive);
-  if (shutdownRequested || miningStartRequest?.cancelled) { await fs.promises.rm(archive, { force: true }); throw new Error('채굴 설치가 취소되었습니다.'); }
-  if (actualHash !== XMRIG_SHA256) { await fs.promises.rm(archive, { force: true }); throw new Error('공식 XMRig ZIP의 SHA-256 검증에 실패했습니다.'); }
-  await extractZip(archive, extracted, () => shutdownRequested || Boolean(miningStartRequest?.cancelled));
-  const found = findFile(extracted, 'xmrig.exe');
-  if (!found) throw new Error('XMRig ZIP에서 xmrig.exe를 찾지 못했습니다.');
-  await fs.promises.cp(path.dirname(found), dir, { recursive: true, force: true });
-  await fs.promises.rm(extracted, { recursive: true, force: true }); await fs.promises.rm(archive, { force: true });
-  if (!fs.existsSync(binary)) throw new Error('XMRig 설치 후 실행 파일을 찾지 못했습니다.');
-  return binary;
+  const bundled = bundledXMRigPath();
+  if (!fs.existsSync(bundled)) throw new Error('앱에 포함된 XMRig 실행 파일을 찾지 못했습니다. 설치 파일을 다시 받아 주세요.');
+  await fs.promises.mkdir(minerDataDir(), { recursive: true });
+  return bundled;
 }
 function normalizePoolUrl(value) {
   const raw = String(value || '').trim();
@@ -369,21 +365,28 @@ async function chooseMiningPool() {
   const available = results.filter((result) => result.status === 'fulfilled').map((result) => result.value).sort((a, b) => a.latency - b.latency);
   if (!available.length) throw new Error('자동 선택할 수 있는 채굴 풀에 연결하지 못했습니다. 직접 풀 주소를 입력해 보세요.');
   const selected = available[0];
-  return { ...selected, url: `${selected.tls ? 'stratum+ssl' : 'stratum+tcp'}://${selected.host}` };
+  return { ...selected, url: `${selected.tls ? 'stratum+ssl' : 'stratum+tcp'}://${selected.host}:${selected.port}` };
 }
 function startXMRig(binary, address, role, threadCount, session, config) {
   const args = config.cpuAuto100 ? ['--cpu-max-threads-hint', '100', '--no-color'] : ['--threads', String(threadCount), '--no-color'];
   if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint);
-  else args.push('-o', config.poolUrl, '-u', address, '-p', 'josimi', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
+  else args.push('-o', config.poolUrl.replace(/^(stratum\+tcp|stratum\+ssl):\/\//, ''), '-u', address, '-p', 'josimi', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
   if (!session.ignoreBattery) args.push('--pause-on-battery');
-  const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] });
+  const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   const entry = { child: processHandle, address, role, threads: threadCount, status: 'starting', error: null, closeSeen: false };
+  const output = [];
+  const recordOutput = (chunk) => { const text = chunk.toString().trim(); if (text) { output.push(text); if (output.length > 20) output.shift(); console.info(`[josimi ${role}]`, text); } };
   entry.spawned = new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${role} XMRig 프로세스 시작 시간이 초과되었습니다.`)), 10000);
-    processHandle.once('spawn', () => { clearTimeout(timer); entry.status = 'running'; resolve(); emitMiningStatus(); });
+    processHandle.once('spawn', () => {
+      clearTimeout(timer); entry.status = 'running'; entry.output = output;
+      setTimeout(() => { if (entry.closeSeen && miningSession === session) { miningError = `${role}가 시작 직후 종료되었습니다. ${output.slice(-3).join(' ')}`; emitMiningStatus(); } }, 2500);
+      resolve(); emitMiningStatus();
+    });
     processHandle.once('error', (error) => { clearTimeout(timer); entry.status = 'error'; entry.error = error.message; reject(error); });
   });
-  processHandle.stderr.on('data', (chunk) => console.warn('[josimi xmrig]', chunk.toString().trim()));
+  processHandle.stdout.on('data', recordOutput);
+  processHandle.stderr.on('data', recordOutput);
   processHandle.on('error', (error) => {
     entry.status = 'error'; entry.error = error.message;
     console.warn('[josimi xmrig]', error.message);
@@ -394,7 +397,8 @@ function startXMRig(binary, address, role, threadCount, session, config) {
     entry.closeSeen = true;
     entry.status = 'stopped';
     if (miningSession === session && !session.stopping) {
-      miningError = `${role} 채굴 프로세스가 예기치 않게 종료되었습니다. (code ${code ?? '없음'}, signal ${signal || '없음'})`;
+      const detail = output.slice(-3).join(' ').slice(0, 500);
+      miningError = `${role} 채굴 프로세스가 예기치 않게 종료되었습니다. (code ${code ?? '없음'}, signal ${signal || '없음'})${detail ? ` ${detail}` : ''}`;
       void stopMining();
     }
     emitMiningStatus();
