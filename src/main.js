@@ -327,7 +327,7 @@ function emitMiningStatus() {
   if (mainWindow && !mainWindow.isDestroyed()) getMiningStatus().then((status) => mainWindow?.webContents.send('mining-status', status)).catch(() => {});
 }
 function minerDataDir() { return path.join(portableDataDir(), 'miner'); }
-function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig.exe'); }
+function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig-6.26.0', 'xmrig.exe'); }
 function bundledRuntimePath(...parts) {
   const root = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked') : path.join(__dirname, '..');
   return path.join(root, 'assets', 'runtime', ...parts);
@@ -338,8 +338,12 @@ async function installXMRig() {
   if (process.platform !== 'win32') throw new Error('XMRig 채굴은 Windows에서 지원됩니다.');
   const bundled = bundledXMRigPath();
   if (!fs.existsSync(bundled)) throw new Error('앱에 포함된 XMRig 실행 파일을 찾지 못했습니다. 설치 파일을 다시 받아 주세요.');
+  const bundledDir = path.dirname(bundled);
+  const executable = minerBinaryPath();
   await fs.promises.mkdir(minerDataDir(), { recursive: true });
-  return bundled;
+  if (!fs.existsSync(executable)) await fs.promises.cp(bundledDir, path.dirname(executable), { recursive: true, force: true });
+  if (!fs.existsSync(executable)) throw new Error('XMRig를 사용자 데이터 폴더에 준비하지 못했습니다. 앱을 다시 설치해 주세요.');
+  return executable;
 }
 function normalizePoolUrl(value) {
   const raw = String(value || '').trim();
@@ -369,7 +373,7 @@ async function chooseMiningPool() {
 }
 function startXMRig(binary, address, role, threadCount, session, config) {
   const args = config.cpuAuto100 ? ['--cpu-max-threads-hint', '100', '--no-color'] : ['--threads', String(threadCount), '--no-color'];
-  if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint);
+  if (config.mode === 'p2pool') args.push('-o', config.p2poolEndpoint, ...(config.p2poolTls ? ['--tls'] : []));
   else args.push('-o', config.poolUrl.replace(/^(stratum\+tcp|stratum\+ssl):\/\//, ''), '-u', address, '-p', 'josimi', '--coin', 'monero', ...(config.poolTls ? ['--tls'] : []));
   if (!session.ignoreBattery) args.push('--pause-on-battery');
   const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
@@ -637,7 +641,7 @@ ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, igno
       const address = await activeWallet.getPrimaryAddress();
       if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
       await assertMainnetAddress(address, '채굴 주소');
-      const config = { mode, cpuAuto100: Boolean(cpuAuto100), poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolProfile };
+      const config = { mode, cpuAuto100: Boolean(cpuAuto100), poolUrl: null, poolTls: Boolean(poolTls), p2poolEndpoint: null, p2poolTls: false, p2poolProfile };
       if (mode === 'pool' || mode === 'auto') {
         const selected = mode === 'auto' ? await chooseMiningPool() : normalizePoolUrl(String(poolUrl || '').includes('://') ? poolUrl : `${poolTls ? 'stratum+ssl' : 'stratum+tcp'}://${poolUrl}`);
         config.poolUrl = selected.url;
@@ -646,7 +650,8 @@ ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, igno
         if (!['main', 'mini', 'nano'].includes(p2poolProfile)) throw new Error('P2Pool 프로필이 올바르지 않습니다.');
         if (p2poolNodeMode !== 'remote') throw new Error('원격 P2Pool 주소를 입력해야 합니다. 로컬 monerod는 지원하지 않습니다.');
         const remote = normalizePoolUrl(String(p2poolNodeAddress || '').includes('://') ? p2poolNodeAddress : `stratum+tcp://${p2poolNodeAddress}`);
-        config.p2poolEndpoint = remote.url.replace(/^stratum\+tcp:\/\//, '');
+        config.p2poolEndpoint = remote.url.replace(/^stratum\+(tcp|ssl):\/\//, '');
+        config.p2poolTls = remote.tls;
       }
       activeMiningConfig = config;
       if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
