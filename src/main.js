@@ -10,7 +10,7 @@ const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, isAllowedNodeRedirect } = require('./core');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, isAllowedNodeRedirect } = require('./core');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
@@ -481,22 +481,73 @@ function normalizeRestoreHeight(value) {
   return height;
 }
 function safeTx(tx) {
-  return { hash: tx.getHash?.(), fee: tx.getFee?.()?.toString?.() || '0', amount: tx.getAmount?.()?.toString?.() || '0', height: tx.getHeight?.(), isConfirmed: tx.isConfirmed?.(), isLocked: tx.isLocked?.(), timestamp: tx.getTimestamp?.() };
+  return {
+    hash: tx.getHash?.(),
+    fee: tx.getFee?.()?.toString?.() || '0',
+    amount: tx.getAmount?.()?.toString?.() || '0',
+    height: tx.getHeight?.(),
+    isConfirmed: tx.getIsConfirmed?.() ?? tx.isConfirmed?.(),
+    isLocked: tx.getIsLocked?.() ?? tx.isLocked?.(),
+    isIncoming: tx.getIsIncoming?.() ?? false,
+    isOutgoing: tx.getIsOutgoing?.() ?? false,
+    note: tx.getNote?.() || '',
+    timestamp: tx.getTimestamp?.()
+  };
 }
 function makeSendResult(pending, txHashes) {
   return { txs: pending.txs.map(safeTx), txHashes, serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic), networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic) };
+}
+function serializeSubaddress(subaddress) {
+  return {
+    index: Number(subaddress.getIndex()),
+    address: subaddress.getAddress(),
+    label: subaddress.getLabel() || '',
+    balance: String(subaddress.getBalance() ?? 0),
+    unlockedBalance: String(subaddress.getUnlockedBalance() ?? 0),
+    isUsed: Boolean(subaddress.getIsUsed())
+  };
+}
+async function loadAccounts(activeWallet = wallet) {
+  const accounts = await activeWallet.getAccounts(true);
+  return Promise.all(accounts.map(async (account) => {
+    const index = Number(account.getIndex());
+    const subaddresses = account.getSubaddresses?.() || await activeWallet.getSubaddresses(index);
+    return {
+      index,
+      label: account.getLabel() || '',
+      address: account.getPrimaryAddress(),
+      balance: String(account.getBalance() ?? 0),
+      unlockedBalance: String(account.getUnlockedBalance() ?? 0),
+      subaddresses: subaddresses.map(serializeSubaddress)
+    };
+  }));
+}
+async function assertAccountExists(activeWallet, accountIndex) {
+  const accounts = await activeWallet.getAccounts(false);
+  if (!accounts.some((account) => Number(account.getIndex()) === accountIndex)) throw new Error('선택한 Monero 계정을 찾을 수 없습니다.');
+}
+async function loadAddressBook(activeWallet = wallet) {
+  const entries = await activeWallet.getAddressBookEntries();
+  return entries.map((entry) => ({
+    index: Number(entry.getIndex()),
+    address: entry.getAddress(),
+    description: entry.getDescription() || '',
+    paymentId: entry.getPaymentId() || ''
+  }));
 }
 async function loadSummary() {
   ensureWallet();
   const activeWallet = wallet;
   const sessionId = walletSessionId;
   const address = await activeWallet.getPrimaryAddress();
-  const balance = await activeWallet.getBalance(0);
+  const balance = await activeWallet.getBalance();
   let txs = [];
-  try { txs = await activeWallet.getTxs({ accountIndex: 0 }); } catch (_) {}
+  try { txs = await activeWallet.getTxs(); } catch (_) {}
   const sync = await getRemoteNodeStatus(activeConfig.node);
   if (activeWallet !== wallet || sessionId !== walletSessionId) throw new Error('요약을 불러오는 중 지갑 세션이 변경되었습니다. 다시 열어 주세요.');
-  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice(-30).reverse().map(safeTx), network: activeConfig.network, node: activeConfig.node, sync };
+  const accounts = await loadAccounts(activeWallet);
+  const addressBook = await loadAddressBook(activeWallet);
+  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice().reverse().map(safeTx), accounts, addressBook, network: activeConfig.network, node: activeConfig.node, sync };
 }
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
@@ -624,6 +675,85 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
+ipcMain.handle('wallet-account-create', async (_, { label = '' } = {}) => {
+  ensureWallet();
+  const accountLabel = normalizeWalletLabel(label, '계정 이름');
+  await wallet.createAccount(accountLabel);
+  await wallet.save();
+  return loadAccounts();
+});
+ipcMain.handle('wallet-account-label', async (_, { accountIndex, label = '' } = {}) => {
+  ensureWallet();
+  const index = normalizeWalletIndex(accountIndex, '계정 인덱스');
+  const accountLabel = normalizeWalletLabel(label, '계정 이름');
+  await assertAccountExists(wallet, index);
+  await wallet.setAccountLabel(index, accountLabel);
+  await wallet.save();
+  return loadAccounts();
+});
+ipcMain.handle('wallet-subaddress-create', async (_, { accountIndex, label = '' } = {}) => {
+  ensureWallet();
+  const index = normalizeWalletIndex(accountIndex, '계정 인덱스');
+  const subaddressLabel = normalizeWalletLabel(label, '하위 주소 이름');
+  await assertAccountExists(wallet, index);
+  await wallet.createSubaddress(index, subaddressLabel);
+  await wallet.save();
+  return loadAccounts();
+});
+ipcMain.handle('wallet-subaddress-label', async (_, { accountIndex, subaddressIndex, label = '' } = {}) => {
+  ensureWallet();
+  const account = normalizeWalletIndex(accountIndex, '계정 인덱스');
+  const subaddress = normalizeWalletIndex(subaddressIndex, '하위 주소 인덱스');
+  const subaddressLabel = normalizeWalletLabel(label, '하위 주소 이름');
+  await assertAccountExists(wallet, account);
+  const subaddresses = await wallet.getSubaddresses(account);
+  if (!subaddresses.some((entry) => Number(entry.getIndex()) === subaddress)) throw new Error('선택한 하위 주소를 찾을 수 없습니다.');
+  await wallet.setSubaddressLabel(account, subaddress, subaddressLabel);
+  await wallet.save();
+  return loadAccounts();
+});
+ipcMain.handle('wallet-addressbook-add', async (_, { address, description = '' } = {}) => {
+  ensureWallet();
+  if (typeof address !== 'string' || address.trim().length < 90) throw new Error('Monero 주소를 확인해 주세요.');
+  const normalizedAddress = address.trim();
+  const contactName = normalizeWalletLabel(description, '연락처 이름');
+  await assertMainnetAddress(normalizedAddress, '주소록 주소');
+  await wallet.addAddressBookEntry(normalizedAddress, contactName);
+  await wallet.save();
+  return loadAddressBook();
+});
+ipcMain.handle('wallet-addressbook-edit', async (_, { entryIndex, address, description = '' } = {}) => {
+  ensureWallet();
+  const index = normalizeWalletIndex(entryIndex, '주소록 인덱스');
+  if (typeof address !== 'string' || address.trim().length < 90) throw new Error('Monero 주소를 확인해 주세요.');
+  const normalizedAddress = address.trim();
+  const contactName = normalizeWalletLabel(description, '연락처 이름');
+  await assertMainnetAddress(normalizedAddress, '주소록 주소');
+  const entries = await wallet.getAddressBookEntries();
+  if (!entries.some((entry) => Number(entry.getIndex()) === index)) throw new Error('선택한 주소록 항목을 찾을 수 없습니다.');
+  await wallet.editAddressBookEntry(index, true, normalizedAddress, true, contactName);
+  await wallet.save();
+  return loadAddressBook();
+});
+ipcMain.handle('wallet-addressbook-delete', async (_, { entryIndex } = {}) => {
+  ensureWallet();
+  const index = normalizeWalletIndex(entryIndex, '주소록 인덱스');
+  const entries = await wallet.getAddressBookEntries();
+  if (!entries.some((entry) => Number(entry.getIndex()) === index)) throw new Error('선택한 주소록 항목을 찾을 수 없습니다.');
+  await wallet.deleteAddressBookEntry(index);
+  await wallet.save();
+  return loadAddressBook();
+});
+ipcMain.handle('wallet-transaction-note', async (_, { txHash, note = '' } = {}) => {
+  ensureWallet();
+  if (typeof txHash !== 'string' || !/^[0-9a-f]{64}$/i.test(txHash)) throw new Error('거래 해시 형식이 올바르지 않습니다.');
+  const normalizedNote = normalizeTransactionNote(note);
+  const tx = await wallet.getTx(txHash);
+  if (!tx) throw new Error('선택한 거래를 찾을 수 없습니다.');
+  await wallet.setTxNote(txHash, normalizedNote);
+  await wallet.save();
+  return true;
+});
 ipcMain.handle('node-status', async () => getRemoteNodeStatus(activeConfig.node));
 ipcMain.handle('mining-status', async () => getMiningStatus());
 ipcMain.handle('mining-start', async (_, { threads = 1, cpuAuto100 = false, ignoreBattery = false, mode = 'pool', poolUrl, poolPreset = 'auto', poolTls = true, p2poolProfile = 'mini', p2poolNodeMode = 'remote', p2poolNodeAddress } = {}) => {
@@ -706,7 +836,7 @@ ipcMain.handle('wallet-lock', async () => {
   selectedWalletPath = null;
   return true;
 });
-ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 } = {}) => {
+ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2, accountIndex = 0, note = '', recipientName = '' } = {}) => {
   pruneExpiredPreviews();
   if (sendPreviewInFlight) throw new Error('송금 미리보기를 준비 중입니다. 잠시 기다리세요.');
   if ([...pendingTransactions.values()].some((pending) => pending.state === 'ready')) throw new Error('앞선 송금 검토를 먼저 취소하거나 완료하세요.');
@@ -720,6 +850,11 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 
   const amountAtomic = xmrToAtomic(amount);
   if (amountAtomic <= 0n) throw new Error('송금 금액은 0보다 커야 합니다.');
   const txPriority = normalizePriority(priority);
+  const sourceAccountIndex = normalizeWalletIndex(accountIndex, '송금 계정 인덱스');
+  const transactionNote = normalizeTransactionNote(note);
+  const contactName = normalizeWalletLabel(recipientName, '받는 사람 이름');
+  await assertAccountExists(activeWallet, sourceAccountIndex);
+  const account = (await activeWallet.getAccounts(false)).find((entry) => Number(entry.getIndex()) === sourceAccountIndex);
   await ensureSendableNode();
   if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 새 지갑에서 거래를 다시 검토하세요.');
   const serviceFeeAtomic = calculateServiceFee(amountAtomic);
@@ -729,7 +864,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 
   const destinations = [{ address, amount: amountAtomic }];
   if (serviceFeeAtomic > 0n && address === FEE_ADDRESS) destinations[0].amount += serviceFeeAtomic;
   else if (serviceFeeAtomic > 0n) destinations.push({ address: FEE_ADDRESS, amount: serviceFeeAtomic });
-  const txs = await activeWallet.createTxs({ accountIndex: 0, destinations, priority: txPriority, relay: false });
+  const txs = await activeWallet.createTxs({ accountIndex: sourceAccountIndex, destinations, priority: txPriority, relay: false, note: transactionNote, recipientName: contactName || undefined });
   if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 생성한 미전송 거래를 폐기했습니다.');
   if (!Array.isArray(txs) || txs.length === 0) throw new Error('거래 미리보기를 만들지 못했습니다.');
   if (txs.length !== 1) throw new Error('한 번의 송금 요청이 여러 거래로 나뉘어 안전하게 미리보기할 수 없습니다. 금액을 줄여 다시 검토하세요.');
@@ -742,6 +877,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 
   const pendingId = crypto.randomBytes(24).toString('hex');
   pendingTransactions.set(pendingId, {
     txs, address, amountAtomic, serviceFeeAtomic, networkFeeAtomic, priority: txPriority,
+    accountIndex: sourceAccountIndex, accountLabel: account?.getLabel?.() || '', note: transactionNote,
     walletSessionId: sessionId, state: 'ready',
     expiresAt: now + SEND_PREVIEW_TTL_MS
   });
@@ -752,6 +888,9 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2 
     serviceFeeXmr: atomicToXmr(serviceFeeAtomic),
     networkFeeXmr: atomicToXmr(networkFeeAtomic),
     totalXmr: atomicToXmr(amountAtomic + serviceFeeAtomic + networkFeeAtomic),
+    accountIndex: sourceAccountIndex,
+    accountLabel: account?.getLabel?.() || '',
+    note: transactionNote,
     priority: txPriority,
     txCount: txs.length,
     feeRate: SERVICE_FEE_RATE,

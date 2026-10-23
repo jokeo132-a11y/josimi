@@ -9,28 +9,102 @@
 </head>
 <body>
   <div class="shell">
-  <header class="topbar"><div class="brand"><span class="mark">j</span><span>josimi</span></div><div class="top-actions"><select id="languageSelect" aria-label="Language"><option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option></select><button id="lockBtn" class="ghost hidden" data-i18n="lock">잠금</button></div></header>
+    <header class="topbar">
+      <div class="brand"><span class="mark">j</span><span>josimi</span></div>
+      <div class="top-actions"><select id="languageSelect" aria-label="Language"><option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option></select><button id="lockBtn" class="ghost hidden" data-i18n="lock">잠금</button></div>
+    </header>
     <main>
       <section id="authView" class="auth-view">
-        <div class="auth-card"><div class="auth-heading"><h1 data-i18n="walletTitle">josimi 지갑</h1><p data-i18n="walletSubtitle">지갑을 열거나 새로 만드세요.</p></div><div class="tabs" role="tablist" aria-label="Wallet actions"><button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="walletForm" data-tab="open" data-i18n="open">열기</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="create" data-i18n="create">새 지갑</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="restore" data-i18n="restore">복구</button></div>
-          <form id="walletForm"><label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label><label class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label><label id="seedLabel" class="hidden"><span data-i18n="moneroSeed">Monero seed</span><textarea id="seed" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="13/14/25단어 seed" data-i18n-placeholder="seedPlaceholder"></textarea></label><label id="seedOffsetLabel" class="hidden"><span data-i18n="seedOffset">Seed offset passphrase (선택)</span><input id="seedOffset" type="password" autocomplete="off" placeholder="없으면 비워두세요" data-i18n-placeholder="seedOffsetPlaceholder" /></label><label id="restoreHeightLabel" class="hidden"><span data-i18n="restoreHeight">복구 시작 블록 높이</span><input id="restoreHeight" type="number" min="0" step="1" inputmode="numeric" placeholder="예: 3000000" data-i18n-placeholder="restoreHeightPlaceholder" /></label><button class="primary" type="submit" id="submitBtn" data-i18n="openWallet">지갑 열기</button></form>
-          <div id="walletFileStatus" class="fine wallet-file-status" aria-live="polite"></div><button id="walletChoiceBtn" class="link-button" type="button">혹시 다른 지갑 파일을 열거나, 새 지갑을 만들고 싶으신가요?</button>
-          <p class="fine" data-i18n="authFine">송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.</p><div id="authError" class="error hidden"></div>
+        <div class="auth-card">
+          <div class="auth-heading"><h1 data-i18n="walletTitle">josimi 지갑</h1><p data-i18n="walletSubtitle">지갑을 열거나 새로 만드세요.</p></div>
+          <div class="tabs" role="tablist" aria-label="Wallet actions"><button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="walletForm" data-tab="open" data-i18n="open">열기</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="create" data-i18n="create">새 지갑</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="restore" data-i18n="restore">복구</button></div>
+          <form id="walletForm">
+            <label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label>
+            <label class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
+            <label id="seedLabel" class="hidden"><span data-i18n="moneroSeed">Monero seed</span><textarea id="seed" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="13/14/25단어 seed" data-i18n-placeholder="seedPlaceholder"></textarea></label>
+            <label id="seedOffsetLabel" class="hidden"><span data-i18n="seedOffset">Seed offset passphrase (선택)</span><input id="seedOffset" type="password" autocomplete="off" placeholder="없으면 비워두세요" data-i18n-placeholder="seedOffsetPlaceholder" /></label>
+            <label id="restoreHeightLabel" class="hidden"><span data-i18n="restoreHeight">복구 시작 블록 높이</span><input id="restoreHeight" type="number" min="0" step="1" inputmode="numeric" placeholder="예: 3000000" data-i18n-placeholder="restoreHeightPlaceholder" /></label>
+            <button class="primary" type="submit" id="submitBtn" data-i18n="openWallet">지갑 열기</button>
+          </form>
+          <div id="walletFileStatus" class="fine wallet-file-status" aria-live="polite"></div>
+          <button id="walletChoiceBtn" class="link-button" type="button">다른 지갑 파일 열기 또는 새 지갑 만들기</button>
+          <p class="fine" data-i18n="authFine">송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.</p>
+          <div id="authError" class="error hidden"></div>
         </div>
       </section>
+
       <section id="appView" class="app-view hidden" aria-labelledby="dashboardTitle">
-        <h1 id="dashboardTitle" class="sr-only" data-i18n="walletTitle">josimi 지갑</h1><div class="dashboard-head"><div><div class="eyebrow" data-i18n="totalBalance">TOTAL BALANCE</div><div id="balance" class="balance">0.000000000000 <small>XMR</small></div><div id="status" class="status" role="status" data-i18n="syncWaiting">동기화 대기</div><div id="syncDetails" class="muted" role="status" aria-live="polite">노드 상태 확인 중</div><div id="walletHeight" class="muted"></div></div><button id="refreshBtn" class="round" aria-label="Refresh">↻</button></div>
+        <h1 id="dashboardTitle" class="sr-only" data-i18n="walletTitle">josimi 지갑</h1>
+        <div class="dashboard-head"><div><div class="eyebrow" data-i18n="totalBalance">TOTAL BALANCE</div><div id="balance" class="balance">0.000000000000 <small>XMR</small></div><div id="status" class="status" role="status" data-i18n="syncWaiting">동기화 대기</div><div id="syncDetails" class="muted" role="status" aria-live="polite">노드 상태 확인 중</div><div id="walletHeight" class="muted"></div></div><button id="refreshBtn" class="round" aria-label="Refresh">↻</button></div>
+
         <div class="grid">
-          <article class="card address-card"><div class="card-label" data-i18n="myAddress">내 주소</div><div id="address" class="address">—</div><div class="address-actions"><button id="copyAddress" data-i18n="copyAddress">주소 복사</button><button id="showQr" data-i18n="showQr">QR 보기</button></div><canvas id="qr" class="hidden" role="img" aria-label="Wallet address QR code"></canvas></article>
-          <article class="card send-card"><div class="card-label" data-i18n="send">보내기</div><form id="sendForm"><label><span data-i18n="recipientAddress">받는 주소</span><input id="sendAddress" required placeholder="Monero 주소를 붙여넣으세요" data-i18n-placeholder="recipientPlaceholder" /></label><label><span data-i18n="sendAmount">보낼 금액 (XMR)</span><input id="sendAmount" inputmode="decimal" required placeholder="0.000000000000" /></label><label><span data-i18n="priority">우선순위</span><select id="priority"><option value="1" data-i18n="low">낮음</option><option value="2" selected data-i18n="normal">보통</option><option value="3" data-i18n="high">높음</option></select></label><button class="primary" type="submit" data-i18n="review">검토하기</button></form><p class="fine fee-note" data-i18n="feeNotice">서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료</p><div id="sendError" class="error hidden" role="alert" aria-atomic="true"></div></article>
-          <article class="card tx-card"><div class="card-title"><span data-i18n="recentTransactions">최근 거래</span><span class="muted" data-i18n="localRecord">로컬 기록</span></div><div id="txList" class="tx-list"><div class="empty" data-i18n="noTransactions">아직 거래가 없습니다.</div></div></article>
-          <article class="card tools-card"><div class="card-title"><span data-i18n="walletTools">지갑 도구</span></div><button id="backupBtn" class="tool" data-i18n="backupWallet">지갑 파일 백업</button><button id="seedBtn" class="tool danger" data-i18n="showSeed">복구용 seed 표시</button><p class="fine" data-i18n="seedFine">seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.</p></article>
-          <article class="card mining-card"><div class="card-title"><span data-i18n="miningTitle">채굴</span><span id="miningStatus" class="muted" data-i18n="miningStopped">중지됨</span></div><p class="fine" data-i18n="miningFine">로컬 monerod 없이 원격 노드와 원격 풀만 사용합니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.</p><label><span data-i18n="miningMode">채굴 방식</span><select id="miningMode"><option value="pool" data-i18n="miningPool">직접 풀</option><option value="auto" data-i18n="miningAuto">자동으로 풀 선택</option><option value="p2pool" data-i18n="miningP2pool">P2Pool</option></select></label><div id="poolSettings" class="mining-settings hidden"><label><span data-i18n="poolAddress">풀 주소</span><input id="miningPoolUrl" placeholder="pool.example.com:443" /></label><label class="check-row"><input id="miningPoolTls" type="checkbox" checked /><span data-i18n="poolTls">TLS 사용</span></label></div><div id="p2poolSettings" class="mining-settings hidden"><label><span data-i18n="p2poolProfile">P2Pool 네트워크</span><select id="p2poolProfile"><option value="main">P2Pool main</option><option value="mini" selected>P2Pool mini</option><option value="nano">P2Pool nano</option></select></label><label><span data-i18n="p2poolNodeMode">P2Pool 노드</span><select id="p2poolNodeMode"><option value="remote" data-i18n="p2poolRemote">원격 P2Pool stratum 사용</option></select></label><label id="p2poolRemoteLabel" class="hidden"><span data-i18n="p2poolNodeAddress">P2Pool 주소</span><input id="p2poolNodeAddress" placeholder="p2pool.example.com:3333" /></label></div><label><span data-i18n="miningThreads">CPU 스레드</span><input id="miningThreads" type="number" min="1" step="1" value="1" /></label><label class="check-row auto100-row"><input id="miningAuto100" type="checkbox" /><span data-i18n="miningAuto100">CPU 자동 100% 사용</span></label><label class="check-row"><input id="miningIgnoreBattery" type="checkbox" /><span data-i18n="miningIgnoreBattery">배터리 상태 무시</span></label><div class="mining-actions"><button id="startMiningBtn" class="primary" data-i18n="startMining">채굴 시작</button><button id="stopMiningBtn" class="tool" data-i18n="stopMining">채굴 중지</button></div><div id="miningError" class="error hidden" role="alert" aria-atomic="true"></div></article>
+          <article class="card address-card">
+            <div class="card-label" data-i18n="myAddress">내 주소</div>
+            <label class="compact-label"><span data-i18n="receiveAccount">받을 계정</span><select id="receiveAccount"></select></label>
+            <label class="compact-label"><span data-i18n="receiveSubaddress">받을 하위 주소</span><select id="receiveSubaddress"></select></label>
+            <div id="address" class="address">—</div>
+            <div id="receiveBalance" class="muted"></div>
+            <div class="address-actions"><button id="copyAddress" data-i18n="copyAddress">주소 복사</button><button id="showQr" data-i18n="showQr">QR 보기</button></div>
+            <canvas id="qr" class="hidden" role="img" aria-label="Wallet address QR code"></canvas>
+          </article>
+
+          <article class="card send-card">
+            <div class="card-label" data-i18n="send">보내기</div>
+            <form id="sendForm">
+              <label><span data-i18n="sendFromAccount">보낼 계정</span><select id="sendAccount"></select></label>
+              <label><span data-i18n="recipientAddress">받는 주소</span><input id="sendAddress" required placeholder="Monero 주소를 붙여넣으세요" data-i18n-placeholder="recipientPlaceholder" /></label>
+              <label><span data-i18n="recipientName">받는 사람 이름 (선택)</span><input id="sendRecipientName" maxlength="80" /></label>
+              <label><span data-i18n="sendAmount">보낼 금액 (XMR)</span><input id="sendAmount" inputmode="decimal" required placeholder="0.000000000000" /></label>
+              <label><span data-i18n="priority">우선순위</span><select id="priority"><option value="1" data-i18n="low">낮음</option><option value="2" selected data-i18n="normal">보통</option><option value="3" data-i18n="high">높음</option></select></label>
+              <label><span data-i18n="transactionNote">거래 메모 (선택)</span><textarea id="sendNote" rows="2" maxlength="500"></textarea></label>
+              <button class="primary" type="submit" data-i18n="review">검토하기</button>
+            </form>
+            <p class="fine fee-note" data-i18n="feeNotice">서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료</p><div id="sendError" class="error hidden" role="alert" aria-atomic="true"></div>
+          </article>
+
+          <article class="card tx-card">
+            <div class="card-title"><span data-i18n="recentTransactions">거래 내역</span><span class="muted" data-i18n="localRecord">지갑 기록</span></div>
+            <div id="txList" class="tx-list"><div class="empty" data-i18n="noTransactions">아직 거래가 없습니다.</div></div>
+          </article>
+
+          <article class="card tools-card">
+            <div class="card-title"><span data-i18n="walletTools">지갑 도구</span></div><button id="backupBtn" class="tool" data-i18n="backupWallet">지갑 파일 백업</button><button id="seedBtn" class="tool danger" data-i18n="showSeed">복구용 seed 표시</button><p class="fine" data-i18n="seedFine">seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.</p>
+          </article>
+
+          <article class="card accounts-card">
+            <div class="card-title"><span data-i18n="accountsTitle">계정과 하위 주소</span><span class="muted" data-i18n="localRecord">지갑 기록</span></div>
+            <form id="accountForm" class="inline-form"><label><span data-i18n="accountName">새 계정 이름</span><input id="accountName" maxlength="80" placeholder="예: 저축" data-i18n-placeholder="accountNamePlaceholder" /></label><button type="submit" class="tool" data-i18n="createAccount">계정 만들기</button></form>
+            <div id="accountList" class="management-list"></div>
+            <form id="subaddressForm" class="inline-form"><label><span data-i18n="subaddressLabel">선택 계정의 하위 주소 이름</span><input id="subaddressName" maxlength="80" placeholder="예: 월급" data-i18n-placeholder="subaddressLabelPlaceholder" /></label><button type="submit" class="tool" data-i18n="createSubaddress">하위 주소 만들기</button></form>
+            <div id="accountError" class="error hidden" role="alert"></div>
+          </article>
+
+          <article class="card addressbook-card">
+            <div class="card-title"><span data-i18n="addressBookTitle">주소록</span><span id="addressBookCount" class="muted"></span></div>
+            <form id="addressBookForm" class="contact-form">
+              <input id="contactEditIndex" type="hidden" />
+              <label><span data-i18n="contactName">이름</span><input id="contactName" maxlength="80" placeholder="예: 거래처" data-i18n-placeholder="contactNamePlaceholder" /></label>
+              <label class="contact-address-label"><span data-i18n="contactAddress">Monero 주소</span><input id="contactAddress" required placeholder="Monero 주소를 입력하세요" data-i18n-placeholder="contactAddressPlaceholder" /></label>
+              <div class="contact-actions"><button type="submit" class="tool" id="saveContactBtn" data-i18n="addContact">주소록에 추가</button><button type="button" class="tool hidden" id="cancelContactEdit" data-i18n="cancelEdit">취소</button></div>
+            </form>
+            <div id="addressBookList" class="management-list"></div>
+            <div id="addressBookError" class="error hidden" role="alert"></div>
+          </article>
+
+          <article class="card mining-card">
+            <div class="card-title"><span data-i18n="miningTitle">채굴</span><span id="miningStatus" class="muted" data-i18n="miningStopped">중지됨</span></div>
+            <p class="fine" data-i18n="miningFine">원격 노드와 원격 풀만 사용합니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.</p>
+            <label><span data-i18n="miningMode">채굴 방식</span><select id="miningMode"><option value="pool" data-i18n="miningPool">직접 풀</option><option value="auto" data-i18n="miningAuto">자동으로 풀 선택</option><option value="p2pool" data-i18n="miningP2pool">P2Pool</option></select></label>
+            <div id="poolSettings" class="mining-settings hidden"><label><span data-i18n="poolAddress">풀 주소</span><input id="miningPoolUrl" placeholder="pool.example.com:443" /></label><label class="check-row"><input id="miningPoolTls" type="checkbox" checked /><span data-i18n="poolTls">TLS 사용</span></label></div>
+            <div id="p2poolSettings" class="mining-settings hidden"><label><span data-i18n="p2poolProfile">P2Pool 네트워크</span><select id="p2poolProfile"><option value="main">P2Pool main</option><option value="mini" selected>P2Pool mini</option><option value="nano">P2Pool nano</option></select></label><label><span data-i18n="p2poolNodeMode">P2Pool 노드</span><select id="p2poolNodeMode"><option value="remote" data-i18n="p2poolRemote">원격 P2Pool stratum 사용</option></select></label><label id="p2poolRemoteLabel" class="hidden"><span data-i18n="p2poolNodeAddress">P2Pool 주소</span><input id="p2poolNodeAddress" placeholder="p2pool.example.com:3333" /></label></div>
+            <label><span data-i18n="miningThreads">CPU 스레드</span><input id="miningThreads" type="number" min="1" step="1" value="1" /></label><label class="check-row auto100-row"><input id="miningAuto100" type="checkbox" /><span data-i18n="miningAuto100">CPU 자동 100% 사용</span></label><label class="check-row"><input id="miningIgnoreBattery" type="checkbox" /><span data-i18n="miningIgnoreBattery">배터리 상태 무시</span></label><div class="mining-actions"><button id="startMiningBtn" class="primary" data-i18n="startMining">채굴 시작</button><button id="stopMiningBtn" class="tool" data-i18n="stopMining">채굴 중지</button></div><div id="miningError" class="error hidden" role="alert" aria-atomic="true"></div>
+          </article>
         </div>
       </section>
     </main>
   </div>
-      <dialog id="walletChoiceDialog" aria-labelledby="walletChoiceTitle"><div class="dialog-inner"><div class="eyebrow">WALLET FILE</div><h2 id="walletChoiceTitle">지갑 파일을 어떻게 사용할까요?</h2><p class="fine">Monero GUI처럼 지갑 이름을 기준으로 본체 파일과 .keys 파일을 함께 관리합니다. 다른 컴퓨터에서 복사한 .keys 파일만 있어도 같은 이름으로 열 수 있습니다.</p><div class="dialog-actions"><button id="chooseExistingKeyBtn" type="button">기존 지갑 파일 열기</button><button id="chooseNewKeyBtn" class="primary" type="button">새 지갑 파일 만들기</button></div></div></dialog>
+
+  <dialog id="walletChoiceDialog" aria-labelledby="walletChoiceTitle"><div class="dialog-inner"><div class="eyebrow">WALLET FILE</div><h2 id="walletChoiceTitle">지갑 파일을 어떻게 사용할까요?</h2><p class="fine">Monero GUI처럼 지갑 이름을 기준으로 파일을 함께 관리합니다. 다른 컴퓨터에서 복사한 .keys 파일만 있어도 같은 이름으로 열 수 있습니다.</p><div class="dialog-actions"><button id="chooseExistingKeyBtn" type="button">기존 지갑 파일 열기</button><button id="chooseNewKeyBtn" class="primary" type="button">새 지갑 파일 만들기</button></div></div></dialog>
   <dialog id="confirmDialog" aria-labelledby="reviewTitle" aria-describedby="reviewDescription"><div class="dialog-inner"><div class="eyebrow" data-i18n="reviewEyebrow">TRANSACTION REVIEW</div><h2 id="reviewTitle" data-i18n="reviewTitle">송금 내용을 확인하세요</h2><p id="reviewDescription" class="fine" data-i18n="reviewDescription">아래 내용을 확인한 뒤 한 번만 전송하세요.</p><div id="review"></div><div id="sendDialogError" class="error hidden" role="alert" aria-atomic="true"></div><div class="dialog-actions"><button id="cancelSend" data-i18n="cancel">취소</button><button id="confirmSend" class="primary" data-i18n="confirmSend">확인하고 송금</button></div></div></dialog>
   <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
   <script src="renderer.js"></script>

@@ -14,6 +14,17 @@ const EXTRA_LANG = {
   ja: { miningFine: 'スレッド数に20単位の人工的な制限はありません。電力、温度、OSの処理能力に注意してください。', miningPartial: 'マイニングプロセスの一部が失敗', miningUnsupported: 'Windowsのみ対応', miningUserThreads: '自分のウォレット', miningFeeThreads: '手数料', reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewServiceFee: 'サービス手数料（0.25%、上限0.05 XMR）', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額', reviewFeeAddress: '手数料の受取先' }
 };
 for (const code of Object.keys(EXTRA_LANG)) Object.assign(LANG[code], EXTRA_LANG[code]);
+const GUI_LANG = {
+  ko: { accountsTitle:'계정과 하위 주소', accountName:'새 계정 이름', accountNamePlaceholder:'예: 저축', createAccount:'계정 만들기', renameAccount:'이름 저장', receiveAccount:'받을 계정', receiveSubaddress:'받을 하위 주소', createSubaddress:'하위 주소 만들기', subaddressLabel:'선택 계정의 하위 주소 이름', subaddressLabelPlaceholder:'예: 월급', sendFromAccount:'보낼 계정', recipientName:'받는 사람 이름 (선택)', transactionNote:'거래 메모 (선택)', txIncoming:'받음', txOutgoing:'보냄', txUnknown:'거래', editTxNote:'메모', addressBookTitle:'주소록', contactName:'이름', contactNamePlaceholder:'예: 거래처', contactAddress:'Monero 주소', contactAddressPlaceholder:'Monero 주소를 입력하세요', addContact:'주소록에 추가', updateContact:'주소록 수정', cancelEdit:'수정 취소', useContact:'받는 주소로 사용', editContact:'편집', deleteContact:'삭제', noContacts:'주소록이 비어 있습니다.', noAccounts:'계정을 불러오지 못했습니다.', accountBalance:'잔액', unlockedBalance:'사용 가능', confirmDeleteContact:'이 주소록 항목을 삭제할까요?', notePrompt:'거래 메모를 입력하세요. 비우면 메모를 지웁니다.', saved:'저장했습니다.' },
+  en: { accountsTitle:'Accounts and subaddresses', accountName:'New account name', accountNamePlaceholder:'e.g. Savings', createAccount:'Create account', renameAccount:'Save name', receiveAccount:'Receive account', receiveSubaddress:'Receive subaddress', createSubaddress:'Create subaddress', subaddressLabel:'New subaddress name', subaddressLabelPlaceholder:'e.g. Salary', sendFromAccount:'Send from account', recipientName:'Recipient name (optional)', transactionNote:'Transaction note (optional)', txIncoming:'Received', txOutgoing:'Sent', txUnknown:'Transaction', editTxNote:'Note', addressBookTitle:'Address book', contactName:'Name', contactNamePlaceholder:'e.g. Merchant', contactAddress:'Monero address', contactAddressPlaceholder:'Enter a Monero address', addContact:'Add to address book', updateContact:'Update contact', cancelEdit:'Cancel edit', useContact:'Use as recipient', editContact:'Edit', deleteContact:'Delete', noContacts:'Address book is empty.', noAccounts:'Could not load accounts.', accountBalance:'Balance', unlockedBalance:'Unlocked', confirmDeleteContact:'Delete this address book entry?', notePrompt:'Enter a transaction note. Leave empty to clear it.', saved:'Saved.' },
+  zh: { accountsTitle:'账户与子地址', accountName:'新账户名称', accountNamePlaceholder:'例如：储蓄', createAccount:'创建账户', renameAccount:'保存名称', receiveAccount:'收款账户', receiveSubaddress:'收款子地址', createSubaddress:'创建子地址', subaddressLabel:'新子地址名称', subaddressLabelPlaceholder:'例如：工资', sendFromAccount:'付款账户', recipientName:'收款人名称（可选）', transactionNote:'交易备注（可选）', txIncoming:'收款', txOutgoing:'付款', txUnknown:'交易', editTxNote:'备注', addressBookTitle:'地址簿', contactName:'名称', contactNamePlaceholder:'例如：商家', contactAddress:'Monero 地址', contactAddressPlaceholder:'输入 Monero 地址', addContact:'添加到地址簿', updateContact:'更新联系人', cancelEdit:'取消编辑', useContact:'用作收款地址', editContact:'编辑', deleteContact:'删除', noContacts:'地址簿为空。', noAccounts:'无法加载账户。', accountBalance:'余额', unlockedBalance:'可用', confirmDeleteContact:'删除此地址簿条目吗？', notePrompt:'输入交易备注。留空即可清除。', saved:'已保存。' },
+  ja: { accountsTitle:'アカウントとサブアドレス', accountName:'新しいアカウント名', accountNamePlaceholder:'例：貯蓄', createAccount:'アカウントを作成', renameAccount:'名前を保存', receiveAccount:'受取アカウント', receiveSubaddress:'受取サブアドレス', createSubaddress:'サブアドレスを作成', subaddressLabel:'新しいサブアドレス名', subaddressLabelPlaceholder:'例：給与', sendFromAccount:'送金元アカウント', recipientName:'受取人名（任意）', transactionNote:'取引メモ（任意）', txIncoming:'受取', txOutgoing:'送金', txUnknown:'取引', editTxNote:'メモ', addressBookTitle:'アドレス帳', contactName:'名前', contactNamePlaceholder:'例：販売店', contactAddress:'Monero アドレス', contactAddressPlaceholder:'Monero アドレスを入力', addContact:'アドレス帳に追加', updateContact:'連絡先を更新', cancelEdit:'編集を取消', useContact:'送金先に使用', editContact:'編集', deleteContact:'削除', noContacts:'アドレス帳は空です。', noAccounts:'アカウントを読み込めませんでした。', accountBalance:'残高', unlockedBalance:'利用可能', confirmDeleteContact:'このアドレス帳項目を削除しますか？', notePrompt:'取引メモを入力してください。空欄で消去します。', saved:'保存しました。' }
+};
+for (const code of Object.keys(GUI_LANG)) Object.assign(LANG[code], GUI_LANG[code]);
+Object.assign(LANG.ko, { txConfirmed:'확정', txLocked:'잠금 중', txPending:'대기 중' });
+Object.assign(LANG.en, { txConfirmed:'Confirmed', txLocked:'Locked', txPending:'Pending' });
+Object.assign(LANG.zh, { txConfirmed:'已确认', txLocked:'锁定中', txPending:'待处理' });
+Object.assign(LANG.ja, { txConfirmed:'確定済み', txLocked:'ロック中', txPending:'保留中' });
 Object.assign(LANG.ko, { miningStarting: '채굴 준비 중' });
 Object.assign(LANG.en, { miningStarting: 'Preparing mining' });
 Object.assign(LANG.zh, { miningStarting: '正在准备挖矿' });
@@ -49,6 +60,10 @@ let selectedWalletFile = null;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
+let currentAccounts = [];
+let currentAddressBook = [];
+let currentTransactions = [];
+let selectedSendContactName = '';
 
 const formatXmr = (atomic) => {
   const n = BigInt(atomic || 0); const negative = n < 0n; const absolute = negative ? -n : n;
@@ -80,8 +95,52 @@ async function chooseWalletFile(action) {
   return true;
 }
 function renderTxs(txs = []) {
-  if (!txs.length) { $('txList').innerHTML = '<div class="empty">아직 거래가 없습니다.</div>'; return; }
-  $('txList').innerHTML = txs.map((tx) => `<div class="tx-row"><div><div class="tx-hash">${escapeHtml((tx.hash || 'pending').slice(0, 16))}…</div><div class="muted">${tx.isConfirmed ? '확정' : '대기 중'}</div></div><div class="tx-amount">${escapeHtml(formatXmr(tx.amount))} XMR</div></div>`).join('');
+  currentTransactions = txs;
+  if (!txs.length) { $('txList').innerHTML = `<div class="empty">${escapeHtml(LANG[language].noTransactions)}</div>`; return; }
+  const locale = { ko: 'ko-KR', en: 'en-US', zh: 'zh-CN', ja: 'ja-JP' }[language] || 'ko-KR';
+  $('txList').innerHTML = txs.map((tx) => {
+    const direction = tx.isIncoming ? LANG[language].txIncoming : tx.isOutgoing ? LANG[language].txOutgoing : LANG[language].txUnknown;
+    const timestamp = Number(tx.timestamp);
+    const date = Number.isFinite(timestamp) && timestamp > 0 ? new Date(timestamp * 1000).toLocaleString(locale) : '';
+    const hash = String(tx.hash || '');
+    const note = tx.note ? `<div class="tx-note">${escapeHtml(tx.note)}</div>` : '';
+    const state = tx.isConfirmed ? LANG[language].txConfirmed : tx.isLocked ? LANG[language].txLocked : LANG[language].txPending;
+    return `<div class="tx-row tx-row-expanded"><div class="tx-main"><div class="tx-hash" title="${escapeHtml(hash)}">${escapeHtml(hash.slice(0, 18))}${hash ? '…' : ''}</div><div class="muted">${escapeHtml(direction)} · ${state}${date ? ` · ${escapeHtml(date)}` : ''}</div><div class="muted">수수료 ${escapeHtml(formatXmr(tx.fee || '0'))} XMR</div>${note}</div><div class="tx-side"><div class="tx-amount">${escapeHtml(formatXmr(tx.amount))} XMR</div>${/^[0-9a-f]{64}$/i.test(hash) ? `<button class="tool tx-note-button" type="button" data-tx-note="${hash}">${escapeHtml(LANG[language].editTxNote)}</button>` : ''}</div></div>`;
+  }).join('');
+}
+function accountTitle(account) { return account.label || `#${Number(account.index) + 1}`; }
+function renderAccountManagement(accounts = [], addressBook = []) {
+  currentAccounts = Array.isArray(accounts) ? accounts : [];
+  currentAddressBook = Array.isArray(addressBook) ? addressBook : [];
+  const previousReceiveAccount = $('receiveAccount').value;
+  const previousSendAccount = $('sendAccount').value;
+  const accountOptions = currentAccounts.map((account) => `<option value="${Number(account.index)}">${escapeHtml(accountTitle(account))} · ${escapeHtml(formatXmr(account.balance))} XMR</option>`).join('');
+  $('receiveAccount').innerHTML = accountOptions;
+  $('sendAccount').innerHTML = accountOptions;
+  const validReceive = currentAccounts.some((account) => String(account.index) === previousReceiveAccount);
+  const validSend = currentAccounts.some((account) => String(account.index) === previousSendAccount);
+  if (validReceive) $('receiveAccount').value = previousReceiveAccount;
+  if (validSend) $('sendAccount').value = previousSendAccount;
+  const activeReceive = currentAccounts.find((account) => String(account.index) === $('receiveAccount').value);
+  const previousSubaddress = $('receiveSubaddress').value;
+  const subaddresses = activeReceive?.subaddresses || [];
+  $('receiveSubaddress').innerHTML = subaddresses.map((subaddress) => `<option value="${Number(subaddress.index)}">${escapeHtml(subaddress.label || `#${Number(subaddress.index)}`)}${subaddress.isUsed ? ' · ✓' : ''}</option>`).join('');
+  if (subaddresses.some((subaddress) => String(subaddress.index) === previousSubaddress)) $('receiveSubaddress').value = previousSubaddress;
+  else if (subaddresses.length) $('receiveSubaddress').value = String(subaddresses[0].index);
+  $('receiveAccount').disabled = !currentAccounts.length;
+  $('sendAccount').disabled = !currentAccounts.length;
+  $('receiveSubaddress').disabled = !subaddresses.length;
+  $('accountList').innerHTML = currentAccounts.length ? currentAccounts.map((account) => `<div class="management-row"><div class="management-heading"><strong>${escapeHtml(accountTitle(account))}</strong><span class="muted">${escapeHtml(LANG[language].accountBalance)} ${escapeHtml(formatXmr(account.balance))} · ${escapeHtml(LANG[language].unlockedBalance)} ${escapeHtml(formatXmr(account.unlockedBalance))} XMR</span></div><div class="management-actions"><input data-account-label="${Number(account.index)}" maxlength="80" value="${escapeHtml(account.label)}" aria-label="${escapeHtml(accountTitle(account))}" /><button class="tool" type="button" data-save-account="${Number(account.index)}">${escapeHtml(LANG[language].renameAccount)}</button></div><div class="subaddress-list">${(account.subaddresses || []).map((subaddress) => `<div class="subaddress-row"><span class="subaddress-index">${Number(subaddress.index)}</span><span class="subaddress-details"><strong>${escapeHtml(subaddress.label || `#${Number(subaddress.index)}`)}</strong><span class="muted">${escapeHtml(subaddress.address)}</span></span><input data-subaddress-label="${Number(account.index)}:${Number(subaddress.index)}" maxlength="80" value="${escapeHtml(subaddress.label)}" aria-label="${escapeHtml(subaddress.label || 'subaddress')}" /><button class="tool" type="button" data-save-subaddress="${Number(account.index)}:${Number(subaddress.index)}">${escapeHtml(LANG[language].renameAccount)}</button></div>`).join('')}</div></div>`).join('') : `<div class="empty">${escapeHtml(LANG[language].noAccounts)}</div>`;
+  $('addressBookCount').textContent = String(currentAddressBook.length);
+  $('addressBookList').innerHTML = currentAddressBook.length ? currentAddressBook.map((entry) => `<div class="contact-row"><div class="contact-details"><strong>${escapeHtml(entry.description || entry.address.slice(0, 12))}</strong><span class="muted contact-address" title="${escapeHtml(entry.address)}">${escapeHtml(entry.address)}</span></div><div class="contact-actions"><button class="tool" type="button" data-use-contact="${Number(entry.index)}">${escapeHtml(LANG[language].useContact)}</button><button class="tool" type="button" data-edit-contact="${Number(entry.index)}">${escapeHtml(LANG[language].editContact)}</button><button class="tool danger" type="button" data-delete-contact="${Number(entry.index)}">${escapeHtml(LANG[language].deleteContact)}</button></div></div>`).join('') : `<div class="empty">${escapeHtml(LANG[language].noContacts)}</div>`;
+  renderReceiveAddress();
+}
+function renderReceiveAddress() {
+  const account = currentAccounts.find((entry) => String(entry.index) === $('receiveAccount').value);
+  const subaddress = account?.subaddresses?.find((entry) => String(entry.index) === $('receiveSubaddress').value);
+  $('address').textContent = subaddress?.address || account?.address || '—';
+  if (subaddress) $('receiveBalance').textContent = `${LANG[language].accountBalance}: ${formatXmr(subaddress.balance)} XMR · ${LANG[language].unlockedBalance}: ${formatXmr(subaddress.unlockedBalance)} XMR`;
+  else $('receiveBalance').textContent = '';
 }
 function renderSync(sync = {}) {
   const state = sync.state || 'stopped';
@@ -92,11 +151,11 @@ function renderSync(sync = {}) {
 }
 function renderSummary(summary) {
   $('authView').classList.add('hidden'); $('appView').classList.remove('hidden'); $('lockBtn').classList.remove('hidden');
-  $('balance').innerHTML = `${escapeHtml(summary.balanceXmr)} <small>XMR</small>`; $('address').textContent = summary.address; renderSync(summary.sync); renderTxs(summary.txs);
+  $('balance').innerHTML = `${escapeHtml(summary.balanceXmr)} <small>XMR</small>`; renderAccountManagement(summary.accounts, summary.addressBook); renderSync(summary.sync); renderTxs(summary.txs);
   if (summary.createdAtHeight !== undefined && summary.createdAtHeight !== null) $('walletHeight').textContent = `${LANG[language].createdAtHeight}: ${Number(summary.createdAtHeight).toLocaleString()}`;
   if (summary.restoreHeightUsed !== undefined && summary.restoreHeightUsed !== null) $('walletHeight').textContent = `${LANG[language].restoreHeight}: ${Number(summary.restoreHeightUsed).toLocaleString()}`;
 }
-async function refresh() { try { renderSummary(await window.josimi.refresh()); } catch (e) { showToast(e.message); } }
+async function refresh() { try { const summary = await window.josimi.refresh(); renderSummary(summary); return summary; } catch (e) { showToast(e.message); return null; } }
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
   if ($('appView').classList.contains('hidden')) return;
@@ -113,6 +172,94 @@ $('chooseExistingKeyBtn').addEventListener('click', async () => {
 });
 $('chooseNewKeyBtn').addEventListener('click', () => { $('walletChoiceDialog').close(); selectedWalletFile = null; showWalletFileStatus(); setMode('create'); });
 window.josimi.onNodeStatus(renderSync);
+ $('receiveAccount').addEventListener('change', () => renderAccountManagement(currentAccounts, currentAddressBook));
+ $('receiveSubaddress').addEventListener('change', renderReceiveAddress);
+ $('accountForm').addEventListener('submit', async (event) => {
+  event.preventDefault(); clearError('accountError');
+  try {
+    const accounts = await window.josimi.createAccount({ label: $('accountName').value });
+    $('accountName').value = '';
+    renderAccountManagement(accounts, currentAddressBook);
+    const newest = accounts.reduce((a, b) => Number(a.index) > Number(b.index) ? a : b);
+    $('receiveAccount').value = String(newest.index);
+    renderAccountManagement(accounts, currentAddressBook);
+    await refresh(); showToast(LANG[language].saved);
+  } catch (error) { showError('accountError', error); }
+ });
+ $('subaddressForm').addEventListener('submit', async (event) => {
+  event.preventDefault(); clearError('accountError');
+  try {
+    const accountIndex = Number($('receiveAccount').value);
+    const accounts = await window.josimi.createSubaddress({ accountIndex, label: $('subaddressName').value });
+    $('subaddressName').value = '';
+    const updatedAccount = accounts.find((account) => Number(account.index) === accountIndex);
+    renderAccountManagement(accounts, currentAddressBook);
+    const newest = updatedAccount?.subaddresses?.reduce((a, b) => Number(a.index) > Number(b.index) ? a : b);
+    if (newest) $('receiveSubaddress').value = String(newest.index);
+    renderReceiveAddress(); await refresh(); showToast(LANG[language].saved);
+  } catch (error) { showError('accountError', error); }
+ });
+ $('accountList').addEventListener('click', async (event) => {
+  const accountButton = event.target.closest('[data-save-account]');
+  const subaddressButton = event.target.closest('[data-save-subaddress]');
+  try {
+    if (accountButton) {
+      const accountIndex = Number(accountButton.dataset.saveAccount);
+      const input = $('accountList').querySelector(`[data-account-label="${accountIndex}"]`);
+      await window.josimi.setAccountLabel({ accountIndex, label: input?.value || '' });
+      await refresh(); showToast(LANG[language].saved);
+    } else if (subaddressButton) {
+      const [accountIndex, subaddressIndex] = subaddressButton.dataset.saveSubaddress.split(':').map(Number);
+      const input = $('accountList').querySelector(`[data-subaddress-label="${accountIndex}:${subaddressIndex}"]`);
+      await window.josimi.setSubaddressLabel({ accountIndex, subaddressIndex, label: input?.value || '' });
+      await refresh(); showToast(LANG[language].saved);
+    }
+  } catch (error) { showError('accountError', error); }
+ });
+ $('addressBookForm').addEventListener('submit', async (event) => {
+  event.preventDefault(); clearError('addressBookError');
+  const entryIndex = $('contactEditIndex').value;
+  const payload = { address: $('contactAddress').value.trim(), description: $('contactName').value.trim() };
+  try {
+    if (entryIndex === '') await window.josimi.addAddressBookEntry(payload);
+    else await window.josimi.editAddressBookEntry({ ...payload, entryIndex: Number(entryIndex) });
+    $('addressBookForm').reset(); $('contactEditIndex').value = ''; $('cancelContactEdit').classList.add('hidden');
+    $('saveContactBtn').textContent = LANG[language].addContact;
+    await refresh(); showToast(LANG[language].saved);
+  } catch (error) { showError('addressBookError', error); }
+ });
+ $('cancelContactEdit').addEventListener('click', () => {
+  $('addressBookForm').reset(); $('contactEditIndex').value = ''; $('cancelContactEdit').classList.add('hidden'); $('saveContactBtn').textContent = LANG[language].addContact; clearError('addressBookError');
+ });
+ $('addressBookList').addEventListener('click', async (event) => {
+  const useButton = event.target.closest('[data-use-contact]');
+  const editButton = event.target.closest('[data-edit-contact]');
+  const deleteButton = event.target.closest('[data-delete-contact]');
+  const index = Number((useButton || editButton || deleteButton)?.dataset.useContact ?? (useButton || editButton || deleteButton)?.dataset.editContact ?? (useButton || editButton || deleteButton)?.dataset.deleteContact);
+  const entry = currentAddressBook.find((candidate) => Number(candidate.index) === index);
+  if (!entry) return;
+  if (useButton) {
+    $('sendAddress').value = entry.address; $('sendRecipientName').value = entry.description; selectedSendContactName = entry.description;
+    $('sendAddress').focus(); $('sendForm').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  } else if (editButton) {
+    $('contactEditIndex').value = String(entry.index); $('contactName').value = entry.description; $('contactAddress').value = entry.address;
+    $('cancelContactEdit').classList.remove('hidden'); $('saveContactBtn').textContent = LANG[language].updateContact; $('contactName').focus();
+  } else if (deleteButton && confirm(LANG[language].confirmDeleteContact)) {
+    clearError('addressBookError');
+    try { await window.josimi.deleteAddressBookEntry({ entryIndex: entry.index }); await refresh(); showToast(LANG[language].saved); }
+    catch (error) { showError('addressBookError', error); }
+  }
+ });
+ $('txList').addEventListener('click', async (event) => {
+  const button = event.target.closest('[data-tx-note]');
+  if (!button) return;
+  const hash = button.dataset.txNote;
+  const tx = currentTransactions.find((item) => item.hash === hash);
+  const note = prompt(LANG[language].notePrompt, tx?.note || '');
+  if (note === null) return;
+  try { await window.josimi.setTransactionNote({ txHash: hash, note }); await refresh(); showToast(LANG[language].saved); }
+  catch (error) { showToast(error.message); }
+ });
 syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.josimi.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
 function renderMiningStatus(status) {
   const dict = LANG[language];
@@ -171,7 +318,7 @@ $('stopMiningBtn').addEventListener('click', async () => { if (miningCallInProgr
 configureMiningInput();
 refreshMiningStatus();
 setInterval(refreshMiningStatus, 5000);
-$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); refreshMiningStatus(); });
+$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); refreshMiningStatus(); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
   try {
@@ -209,12 +356,16 @@ $('seedBtn').addEventListener('click', () => { if (!currentSeed) { showToast('�
 function renderSendReview(preview) {
   const dict = LANG[language];
   const priorityLabel = { 1: dict.low, 2: dict.normal, 3: dict.high }[preview.priority] || String(preview.priority);
-  $('review').innerHTML = [[dict.reviewRecipient, preview.address], [dict.reviewAmount, `${preview.amountXmr} XMR`], [dict.reviewPriority, priorityLabel], [dict.reviewServiceFee, `${preview.serviceFeeXmr} XMR`], [dict.reviewNetworkFee, `${preview.networkFeeXmr} XMR`], [dict.reviewTotal, `${preview.totalXmr} XMR`], [dict.reviewFeeAddress, preview.feeAddress]].map(([key, value]) => `<div class="review-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
+  const sourceAccount = preview.accountLabel || `#${Number(preview.accountIndex || 0) + 1}`;
+  const rows = [[dict.sendFromAccount, sourceAccount], [dict.reviewRecipient, preview.address], [dict.reviewAmount, `${preview.amountXmr} XMR`], [dict.reviewPriority, priorityLabel]];
+  if (preview.note) rows.push([dict.transactionNote, preview.note]);
+  rows.push([dict.reviewServiceFee, `${preview.serviceFeeXmr} XMR`], [dict.reviewNetworkFee, `${preview.networkFeeXmr} XMR`], [dict.reviewTotal, `${preview.totalXmr} XMR`], [dict.reviewFeeAddress, preview.feeAddress]);
+  $('review').innerHTML = rows.map(([key, value]) => `<div class="review-row"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}</strong></div>`).join('');
 }
 $('sendForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('sendError'); clearError('sendDialogError');
   try {
-    pendingSend = { address: $('sendAddress').value.trim(), amount: $('sendAmount').value.trim(), priority: $('priority').value };
+    pendingSend = { address: $('sendAddress').value.trim(), amount: $('sendAmount').value.trim(), priority: $('priority').value, accountIndex: Number($('sendAccount').value), note: $('sendNote').value.trim(), recipientName: $('sendRecipientName').value.trim() };
     $('sendForm').querySelector('button[type="submit"]').disabled = true;
     const request = { ...pendingSend };
     const preview = await window.josimi.previewSend(request);

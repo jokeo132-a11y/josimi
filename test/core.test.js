@@ -9,6 +9,9 @@ const {
   calculateServiceFee,
   SERVICE_FEE_CAP_ATOMIC,
   validateMiningThreads,
+  normalizeWalletIndex,
+  normalizeWalletLabel,
+  normalizeTransactionNote,
   isAllowedNodeRedirect
 } = require('../src/core');
 
@@ -52,4 +55,19 @@ test('remote node redirects cannot downgrade protocol or change origin', () => {
   assert.equal(isAllowedNodeRedirect('https://node.example/rpc', 'https://other.example/rpc'), false);
   assert.equal(isAllowedNodeRedirect('http://127.0.0.1:18081/json_rpc', 'http://localhost:18081/json_rpc'), false);
   assert.equal(isAllowedNodeRedirect('not a url', 'https://node.example/'), false);
+});
+
+test('wallet indices must be non-negative safe integers', () => {
+  assert.equal(normalizeWalletIndex(0), 0);
+  assert.equal(normalizeWalletIndex('12', '계정 인덱스'), 12);
+  for (const value of [-1, 1.5, NaN, Infinity, 'not-an-index', '', null, undefined]) assert.throws(() => normalizeWalletIndex(value));
+});
+
+test('wallet labels and transaction notes are trimmed and bounded', () => {
+  assert.equal(normalizeWalletLabel('  Savings  '), 'Savings');
+  assert.equal(normalizeWalletLabel(undefined), '');
+  assert.equal(normalizeTransactionNote('  monthly rent  '), 'monthly rent');
+  assert.throws(() => normalizeWalletLabel('x'.repeat(81)), RangeError);
+  assert.throws(() => normalizeTransactionNote('x'.repeat(501)), RangeError);
+  assert.throws(() => normalizeWalletLabel({}), TypeError);
 });

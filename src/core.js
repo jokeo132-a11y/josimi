@@ -3,6 +3,8 @@
 const ATOMIC_PER_XMR = 1000000000000n;
 const MAX_ATOMIC = 18446744073709551615n;
 const SERVICE_FEE_CAP_ATOMIC = 50000000000n;
+const MAX_WALLET_LABEL_LENGTH = 80;
+const MAX_TRANSACTION_NOTE_LENGTH = 500;
 
 function atomicToXmr(value) {
   const atomic = BigInt(value);
@@ -35,6 +37,29 @@ function validateMiningThreads(count) {
   return threads;
 }
 
+function normalizeWalletIndex(value, field = '지갑 인덱스') {
+  if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) throw new RangeError(`${field}는 0 이상의 정수여야 합니다.`);
+  const index = Number(value);
+  if (!Number.isSafeInteger(index) || index < 0) throw new RangeError(`${field}는 0 이상의 정수여야 합니다.`);
+  return index;
+}
+
+function normalizeWalletLabel(value, field = '라벨') {
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') throw new TypeError(`${field} 형식이 올바르지 않습니다.`);
+  const label = value.trim();
+  if (label.length > MAX_WALLET_LABEL_LENGTH) throw new RangeError(`${field}은 ${MAX_WALLET_LABEL_LENGTH}자 이하여야 합니다.`);
+  return label;
+}
+
+function normalizeTransactionNote(value) {
+  if (value === undefined || value === null) return '';
+  if (typeof value !== 'string') throw new TypeError('거래 메모 형식이 올바르지 않습니다.');
+  const note = value.trim();
+  if (note.length > MAX_TRANSACTION_NOTE_LENGTH) throw new RangeError(`거래 메모는 ${MAX_TRANSACTION_NOTE_LENGTH}자 이하여야 합니다.`);
+  return note;
+}
+
 function isAllowedNodeRedirect(fromUrl, toUrl) {
   try {
     const from = new URL(fromUrl);
@@ -45,4 +70,18 @@ function isAllowedNodeRedirect(fromUrl, toUrl) {
   }
 }
 
-module.exports = { ATOMIC_PER_XMR, MAX_ATOMIC, SERVICE_FEE_CAP_ATOMIC, atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, isAllowedNodeRedirect };
+module.exports = {
+  ATOMIC_PER_XMR,
+  MAX_ATOMIC,
+  SERVICE_FEE_CAP_ATOMIC,
+  MAX_WALLET_LABEL_LENGTH,
+  MAX_TRANSACTION_NOTE_LENGTH,
+  atomicToXmr,
+  xmrToAtomic,
+  calculateServiceFee,
+  validateMiningThreads,
+  normalizeWalletIndex,
+  normalizeWalletLabel,
+  normalizeTransactionNote,
+  isAllowedNodeRedirect
+};
