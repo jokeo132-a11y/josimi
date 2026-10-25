@@ -10,7 +10,7 @@ const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, isAllowedNodeRedirect, isMoneroKeysFile } = require('./core');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, validateMiningThreads, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile } = require('./core');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
@@ -152,7 +152,7 @@ async function getRemoteNodeStatus(node) {
     const synchronized = typeof info.synchronized === 'boolean' ? info.synchronized : null;
     return { mode: 'remote', node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0) };
   } catch (_) {
-    return { mode: 'remote', node, state: 'remote', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
+    return { mode: 'remote', node, state: 'offline', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
   }
 }
 
@@ -581,9 +581,9 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   selectedWalletPath = base;
   return { canceled: false, path: base, fileName: path.basename(base) };
 });
-  ipcMain.handle('wallet-create', async (_, payload = {}) => {
+ipcMain.handle('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
-  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+  validateWalletPassword(password);
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
@@ -600,14 +600,13 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   let created; let archived = null;
   try {
     created = await monerojs.createWalletFull({ path: creationPath, password, networkType: network, server: activeConfig.node });
-    const seed = await created.getSeed();
     const createdAddress = await created.getPrimaryAddress();
     await created.close(true);
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     const summary = await loadSummary();
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
-    return { ...summary, seed, createdAtHeight: creationHeight, restoreHeight: creationHeight, warning: '이 seed는 누구에게도 보여주지 말고 오프라인으로 백업하세요.' };
+    return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight };
   } catch (error) {
     if (created) await created.close(true).catch(() => {});
     if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
@@ -619,7 +618,7 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
 });
 ipcMain.handle('wallet-restore', async (_, payload = {}) => {
   const { password, seed, seedOffset, restoreHeight, node, network = NETWORK } = payload || {};
-  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+  validateWalletPassword(password);
   assertMainnetNetwork(network);
   const normalizedSeed = normalizeSeed(seed);
   assertNoUnresolvedRelay();
@@ -656,7 +655,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
 });
 ipcMain.handle('wallet-open', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
-  if (typeof password !== 'string' || password.length < 8) throw new Error('비밀번호는 8자 이상이어야 합니다.');
+  validateWalletPassword(password, 0);
   if (!isRegularFile(walletPath()) && !isRegularFile(keyFilePath(walletPath()))) throw new Error('선택한 파일은 Monero 지갑 파일이 아닙니다. 본체 파일 또는 .keys 파일을 선택하세요.');
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
@@ -677,6 +676,15 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   }
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
+ipcMain.handle('wallet-seed', async () => {
+  ensureWallet();
+  const activeWallet = wallet;
+  const sessionId = walletSessionId;
+  const seed = await activeWallet.getSeed();
+  if (wallet !== activeWallet || sessionId !== walletSessionId) throw new Error('seed를 불러오는 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
+  if (typeof seed !== 'string' || !seed.trim()) throw new Error('이 지갑에서 복구 seed를 가져올 수 없습니다.');
+  return seed;
+});
 ipcMain.handle('wallet-account-create', async (_, { label = '' } = {}) => {
   ensureWallet();
   const accountLabel = normalizeWalletLabel(label, '계정 이름');
@@ -929,6 +937,9 @@ ipcMain.handle('wallet-send-pending', async () => {
       networkFeeXmr: atomicToXmr(pending.networkFeeAtomic),
       totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic),
       priority: pending.priority,
+      accountIndex: pending.accountIndex,
+      accountLabel: pending.accountLabel,
+      note: pending.note,
       txCount: pending.txs.length,
       feeAddress: FEE_ADDRESS
     };
@@ -948,7 +959,7 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
   const pending = pendingTransactions.get(id);
   if (!pending) throw new Error('송금 미리보기가 없거나 만료되었습니다. 다시 검토해 주세요.');
   if (pending.walletSessionId !== sessionId || activeWallet !== wallet) throw new Error('지갑 세션이 변경되어 이 거래를 전송할 수 없습니다.');
-  if (pending.state === 'relaying') throw new Error('같은 거래의 전파 결과를 기다리고 있습니다.');
+  if (isRelayAttemptInProgress(pending.state, pending.relayInProgress)) throw new Error('같은 거래의 전파 결과를 기다리고 있습니다. 새 relay 요청을 보내지 마세요.');
   if (pending.state !== 'relay-unknown' && pending.expiresAt <= Date.now()) { pendingTransactions.delete(id); throw new Error('송금 미리보기가 만료되었습니다. 다시 검토해 주세요.'); }
   pending.state = 'relaying';
   pending.relayInProgress = false;
@@ -1018,7 +1029,7 @@ ipcMain.handle('wallet-export-backup', async () => {
   const destinationBase = normalizeWalletBase(result.filePath);
   const destination = keyFilePath(destinationBase);
   if (path.resolve(destination) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
-  if (fs.existsSync(destination)) throw new Error('같은 이름의 key 파일이 이미 있습니다. 다른 백업 이름을 선택하세요.');
+  if (walletFamilyExists(destinationBase)) throw new Error('같은 이름의 지갑 파일이나 주소 정보 파일이 이미 있습니다. 다른 백업 이름을 선택하세요.');
   fs.copyFileSync(source, destination);
   const sourceAddress = `${sourceBase}.address.txt`;
   if (isRegularFile(sourceAddress)) fs.copyFileSync(sourceAddress, `${destinationBase}.address.txt`);
@@ -1031,15 +1042,6 @@ ipcMain.handle('wallet-qr', async (_, text) => {
 
 async function waitForPendingRelaySettlements() {
   while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
-}
-async function waitForPromiseOrTimeout(promise, timeoutMs) {
-  let timer;
-  const settled = await Promise.race([
-    Promise.resolve(promise).then(() => true, () => true),
-    new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs); })
-  ]);
-  clearTimeout(timer);
-  return settled;
 }
 async function shutdownRuntime() {
   const startPromise = miningStartPromise;
@@ -1061,14 +1063,14 @@ app.on('before-quit', (event) => {
   if (shutdownPromise) return;
   shutdownRequested = true;
   shutdownPromise = (async () => {
-    await waitForPendingRelaySettlements();
-    if (hasUnresolvedRelay()) {
+    const relaySettled = await waitForPromiseOrTimeout(waitForPendingRelaySettlements(), 35000);
+    if (!relaySettled || hasUnresolvedRelay()) {
       const completedButUnseen = Boolean(lastCompletedSend);
       const options = {
         type: 'warning',
         title: completedButUnseen ? '송금 결과 확인 필요' : '송금 전파 결과 미확정',
         message: completedButUnseen ? '송금은 노드가 받아들였지만 결과 해시가 아직 화면에서 확인되지 않았습니다.' : '네트워크에 전파되었는지 확인되지 않은 송금이 있습니다.',
-        detail: completedButUnseen ? '앱으로 돌아오면 거래 해시와 결과를 복원합니다. 종료 후에도 지갑 거래 기록에서 확인할 수 있지만, 계속 진행하기 전에 결과를 확인하는 편이 안전합니다.' : '노드 응답은 30초 제한에 도달했습니다. 앱으로 돌아오면 같은 서명 거래를 다시 확인할 수 있습니다. 종료하면 이 임시 거래를 다시 시도할 수 없으니 새 송금을 만들지 말고, 가능하면 앱으로 돌아오세요.',
+        detail: !relaySettled ? '송금 relay 요청이 35초 안에 끝나지 않았습니다. 노드가 이미 거래를 받았을 수도 있습니다. 앱으로 돌아가 결과를 확인하는 것이 가장 안전합니다. 종료하면 이 임시 거래를 다시 시도할 수 없으니 새 송금을 만들지 마세요.' : completedButUnseen ? '앱으로 돌아오면 거래 해시와 결과를 복원합니다. 종료 후에도 지갑 거래 기록에서 확인할 수 있지만, 계속 진행하기 전에 결과를 확인하는 편이 안전합니다.' : '노드 응답은 30초 제한에 도달했습니다. 앱으로 돌아오면 같은 서명 거래를 다시 확인할 수 있습니다. 종료하면 이 임시 거래를 다시 시도할 수 없으니 새 송금을 만들지 말고, 가능하면 앱으로 돌아오세요.',
         buttons: ['앱으로 돌아가기', '확인 후 종료'],
         defaultId: 0,
         cancelId: 0,

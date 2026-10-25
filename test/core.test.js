@@ -12,6 +12,9 @@ const {
   normalizeWalletIndex,
   normalizeWalletLabel,
   normalizeTransactionNote,
+  validateWalletPassword,
+  isRelayAttemptInProgress,
+  waitForPromiseOrTimeout,
   isMoneroKeysFile,
   isAllowedNodeRedirect
 } = require('../src/core');
@@ -71,6 +74,28 @@ test('wallet labels and transaction notes are trimmed and bounded', () => {
   assert.throws(() => normalizeWalletLabel('x'.repeat(81)), RangeError);
   assert.throws(() => normalizeTransactionNote('x'.repeat(501)), RangeError);
   assert.throws(() => normalizeWalletLabel({}), TypeError);
+});
+
+test('new wallet passwords require 8 characters while existing wallets accept their original password', () => {
+  assert.equal(validateWalletPassword('long-pass'), 'long-pass');
+  assert.throws(() => validateWalletPassword('short'), /8자 이상/);
+  assert.equal(validateWalletPassword('old', 0), 'old');
+  assert.equal(validateWalletPassword('', 0), '');
+  assert.throws(() => validateWalletPassword(null, 0), /비밀번호 형식/);
+});
+
+test('a relay retry is blocked while the previous relay attempt is still in flight', () => {
+  assert.equal(isRelayAttemptInProgress('relaying', false), true);
+  assert.equal(isRelayAttemptInProgress('relay-unknown', true), true);
+  assert.equal(isRelayAttemptInProgress('relay-unknown', false), false);
+  assert.equal(isRelayAttemptInProgress('ready', false), false);
+});
+
+test('promise waits are bounded and treat resolved or rejected work as settled', async () => {
+  assert.equal(await waitForPromiseOrTimeout(Promise.resolve(), 100), true);
+  assert.equal(await waitForPromiseOrTimeout(Promise.reject(new Error('expected')), 100), true);
+  assert.equal(await waitForPromiseOrTimeout(new Promise(() => {}), 5), false);
+  await assert.rejects(waitForPromiseOrTimeout(Promise.resolve(), -1), RangeError);
 });
 
 test('opening an existing wallet accepts only a .keys file', () => {

@@ -33,10 +33,10 @@ Object.assign(LANG.ko, { reviewPriority: '우선순위' });
 Object.assign(LANG.en, { reviewPriority: 'Priority' });
 Object.assign(LANG.zh, { reviewPriority: '优先级' });
 Object.assign(LANG.ja, { reviewPriority: '優先度' });
-Object.assign(LANG.ko, { miningMining: '두 채굴 프로세스 실행 중' });
-Object.assign(LANG.en, { miningMining: 'Both mining processes running' });
-Object.assign(LANG.zh, { miningMining: '两个挖矿进程均在运行' });
-Object.assign(LANG.ja, { miningMining: '2つのマイニングプロセスが実行中' });
+Object.assign(LANG.ko, { miningMining: '채굴 중' });
+Object.assign(LANG.en, { miningMining: 'Mining' });
+Object.assign(LANG.zh, { miningMining: '挖矿中' });
+Object.assign(LANG.ja, { miningMining: 'マイニング中' });
 Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', miningPool: '직접 풀', miningAuto: '자동으로 풀 선택', miningP2pool: 'P2Pool', poolAddress: '풀 주소', poolTls: 'TLS 사용', p2poolProfile: 'P2Pool 네트워크', p2poolNodeMode: 'P2Pool 노드', p2poolRemote: '원격 P2Pool stratum 사용', p2poolNodeAddress: 'P2Pool 주소', miningAuto100: 'CPU 자동 100% 사용', miningFine: '로컬 monerod 없이 원격 노드와 원격 풀만 사용합니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.', miningRemote: '원격 노드 모드' });
 Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningAuto100: 'Automatically use 100% CPU', miningFine: 'Uses remote nodes and remote pools without local monerod. Check power, heat, and what your operating system can handle.', miningRemote: 'Remote node mode' });
 Object.assign(LANG.zh, { miningAuto100: '自动使用 100% CPU' });
@@ -45,6 +45,28 @@ Object.assign(LANG.ko, { walletSubtitle: '새 지갑 만들기부터 시작하�
 Object.assign(LANG.en, { walletSubtitle: 'Start by creating a new wallet.', existingKeysOpen: 'Already have a wallet? Open a .keys file', selectedKeyFile: 'Selected .keys file' });
 Object.assign(LANG.zh, { walletSubtitle: '请先创建一个新钱包。', existingKeysOpen: '已有钱包？打开 .keys 文件', selectedKeyFile: '已选 .keys 文件' });
 Object.assign(LANG.ja, { walletSubtitle: 'まず新しいウォレットを作成してください。', existingKeysOpen: '既にウォレットがありますか？.keys ファイルを開く', selectedKeyFile: '選択した .keys ファイル' });
+Object.assign(LANG.ko, { nodePrivacyNotice: '원격 노드 운영자는 IP와 연결 메타데이터를 볼 수 있습니다. 신뢰하는 노드를 사용하세요.', nodeOffline: '노드 연결 끊김', nodeOfflineDetail: '노드 주소와 네트워크 연결을 확인하세요.', nodeSyncing: '노드 동기화 중', nodeSynced: '동기화 완료', nodeRemote: '원격 노드 연결됨', nodeStopped: '노드 중지됨', syncBlocks: '블록', syncPeers: '피어', txFeeLabel: '수수료', seedRevealConfirm: '복구 seed를 화면에 표시합니다. 주변에 사람이 없고 기록 장치가 안전한지 확인했습니까?', seedBackupReminder: '지갑을 만들었습니다. 복구용 seed 표시에서 seed를 오프라인으로 안전하게 백업하세요.', seedUnavailable: '이 지갑에서 복구 seed를 가져올 수 없습니다.', copiedAddress: '주소를 복사했습니다.', backupSaved: '지갑 백업을 저장했습니다.', restoredWallet: 'seed로 지갑을 복구했습니다.', relayInProgress: '노드가 송금 전파를 처리 중입니다. 새 송금을 만들지 말고 잠시 기다리세요.', relayUnknownActive: '전파 결과가 아직 불확실하고 기존 요청이 진행 중입니다. 새 송금을 만들지 말고 기다리세요.', relayUnknownRetry: '전파 결과가 불확실합니다. 새 송금을 만들지 말고 기존 서명 거래만 다시 확인하세요.', relayCancelUnavailable: '이미 전파를 시도한 거래는 취소할 수 없습니다. 새 송금을 만들지 마세요.' });
+Object.assign(LANG.en, { nodePrivacyNotice: 'Remote node operators can see your IP address and connection metadata. Use a node you trust.', nodeOffline: 'Node disconnected', nodeOfflineDetail: 'Check the node address and network connection.', nodeSyncing: 'Node syncing', nodeSynced: 'Synced', nodeRemote: 'Remote node connected', nodeStopped: 'Node stopped', syncBlocks: 'Blocks', syncPeers: 'Peers', txFeeLabel: 'Fee', seedRevealConfirm: 'This will show your recovery seed on screen. Make sure nobody can see it and your device is safe.', seedBackupReminder: 'Wallet created. Use Show recovery seed to make a secure offline backup.', seedUnavailable: 'Could not retrieve a recovery seed for this wallet.', copiedAddress: 'Address copied.', backupSaved: 'Wallet backup saved.', restoredWallet: 'Wallet restored from seed.', relayInProgress: 'The node is processing the relay. Wait; do not create another transaction.', relayUnknownActive: 'The relay result is unknown and the original request is still in progress. Wait; do not create another transaction.', relayUnknownRetry: 'The relay result is unknown. Do not create a new transaction; only retry checking the same signed transaction.', relayCancelUnavailable: 'A transaction that has entered relay cannot be cancelled. Do not create another transaction.' });
+Object.assign(LANG.zh, { nodePrivacyNotice: '远程节点运营者可以看到您的 IP 地址和连接元数据。请使用您信任的节点。', nodeOffline: '节点已断开', nodeOfflineDetail: '请检查节点地址和网络连接。', nodeSyncing: '节点同步中', nodeSynced: '已同步', nodeRemote: '远程节点已连接', nodeStopped: '节点已停止', syncBlocks: '区块', syncPeers: '节点', txFeeLabel: '手续费', seedRevealConfirm: '将在屏幕上显示恢复 seed。请确认周围无人且设备安全。', seedBackupReminder: '钱包已创建。请使用“显示恢复 seed”进行安全的离线备份。', seedUnavailable: '无法从此钱包获取恢复 seed。', copiedAddress: '地址已复制。', backupSaved: '钱包备份已保存。', restoredWallet: '已从 seed 恢复钱包。', relayInProgress: '节点正在处理中继。请等待，不要创建另一笔交易。', relayUnknownActive: '中继结果未知，原请求仍在处理中。请等待，不要创建新交易。', relayUnknownRetry: '中继结果未知。请勿创建新交易；只能重试检查同一笔已签名交易。', relayCancelUnavailable: '已尝试中继的交易无法取消。请勿创建另一笔交易。' });
+Object.assign(LANG.ja, { nodePrivacyNotice: 'リモートノードの運営者にはIPアドレスや接続メタデータが見える場合があります。信頼できるノードを使用してください。', nodeOffline: 'ノード未接続', nodeOfflineDetail: 'ノードアドレスとネットワーク接続を確認してください。', nodeSyncing: 'ノード同期中', nodeSynced: '同期完了', nodeRemote: 'リモートノード接続済み', nodeStopped: 'ノード停止中', syncBlocks: 'ブロック', syncPeers: 'ピア', txFeeLabel: '手数料', seedRevealConfirm: '復元用seedを画面に表示します。周囲に人がいないこと、端末が安全であることを確認しましたか？', seedBackupReminder: 'ウォレットを作成しました。「復元用seedを表示」からオフラインで安全にバックアップしてください。', seedUnavailable: 'このウォレットから復元用seedを取得できません。', copiedAddress: 'アドレスをコピーしました。', backupSaved: 'ウォレットのバックアップを保存しました。', restoredWallet: 'seedからウォレットを復元しました。', relayInProgress: 'ノードが送信を中継中です。別の取引を作らずお待ちください。', relayUnknownActive: '中継結果は不明で、元の要求がまだ処理中です。別の取引を作らずお待ちください。', relayUnknownRetry: '中継結果は不明です。新しい取引を作らず、同じ署名済み取引のみ再確認してください。', relayCancelUnavailable: '中継を試みた取引はキャンセルできません。別の取引を作らないでください。' });
+Object.assign(LANG.ko, { qrError: 'QR 코드를 표시하지 못했습니다.' });
+Object.assign(LANG.en, { qrError: 'Could not display the QR code.' });
+Object.assign(LANG.zh, { qrError: '无法显示二维码。' });
+Object.assign(LANG.ja, { qrError: 'QRコードを表示できませんでした。' });
+Object.assign(LANG.ko, { copyAddressError: '주소 복사 실패' });
+Object.assign(LANG.en, { copyAddressError: 'Could not copy address' });
+Object.assign(LANG.zh, { copyAddressError: '无法复制地址' });
+Object.assign(LANG.ja, { copyAddressError: 'アドレスをコピーできませんでした' });
+Object.assign(LANG.ko, { openPasswordPlaceholder: '기존 지갑의 비밀번호 (없으면 비워두세요)' });
+Object.assign(LANG.en, { openPasswordPlaceholder: 'Existing wallet password (leave blank if none)' });
+Object.assign(LANG.zh, { openPasswordPlaceholder: '原有钱包密码（若无密码请留空）' });
+Object.assign(LANG.ja, { openPasswordPlaceholder: '既存ウォレットのパスワード（なければ空欄）' });
+Object.assign(LANG.zh, { miningMode: '挖矿模式', miningPool: '直接矿池', miningAuto: '自动选择矿池', miningP2pool: 'P2Pool', poolAddress: '矿池地址', poolTls: '使用 TLS', p2poolProfile: 'P2Pool 网络', p2poolNodeMode: 'P2Pool 节点', p2poolRemote: '使用远程 P2Pool stratum', p2poolNodeAddress: 'P2Pool 地址', miningFine: '使用远程节点和矿池，不运行本地 monerod。请留意电量、温度以及操作系统的实际处理能力。', miningRemote: '远程节点模式' });
+Object.assign(LANG.ja, { miningMode: 'マイニング方式', miningPool: '直接プール', miningAuto: 'プールを自動選択', miningP2pool: 'P2Pool', poolAddress: 'プールアドレス', poolTls: 'TLSを使用', p2poolProfile: 'P2Poolネットワーク', p2poolNodeMode: 'P2Poolノード', p2poolRemote: 'リモートP2Pool stratumを使用', p2poolNodeAddress: 'P2Poolアドレス', miningFine: 'ローカルmonerodを使わず、リモートノードとプールを使用します。電力、温度、OSの処理能力に注意してください。', miningRemote: 'リモートノードモード' });
+Object.assign(LANG.ko, { seedFine: 'seed는 화면에 표시되는 순간 노출될 수 있습니다. seed offset passphrase를 사용했다면 별도로 보관하세요. 둘 다 오프라인에 보관하세요.' });
+Object.assign(LANG.en, { seedFine: 'Showing your seed can expose it. If you used a seed offset passphrase, keep it separately. Store both offline.' });
+Object.assign(LANG.zh, { seedFine: '显示 seed 可能导致泄露。若使用了 seed offset passphrase，请单独保存。请将两者离线保管。' });
+Object.assign(LANG.ja, { seedFine: 'seedを表示すると漏洩する可能性があります。seed offset passphraseを使った場合は別に保管し、両方をオフラインで保存してください。' });
 function applyLanguage() {
   const dict = LANG[language];
   document.documentElement.lang = language;
@@ -59,11 +81,13 @@ let sendCallInProgress = false;
 let cancelCallInProgress = false;
 let miningCallInProgress = false;
 let toastTimer;
-let currentSeed = null;
 let selectedWalletFile = null;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
+let refreshPromise = null;
+let receiveQrAddress = '';
+let qrGeneration = 0;
 let currentAccounts = [];
 let currentAddressBook = [];
 let currentTransactions = [];
@@ -85,7 +109,10 @@ function setMode(next) {
   $('seedLabel').classList.toggle('hidden', next !== 'restore');
   $('seedOffsetLabel').classList.toggle('hidden', next !== 'restore');
   $('restoreHeightLabel').classList.toggle('hidden', next !== 'restore');
+  $('password').required = next !== 'open';
+  $('password').minLength = next === 'open' ? 0 : 8;
   const dict = LANG[language];
+  $('password').placeholder = next === 'open' ? dict.openPasswordPlaceholder : dict.passwordPlaceholder;
   $('submitBtn').textContent = next === 'create' ? dict.createWallet : next === 'restore' ? dict.restoreWallet : dict.openWallet;
 }
 function showWalletFileStatus(fileName = '') {
@@ -109,7 +136,7 @@ function renderTxs(txs = []) {
     const hash = String(tx.hash || '');
     const note = tx.note ? `<div class="tx-note">${escapeHtml(tx.note)}</div>` : '';
     const state = tx.isConfirmed ? LANG[language].txConfirmed : tx.isLocked ? LANG[language].txLocked : LANG[language].txPending;
-    return `<div class="tx-row tx-row-expanded"><div class="tx-main"><div class="tx-hash" title="${escapeHtml(hash)}">${escapeHtml(hash.slice(0, 18))}${hash ? '…' : ''}</div><div class="muted">${escapeHtml(direction)} · ${state}${date ? ` · ${escapeHtml(date)}` : ''}</div><div class="muted">수수료 ${escapeHtml(formatXmr(tx.fee || '0'))} XMR</div>${note}</div><div class="tx-side"><div class="tx-amount">${escapeHtml(formatXmr(tx.amount))} XMR</div>${/^[0-9a-f]{64}$/i.test(hash) ? `<button class="tool tx-note-button" type="button" data-tx-note="${hash}">${escapeHtml(LANG[language].editTxNote)}</button>` : ''}</div></div>`;
+    return `<div class="tx-row tx-row-expanded"><div class="tx-main"><div class="tx-hash" title="${escapeHtml(hash)}">${escapeHtml(hash.slice(0, 18))}${hash ? '…' : ''}</div><div class="muted">${escapeHtml(direction)} · ${state}${date ? ` · ${escapeHtml(date)}` : ''}</div><div class="muted">${escapeHtml(LANG[language].txFeeLabel)} ${escapeHtml(formatXmr(tx.fee || '0'))} XMR</div>${note}</div><div class="tx-side"><div class="tx-amount">${escapeHtml(formatXmr(tx.amount))} XMR</div>${/^[0-9a-f]{64}$/i.test(hash) ? `<button class="tool tx-note-button" type="button" data-tx-note="${hash}">${escapeHtml(LANG[language].editTxNote)}</button>` : ''}</div></div>`;
   }).join('');
 }
 function accountTitle(account) { return account.label || `#${Number(account.index) + 1}`; }
@@ -142,15 +169,25 @@ function renderAccountManagement(accounts = [], addressBook = []) {
 function renderReceiveAddress() {
   const account = currentAccounts.find((entry) => String(entry.index) === $('receiveAccount').value);
   const subaddress = account?.subaddresses?.find((entry) => String(entry.index) === $('receiveSubaddress').value);
-  $('address').textContent = subaddress?.address || account?.address || '—';
+  const nextAddress = subaddress?.address || account?.address || '—';
+  if (nextAddress !== receiveQrAddress) {
+    receiveQrAddress = nextAddress;
+    qrGeneration += 1;
+    $('qr').classList.add('hidden');
+    $('qr').width = 0;
+    $('qr').height = 0;
+  }
+  $('address').textContent = nextAddress;
   if (subaddress) $('receiveBalance').textContent = `${LANG[language].accountBalance}: ${formatXmr(subaddress.balance)} XMR · ${LANG[language].unlockedBalance}: ${formatXmr(subaddress.unlockedBalance)} XMR`;
   else $('receiveBalance').textContent = '';
 }
 function renderSync(sync = {}) {
+  const dict = LANG[language];
   const state = sync.state || 'stopped';
-  const labels = { downloading: 'Monero 노드 다운로드 중', starting: '로컬 노드 시작 중', syncing: '노드 동기화 중', synced: '동기화 완료', remote: '원격 노드 사용', stopped: '노드 중지됨' };
+  const labels = { downloading: dict.nodeSyncing, starting: dict.nodeSyncing, syncing: dict.nodeSyncing, synced: dict.nodeSynced, remote: dict.nodeRemote, offline: dict.nodeOffline, stopped: dict.nodeStopped };
   $('status').textContent = labels[state] || state;
-  if (sync.targetHeight) $('syncDetails').textContent = `${sync.progress || 0}% · 블록 ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · 피어 ${sync.peers || 0}`;
+  if (state === 'offline') $('syncDetails').textContent = `${dict.nodeOfflineDetail} · ${sync.node || ''}`;
+  else if (sync.targetHeight) $('syncDetails').textContent = `${sync.progress || 0}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
   else $('syncDetails').textContent = sync.node || '';
 }
 function renderSummary(summary) {
@@ -159,7 +196,14 @@ function renderSummary(summary) {
   if (summary.createdAtHeight !== undefined && summary.createdAtHeight !== null) $('walletHeight').textContent = `${LANG[language].createdAtHeight}: ${Number(summary.createdAtHeight).toLocaleString()}`;
   if (summary.restoreHeightUsed !== undefined && summary.restoreHeightUsed !== null) $('walletHeight').textContent = `${LANG[language].restoreHeight}: ${Number(summary.restoreHeightUsed).toLocaleString()}`;
 }
-async function refresh() { try { const summary = await window.josimi.refresh(); renderSummary(summary); return summary; } catch (e) { showToast(e.message); return null; } }
+async function refresh() {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = (async () => {
+    try { const summary = await window.josimi.refresh(); renderSummary(summary); return summary; }
+    catch (e) { showToast(e.message); return null; }
+  })();
+  try { return await refreshPromise; } finally { refreshPromise = null; }
+}
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
   if ($('appView').classList.contains('hidden')) return;
@@ -177,7 +221,7 @@ $('walletChoiceBtn').addEventListener('click', async () => {
     $('password').focus();
   } catch (error) { showError('authError', error); }
 });
-window.josimi.onNodeStatus(renderSync);
+window.josimi.onNodeStatus((status) => { if (!$('appView').classList.contains('hidden')) renderSync(status); });
  $('receiveAccount').addEventListener('change', () => renderAccountManagement(currentAccounts, currentAddressBook));
  $('receiveSubaddress').addEventListener('change', renderReceiveAddress);
  $('accountForm').addEventListener('submit', async (event) => {
@@ -266,7 +310,11 @@ window.josimi.onNodeStatus(renderSync);
   try { await window.josimi.setTransactionNote({ txHash: hash, note }); await refresh(); showToast(LANG[language].saved); }
   catch (error) { showToast(error.message); }
  });
-syncTimer = setInterval(async () => { if (syncRequestInFlight) return; syncRequestInFlight = true; try { renderSync(await window.josimi.nodeStatus()); } catch (_) {} finally { syncRequestInFlight = false; } }, 3000);
+syncTimer = setInterval(async () => {
+  if ($('appView').classList.contains('hidden') || syncRequestInFlight) return;
+  syncRequestInFlight = true;
+  try { await refresh(); } finally { syncRequestInFlight = false; }
+}, 30000);
 function renderMiningStatus(status) {
   const dict = LANG[language];
   if (status.state === 'mining') {
@@ -327,38 +375,61 @@ setInterval(refreshMiningStatus, 5000);
 $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); refreshMiningStatus(); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
+  const action = mode;
   try {
-    if (mode === 'open' && !selectedWalletFile && !(await chooseWalletFile('open'))) return;
-    if ((mode === 'create' || mode === 'restore') && !(await chooseWalletFile('save'))) return;
+    if (action === 'open' && !selectedWalletFile && !(await chooseWalletFile('open'))) return;
+    if ((action === 'create' || action === 'restore') && !(await chooseWalletFile('save'))) return;
   } catch (error) { showError('authError', error); return; }
   const nodeValue = $('node').value.trim();
   if (!nodeValue) { showError('authError', new Error('원격 노드 주소를 입력하세요.')); return; }
   const restoreHeightValue = $('restoreHeight').value.trim();
-  if (mode === 'restore' && restoreHeightValue && !/^\d+$/.test(restoreHeightValue)) { showError('authError', new Error('복구 블록 높이는 0 이상의 정수여야 합니다.')); return; }
-  const payload = { password: $('password').value, node: nodeValue, restoreHeight: mode === 'restore' && restoreHeightValue ? Number(restoreHeightValue) : undefined, network: 'mainnet' };
+  if (action === 'restore' && restoreHeightValue && !/^\d+$/.test(restoreHeightValue)) { showError('authError', new Error('복구 블록 높이는 0 이상의 정수여야 합니다.')); return; }
+  const payload = { password: $('password').value, node: nodeValue, restoreHeight: action === 'restore' && restoreHeightValue ? Number(restoreHeightValue) : undefined, network: 'mainnet' };
   $('submitBtn').disabled = true;
   try {
     let result;
-    if (mode === 'create') result = await window.josimi.create(payload);
-    else if (mode === 'restore') {
+    if (action === 'create') result = await window.josimi.create(payload);
+    else if (action === 'restore') {
       const seed = $('seed').value.trim();
       if (!confirm('입력한 seed가 정확한지 확인했습니다. 복구를 시작할까요? 기존 지갑은 자동 보관됩니다.')) return;
       const seedOffset = $('seedOffset').value;
       result = await window.josimi.restore({ ...payload, seed, seedOffset: seedOffset === '' ? undefined : seedOffset });
     }
     else result = await window.josimi.open(payload);
-    currentSeed = result.seed || null; renderSummary(result); await refreshMiningStatus();
-    if (currentSeed) showToast(`지갑이 생성되었습니다. 복구에 사용할 블록 높이: ${result.createdAtHeight ?? '확인 불가'}`);
-    else if (result.restored) showToast(result.recoveryNote || 'seed로 지갑을 복구했습니다.');
+    renderSummary(result); await refreshMiningStatus();
+    if (action === 'create') showToast(LANG[language].seedBackupReminder);
+    else if (result.restored) showToast(LANG[language].restoredWallet);
     resetInactivityTimer();
-  } catch (e) { showError('authError', e); } finally { $('submitBtn').disabled = false; setMode(mode); }
+  } catch (e) { showError('authError', e); } finally { $('submitBtn').disabled = false; setMode(action); }
 });
  $('refreshBtn').addEventListener('click', refresh);
  $('lockBtn').addEventListener('click', async () => { try { await window.josimi.lock(); location.reload(); } catch (e) { showToast(e.message); } });
- $('copyAddress').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('address').textContent); showToast('주소를 복사했습니다.'); } catch (e) { showToast(`주소 복사 실패: ${e.message}`); } });
- $('showQr').addEventListener('click', async () => { const canvas = $('qr'); canvas.classList.toggle('hidden'); if (!canvas.classList.contains('hidden')) { try { const image = new Image(); image.onload = () => { canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); }; image.src = await window.josimi.qr($('address').textContent); } catch (e) { canvas.classList.add('hidden'); showToast(e.message); } } });
- $('backupBtn').addEventListener('click', async () => { try { const result = await window.josimi.exportBackup(); if (!result.canceled) showToast('지갑 백업을 저장했습니다.'); } catch (e) { showToast(e.message); } });
-$('seedBtn').addEventListener('click', () => { if (!currentSeed) { showToast('현재 세션에서 생성된 seed가 없습니다. 복구 지갑은 원래 seed를 사용하세요.'); return; } if (confirm('seed를 화면에 표시합니다. 주변에 사람이 없고 기록 장치가 안전한지 확인했습니까?')) alert(currentSeed); });
+ $('copyAddress').addEventListener('click', async () => { try { await navigator.clipboard.writeText($('address').textContent); showToast(LANG[language].copiedAddress); } catch (e) { showToast(`${LANG[language].copyAddressError}: ${e.message}`); } });
+ $('showQr').addEventListener('click', async () => {
+  const canvas = $('qr');
+  if (!canvas.classList.contains('hidden')) { qrGeneration += 1; canvas.classList.add('hidden'); canvas.width = 0; canvas.height = 0; return; }
+  const address = $('address').textContent;
+  if (!address || address === '—') return;
+  const requestId = ++qrGeneration;
+  canvas.classList.remove('hidden');
+  try {
+    const source = await window.josimi.qr(address);
+    if (requestId !== qrGeneration || address !== $('address').textContent || canvas.classList.contains('hidden')) return;
+    const image = new Image();
+    image.onload = () => { if (requestId !== qrGeneration || address !== $('address').textContent || canvas.classList.contains('hidden')) return; canvas.width = image.width; canvas.height = image.height; canvas.getContext('2d').drawImage(image, 0, 0); };
+    image.onerror = () => { if (requestId === qrGeneration) { canvas.classList.add('hidden'); showToast(LANG[language].qrError); } };
+    image.src = source;
+  } catch (error) { if (requestId === qrGeneration) { canvas.classList.add('hidden'); showToast(error.message); } }
+ });
+ $('backupBtn').addEventListener('click', async () => { try { const result = await window.josimi.exportBackup(); if (!result.canceled) showToast(LANG[language].backupSaved); } catch (e) { showToast(e.message); } });
+ $('seedBtn').addEventListener('click', async () => {
+  if (!confirm(LANG[language].seedRevealConfirm)) return;
+  $('seedBtn').disabled = true;
+  let seed = '';
+  try { seed = await window.josimi.getSeed(); alert(seed); }
+  catch (error) { showToast(error.message || LANG[language].seedUnavailable); }
+  finally { seed = ''; $('seedBtn').disabled = false; }
+ });
 function renderSendReview(preview) {
   const dict = LANG[language];
   const priorityLabel = { 1: dict.low, 2: dict.normal, 3: dict.high }[preview.priority] || String(preview.priority);
@@ -381,9 +452,9 @@ $('sendForm').addEventListener('submit', async (event) => {
     $('confirmDialog').showModal();
   } catch (e) { pendingSend = null; showError('sendError', e); } finally { $('sendForm').querySelector('button[type="submit"]').disabled = false; }
 });
- $('cancelSend').addEventListener('click', async () => { if (cancelCallInProgress || sendCallInProgress) return; cancelCallInProgress = true; $('cancelSend').disabled = true; const pending = pendingSend; try { if (pending?.pendingId) { const cancelled = await window.josimi.cancelSend(pending).catch(() => false); if (!cancelled) { showError('sendDialogError', new Error('송금 전파 여부가 불확실합니다. 취소하거나 새 송금을 만들지 말고, 같은 거래를 다시 확인하세요.')); return; } } pendingSend = null; $('confirmDialog').close(); } finally { cancelCallInProgress = false; $('cancelSend').disabled = false; } });
+ $('cancelSend').addEventListener('click', async () => { if (cancelCallInProgress || sendCallInProgress) return; cancelCallInProgress = true; $('cancelSend').disabled = true; const pending = pendingSend; try { if (pending?.pendingId) { const cancelled = await window.josimi.cancelSend(pending).catch(() => false); if (!cancelled) { showError('sendDialogError', new Error(LANG[language].relayCancelUnavailable)); return; } } pendingSend = null; $('confirmDialog').close(); } finally { cancelCallInProgress = false; if (pendingSend?.pendingId) { try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) { $('cancelSend').disabled = true; } } else $('cancelSend').disabled = false; } });
  $('confirmDialog').addEventListener('cancel', (event) => { event.preventDefault(); $('cancelSend').click(); });
- $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); try { await refresh(); } catch (e) { showToast(`송금은 완료됐지만 새로고침에 실패했습니다: ${e.message}`); } } catch (e) { showError('sendDialogError', e); } finally { sendCallInProgress = false; $('confirmSend').disabled = false; $('cancelSend').disabled = false; } });
+ $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
 setMode('create');
 applyLanguage();
 async function applyPendingSendStatus(status) {
@@ -397,9 +468,11 @@ async function applyPendingSendStatus(status) {
     await refresh();
     return;
   }
-  $('confirmSend').disabled = status.state === 'relaying';
-  if (status.state === 'relaying') showError('sendDialogError', new Error('노드가 아직 송금 전파를 처리 중입니다. 새 송금을 만들지 말고 잠시 기다리세요.'));
-  else if (status.state === 'relay-unknown') showError('sendDialogError', new Error(status.relayInProgress ? '전파 결과가 아직 불확실합니다. 새 송금을 만들지 말고 동일한 서명 거래만 재시도할 수 있습니다.' : '전파 결과가 불확실합니다. 새 송금을 만들지 말고 동일한 서명 거래만 재시도하세요.'));
+  const relayActive = status.state === 'relaying' || Boolean(status.relayInProgress);
+  $('confirmSend').disabled = relayActive;
+  $('cancelSend').disabled = status.state !== 'ready';
+  if (status.state === 'relaying') showError('sendDialogError', new Error(LANG[language].relayInProgress));
+  else if (status.state === 'relay-unknown') showError('sendDialogError', new Error(status.relayInProgress ? LANG[language].relayUnknownActive : LANG[language].relayUnknownRetry));
 }
 async function pollPendingSendStatus() {
   if (sendCallInProgress || !pendingSend?.pendingId || !$('confirmDialog').open) return;

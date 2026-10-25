@@ -1,6 +1,6 @@
 # josimi
 
-비수탁형 Monero 지갑입니다. 현재 작업 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.1.1)**입니다.
+비수탁형 Monero 지갑입니다. 현재 작업 버전은 **한국어·영어·중국어·일본어를 지원하는 mainnet Windows Portable (v1.1.2)**입니다.
 
 ## 현재 구현
 
@@ -18,13 +18,18 @@
 - 선택한 계정에서 보내는 송금 검토·확인·relay
 - 우선순위 선택
 - 로컬 지갑 파일 백업
-- 자동 잠금의 기반이 되는 세션 잠금 버튼
-- 한국어 UI
+- 30초마다 잔액·거래내역을 갱신하고 수신 주소 변경 시 이전 QR을 숨김
+- 노드 연결 실패를 별도 상태로 표시하고, 지갑 열기 전에는 원격 노드에 연결하지 않음
+- 신규 지갑은 8자 이상 비밀번호를 요구하고 기존 Monero GUI 지갑은 원래 짧거나 빈 비밀번호도 허용
+- 복구 seed는 명시적으로 요청하고 확인한 때만 조회하며, 일반 생성 응답에는 포함하지 않음
+- 세션 잠금 버튼 및 15분 비활동 자동 잠금
+- 한국어 / English / 中文 / 日本語 UI와 중요한 송금·seed 안내 현지화
 - 송금액의 0.25% josimi 서비스 수수료
   - 상한 0.05 XMR
 - 송금 서비스 수수료 수취 주소: `42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT`
 - 송금 확인 전에 받는 주소, 서비스 수수료, 실제 네트워크 수수료 및 총 차감액을 표시
-- relay 응답이 불확실하면 같은 서명 거래를 보존해 재시도하며, 해결 전 새 송금·지갑 전환을 막음; 여러 건으로 분할되는 송금은 차단
+- relay 응답이 불확실하면 같은 서명 거래를 보존해 재시도하며, 기존 relay가 진행 중인 동안 중복 relay 요청을 차단; 앱 종료 대기는 제한 시간 후 명시적 확인을 표시
+- 여러 건으로 분할되는 송금은 차단하며, 복원된 송금 검토에는 실제 출금 계정·메모를 다시 표시
 - HTTPS 원격 Monero 노드 연결·동기화 상태 표시
 - seed 복구 시 restore height 입력 및 생성 시 복구 높이 표시
 - Portable EXE/ZIP 실행 위치의 기존 호환용 `josimi` 데이터 폴더에 지갑·노드 파일 저장
@@ -33,7 +38,7 @@
 - `CPU 자동 100% 사용`을 켜면 XMRig의 `--cpu-max-threads-hint 100`으로 논리 CPU 전체를 자동 선택
 - 직접 지정한 Stratum 풀, preset 중 TCP 지연이 가장 낮은 풀을 고르는 자동 풀 선택, 원격 P2Pool endpoint 지원
 
-고급 기능의 단계별 범위는 [`GUI_PARITY_ROADMAP.md`](GUI_PARITY_ROADMAP.md)에 기록되어 있습니다. v1.1.0은 계정·하위 주소·주소록·거래 메모 단계이며, 오프라인 서명·multisig·하드웨어 지갑은 아직 구현되지 않았습니다.
+고급 기능의 단계별 범위는 [`GUI_PARITY_ROADMAP.md`](GUI_PARITY_ROADMAP.md)에 기록되어 있습니다. v1.1.0에서 계정·하위 주소·주소록·거래 메모를 추가했으며, 오프라인 서명·multisig·하드웨어 지갑은 아직 구현되지 않았습니다.
 
 ## 실행
 
@@ -42,7 +47,7 @@ npm install
 npm start
 ```
 
-현재 앱은 HTTPS 원격 노드를 사용합니다. 기본 endpoint는 `https://node.monerodevs.org:18089`이며, 노드 운영자는 IP와 연결 메타데이터를 볼 수 있습니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
+현재 앱은 HTTPS 원격 노드를 사용합니다. 기본 endpoint는 `https://node.monerodevs.org:18089`이며, 노드 운영자는 IP와 연결 메타데이터를 볼 수 있습니다. 지갑을 열기 전에는 연결을 하지 않고, 지갑이 열린 상태에서만 30초 간격으로 잔액·거래·노드 상태를 확인합니다. 생성·복구는 먼저 임시 파일에서 처리한 뒤 기존 지갑을 보관합니다.
 
 지갑 화면의 **채굴** 패널은 Windows에서 직접 Stratum 풀, 자동 풀 선택 또는 원격 P2Pool endpoint를 지원합니다. 채굴 보상은 현재 지갑의 primary address로 귀속됩니다. XMRig 자체의 개발자 기부 수수료가 별도로 적용될 수 있으므로 사용 전에 확인하세요.
 
@@ -61,7 +66,7 @@ npm run dist
 생성물:
 
 - `dist/josimi.exe` — Windows Portable 단일 실행 파일
-- `dist/josimi-1.1.0-x64.zip` — ZIP 배포본
+- `dist/josimi-1.1.2-x64.zip` — ZIP 배포본
 - `dist/win-unpacked/`
 
 앱은 자동 업데이트를 수행하지 않습니다. 새 버전은 GitHub 릴리스 페이지에서 사용자가 직접 내려받고, 배포된 체크섬을 별도로 확인한 뒤 교체하세요.
@@ -74,6 +79,7 @@ josimi Electron preload는 외부 QR 모듈을 직접 require하지 않고 main 
 
 - 이 코드는 아직 **독립 보안 감사가 끝난 제품이 아닙니다**. 큰 금액을 보관하지 마세요.
 - seed/private key는 채팅이나 외부 서버로 보내지 않도록 설계했지만, 사용자의 PC가 악성코드에 감염된 경우를 막아 주지는 않습니다.
+- 복구 seed를 표시할 때 화면 노출에 주의하고, 복구 시 seed offset passphrase를 사용했다면 seed와 별도로 기록해 오프라인에 보관하세요.
 - Windows 배포 전 코드 서명 인증서, 재현 가능한 빌드, 해시 서명, 보안 감사가 필요합니다.
 - 현재 lockfile 기준 `npm audit` 전체 의존성 취약점은 0건입니다. 이는 코드의 독립 보안 감사나 안전한 mainnet 사용을 보증하지 않습니다.
 - 기본 public node는 신뢰 경계입니다. 노드 운영자는 IP 및 연결 메타데이터를 볼 수 있으므로 본인 노드 또는 Tor/I2P 같은 프라이버시 경로를 고려하세요.

@@ -60,6 +60,26 @@ function normalizeTransactionNote(value) {
   return note;
 }
 
+function validateWalletPassword(password, minimumLength = 8) {
+  if (typeof password !== 'string' || !Number.isSafeInteger(minimumLength) || minimumLength < 0 || password.length < minimumLength) {
+    throw new Error(minimumLength === 0 ? '비밀번호 형식이 올바르지 않습니다.' : `비밀번호는 ${minimumLength}자 이상이어야 합니다.`);
+  }
+  return password;
+}
+
+function isRelayAttemptInProgress(state, relayInProgress) {
+  return state === 'relaying' || relayInProgress === true;
+}
+
+function waitForPromiseOrTimeout(promise, timeoutMs) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0) return Promise.reject(new RangeError('대기 시간은 0 이상의 정수여야 합니다.'));
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise).then(() => true, () => true),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(false), timeoutMs); })
+  ]).finally(() => clearTimeout(timer));
+}
+
 function isMoneroKeysFile(filePath) {
   return typeof filePath === 'string' && filePath.toLowerCase().endsWith('.keys');
 }
@@ -87,6 +107,9 @@ module.exports = {
   normalizeWalletIndex,
   normalizeWalletLabel,
   normalizeTransactionNote,
+  validateWalletPassword,
+  isRelayAttemptInProgress,
+  waitForPromiseOrTimeout,
   isMoneroKeysFile,
   isAllowedNodeRedirect
 };

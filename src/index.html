@@ -21,6 +21,7 @@
           <form id="walletForm">
             <label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label>
             <label class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
+            <p class="fine" data-i18n="nodePrivacyNotice">원격 노드 운영자는 IP와 연결 메타데이터를 볼 수 있습니다. 신뢰하는 노드를 사용하세요.</p>
             <label id="seedLabel" class="hidden"><span data-i18n="moneroSeed">Monero seed</span><textarea id="seed" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="13/14/25단어 seed" data-i18n-placeholder="seedPlaceholder"></textarea></label>
             <label id="seedOffsetLabel" class="hidden"><span data-i18n="seedOffset">Seed offset passphrase (선택)</span><input id="seedOffset" type="password" autocomplete="off" placeholder="없으면 비워두세요" data-i18n-placeholder="seedOffsetPlaceholder" /></label>
             <label id="restoreHeightLabel" class="hidden"><span data-i18n="restoreHeight">복구 시작 블록 높이</span><input id="restoreHeight" type="number" min="0" step="1" inputmode="numeric" placeholder="예: 3000000" data-i18n-placeholder="restoreHeightPlaceholder" /></label>

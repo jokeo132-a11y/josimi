@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('josimi', {
   restore: (payload) => ipcRenderer.invoke('wallet-restore', payload),
   open: (payload) => ipcRenderer.invoke('wallet-open', payload),
   refresh: () => ipcRenderer.invoke('wallet-refresh'),
+  getSeed: () => ipcRenderer.invoke('wallet-seed'),
   createAccount: (payload) => ipcRenderer.invoke('wallet-account-create', payload),
   setAccountLabel: (payload) => ipcRenderer.invoke('wallet-account-label', payload),
   createSubaddress: (payload) => ipcRenderer.invoke('wallet-subaddress-create', payload),
