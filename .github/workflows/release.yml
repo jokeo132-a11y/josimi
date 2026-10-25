@@ -1,0 +1,76 @@
+name: Build and publish release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Verify tag and build Windows files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          : > dist/build.log
+          run_logged() {
+            printf '\n$' >> dist/build.log
+            printf ' %q' "$@" >> dist/build.log
+            printf '\n' >> dist/build.log
+            "$@" 2>&1 | tee -a dist/build.log
+          }
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $PACKAGE_VERSION" | tee -a dist/build.log
+            exit 1
+          fi
+          run_logged npm ci
+          run_logged npm test
+          run_logged npm audit --audit-level=moderate
+          run_logged npm run dist
+          SOURCE_ZIP="dist/josimi-${PACKAGE_VERSION}-source.zip"
+          git archive --format=zip --prefix="josimi-${PACKAGE_VERSION}/" "$GITHUB_SHA" > "$SOURCE_ZIP"
+          (cd dist && sha256sum josimi.exe "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" > SHA256SUMS.txt)
+      - name: Upload build log artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.ref_name }}
+          path: dist/build.log
+          if-no-files-found: warn
+          retention-days: 90
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            dist/josimi.exe \
+            "dist/josimi-${VERSION}-x64.zip" \
+            "dist/josimi-${VERSION}-source.zip" \
+            dist/SHA256SUMS.txt \
+            dist/build.log \
+            --verify-tag \
+            --generate-notes \
+            --title "josimi ${GITHUB_REF_NAME}"

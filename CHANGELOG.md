@@ -1,3 +1,13 @@
+## v1.1.3 — 2026-10-25
+
+- Localized mining privacy notices by mode: direct/automatic pools receive the public primary address; P2Pool mode does not pass it to XMRig and warns users to verify payout configuration.
+- Disclosed that wallet creation may request `get_info` from the selected daemon before the wallet opens to obtain the creation height.
+- Added privacy, security reporting, and release verification documentation, plus the MIT license.
+- Added CI and tagged-release workflows for tests, dependency auditing, Windows builds, source archives, checksums, and build logs.
+- Added weekly Dependabot updates and regression tests for localized mining notices and trust documentation.
+- Enabled GitHub private vulnerability reporting, Dependabot alerts, and security updates.
+- Disabled checkout credential persistence during release builds and pass the GitHub token explicitly only to the publishing step.
+
 ## v1.1.2 — 2026-10-24
 
 - 지갑이 열린 상태에서 30초마다 잔액·계정·거래내역을 자동 갱신
