@@ -13,6 +13,17 @@
       <div class="brand"><span class="mark">j</span><span>josimi</span></div>
       <div class="top-actions"><select id="languageSelect" aria-label="Language"><option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option></select><button id="lockBtn" class="ghost hidden" data-i18n="lock">잠금</button></div>
     </header>
+    <details id="localNodePanel" class="node-manager">
+      <summary data-i18n="localNodeSummary">로컬 노드 (monerod)</summary>
+      <div class="node-manager-body">
+        <p class="fine" data-i18n="localNodeIntro">공식 Monero CLI를 다운로드하고 해시 검증 후 숨겨진 창에서 monerod를 실행합니다.</p>
+        <div id="localNodeStatus" class="status" role="status" aria-live="polite" data-i18n="localNodeChecking">로컬 노드 상태 확인 중</div>
+        <progress id="localNodeProgress" class="hidden" max="100" value="0"></progress>
+        <div class="node-manager-actions"><button id="installLocalNodeBtn" class="tool" data-i18n="localNodeInstall">공식 노드 다운로드 및 검증</button><button id="startLocalNodeBtn" class="tool" data-i18n="localNodeStart">monerod 시작</button><button id="stopLocalNodeBtn" class="tool" data-i18n="localNodeStop">노드 중지</button></div>
+        <p class="fine" data-i18n="localNodeStorageNotice">첫 동기화는 많은 저장 공간과 네트워크를 쓸 수 있습니다. UPnP를 끄지만 monerod는 기본 P2P 포트 18080에서 계속 수신 대기합니다. --hide-my-port는 피어 목록 광고만 막으며, 외부 연결 가능성은 PC 방화벽에 달려 있습니다.</p>
+        <div id="localNodeError" class="error hidden" role="alert" aria-atomic="true"></div>
+      </div>
+    </details>
     <main>
       <section id="authView" class="auth-view">
         <div class="auth-card">
@@ -20,8 +31,10 @@
           <div class="tabs" role="tablist" aria-label="Wallet actions"><button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="walletForm" data-tab="create" data-i18n="create">새 지갑</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="restore" data-i18n="restore">복구</button><button class="tab hidden" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="open" data-i18n="open">열기</button></div>
           <form id="walletForm">
             <label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label>
-            <label class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
-            <p class="fine" data-i18n="nodePrivacyNotice">원격 노드 운영자는 IP와 연결 메타데이터를 볼 수 있습니다. 신뢰하는 노드를 사용하세요.</p>
+            <label><span data-i18n="nodeMode">노드 유형</span><select id="nodeMode"><option value="remote" selected data-i18n="nodeRemoteChoice">원격 노드</option><option value="local" data-i18n="nodeLocalChoice">내 PC의 로컬 monerod</option></select></label>
+            <label id="remoteNodeLabel" class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
+            <p id="remoteNodeNotice" class="fine" data-i18n="nodePrivacyNotice">원격 daemon은 IP와 지갑 RPC 요청을 연결해 잔액·활동을 추론할 수 있습니다. 신뢰할 수 있는 노드만 사용하세요.</p>
+            <p id="localNodeNotice" class="fine hidden" data-i18n="nodeLocalNotice">로컬 monerod를 사용하면 지갑 RPC는 127.0.0.1에 연결됩니다. 블록체인 동기화 전에 지갑을 만들거나 열면 동기화가 끝날 때까지 기다려야 할 수 있습니다.</p>
             <label id="seedLabel" class="hidden"><span data-i18n="moneroSeed">Monero seed</span><textarea id="seed" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="13/14/25단어 seed" data-i18n-placeholder="seedPlaceholder"></textarea></label>
             <label id="seedOffsetLabel" class="hidden"><span data-i18n="seedOffset">Seed offset passphrase (선택)</span><input id="seedOffset" type="password" autocomplete="off" placeholder="없으면 비워두세요" data-i18n-placeholder="seedOffsetPlaceholder" /></label>
             <label id="restoreHeightLabel" class="hidden"><span data-i18n="restoreHeight">복구 시작 블록 높이</span><input id="restoreHeight" type="number" min="0" step="1" inputmode="numeric" placeholder="예: 3000000" data-i18n-placeholder="restoreHeightPlaceholder" /></label>
@@ -60,7 +73,7 @@
               <label><span data-i18n="transactionNote">거래 메모 (선택)</span><textarea id="sendNote" rows="2" maxlength="500"></textarea></label>
               <button class="primary" type="submit" data-i18n="review">검토하기</button>
             </form>
-            <p class="fine fee-note" data-i18n="feeNotice">서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료</p><div id="sendError" class="error hidden" role="alert" aria-atomic="true"></div>
+            <p class="fine fee-note" data-i18n="feeNotice">서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료</p><div id="relayRecoveryBanner" class="relay-recovery-banner hidden" role="alert"><span data-i18n="relayRecoveryBanner">이 지갑에 확인되지 않은 이전 송금이 있습니다. 새 송금은 차단됩니다.</span><button id="reviewPendingSendBtn" class="tool" type="button" data-i18n="reviewPendingSend">이전 송금 확인</button></div><div id="sendError" class="error hidden" role="alert" aria-atomic="true"></div>
           </article>
 
           <article class="card tx-card">
@@ -94,19 +107,20 @@
 
           <article class="card mining-card">
             <div class="card-title"><span data-i18n="miningTitle">채굴</span><span id="miningStatus" class="muted" data-i18n="miningStopped">중지됨</span></div>
-            <p class="fine" data-i18n="miningFine">원격 노드와 원격 풀만 사용합니다. 전력·발열과 운영체제의 실제 처리 능력을 확인하세요.</p>
-            <p class="fine" data-i18n="miningPrivacyNotice">채굴을 시작하면 선택한 원격 풀에 IP 주소와 공개 지갑 주소가 전달됩니다. 채굴은 직접 시작해야 합니다. seed와 개인 키는 보내지 않습니다.</p>
-            <label><span data-i18n="miningMode">채굴 방식</span><select id="miningMode"><option value="pool" data-i18n="miningPool">직접 풀</option><option value="auto" data-i18n="miningAuto">자동으로 풀 선택</option><option value="p2pool" data-i18n="miningP2pool">P2Pool</option></select></label>
+            <p class="fine" data-i18n="miningFine">josimi는 현재 CPU 채굴만 지원합니다. P2Pool과 solo는 동기화된 로컬 monerod가 필요합니다. 채굴은 전력과 발열을 발생시킵니다.</p>
+            <p class="fine" data-i18n="miningPrivacyNotice">직접 풀은 IP와 공개 지갑 주소를 해당 풀에 보냅니다. P2Pool은 주소를 로컬 P2Pool에 전달하고 주소가 보상 기록에 공개될 수 있습니다. P2Pool은 피어 연결 포트를 모든 네트워크 인터페이스에서 수신 대기할 수 있습니다. Solo 주소는 로컬 monerod에만 전달됩니다. seed와 개인 키는 전송하지 않습니다.</p>
+            <label><span data-i18n="miningMode">채굴 방식</span><select id="miningMode"><option value="pool" data-i18n="miningPool">직접 풀</option><option value="auto" data-i18n="miningAuto">자동으로 풀 선택</option><option value="p2pool" data-i18n="miningP2pool">로컬 P2Pool</option><option value="solo" data-i18n="miningSolo">Solo (monerod)</option></select></label>
             <div id="poolSettings" class="mining-settings hidden"><label><span data-i18n="poolAddress">풀 주소</span><input id="miningPoolUrl" placeholder="pool.example.com:443" /></label><label class="check-row"><input id="miningPoolTls" type="checkbox" checked /><span data-i18n="poolTls">TLS 사용</span></label></div>
-            <div id="p2poolSettings" class="mining-settings hidden"><label><span data-i18n="p2poolProfile">P2Pool 네트워크</span><select id="p2poolProfile"><option value="main">P2Pool main</option><option value="mini" selected>P2Pool mini</option><option value="nano">P2Pool nano</option></select></label><label><span data-i18n="p2poolNodeMode">P2Pool 노드</span><select id="p2poolNodeMode"><option value="remote" data-i18n="p2poolRemote">원격 P2Pool stratum 사용</option></select></label><label id="p2poolRemoteLabel" class="hidden"><span data-i18n="p2poolNodeAddress">P2Pool 주소</span><input id="p2poolNodeAddress" placeholder="p2pool.example.com:3333" /></label></div>
+            <div id="p2poolSettings" class="mining-settings hidden"><label><span data-i18n="p2poolProfile">P2Pool 네트워크</span><select id="p2poolProfile"><option value="main">P2Pool main</option><option value="mini" selected>P2Pool mini</option><option value="nano">P2Pool nano</option></select></label><p class="fine" data-i18n="p2poolLocalNotice">P2Pool/XMRig는 숨겨진 프로세스로 실행됩니다. P2Pool P2P 리스너는 네트워크 인터페이스에서 수신 대기할 수 있으며 UPnP 포트 개방은 끕니다. monerod는 완전히 동기화되어야 합니다.</p></div>
             <label><span data-i18n="miningThreads">CPU 스레드</span><input id="miningThreads" type="number" min="1" step="1" value="1" /></label><label class="check-row auto100-row"><input id="miningAuto100" type="checkbox" /><span data-i18n="miningAuto100">CPU 자동 100% 사용</span></label><label class="check-row"><input id="miningIgnoreBattery" type="checkbox" /><span data-i18n="miningIgnoreBattery">배터리 상태 무시</span></label><div class="mining-actions"><button id="startMiningBtn" class="primary" data-i18n="startMining">채굴 시작</button><button id="stopMiningBtn" class="tool" data-i18n="stopMining">채굴 중지</button></div><div id="miningError" class="error hidden" role="alert" aria-atomic="true"></div>
           </article>
         </div>
-      </section>
-    </main>
+  </section>
+  </main>
   </div>
 
-  <dialog id="confirmDialog" aria-labelledby="reviewTitle" aria-describedby="reviewDescription"><div class="dialog-inner"><div class="eyebrow" data-i18n="reviewEyebrow">TRANSACTION REVIEW</div><h2 id="reviewTitle" data-i18n="reviewTitle">송금 내용을 확인하세요</h2><p id="reviewDescription" class="fine" data-i18n="reviewDescription">아래 내용을 확인한 뒤 한 번만 전송하세요.</p><div id="review"></div><div id="sendDialogError" class="error hidden" role="alert" aria-atomic="true"></div><div class="dialog-actions"><button id="cancelSend" data-i18n="cancel">취소</button><button id="confirmSend" class="primary" data-i18n="confirmSend">확인하고 송금</button></div></div></dialog>
+  <dialog id="confirmDialog" aria-labelledby="reviewTitle" aria-describedby="reviewDescription"><div class="dialog-inner"><div class="eyebrow" data-i18n="reviewEyebrow">TRANSACTION REVIEW</div><h2 id="reviewTitle" data-i18n="reviewTitle">송금 내용을 확인하세요</h2><p id="reviewDescription" class="fine" data-i18n="reviewDescription">아래 내용을 확인한 뒤 한 번만 전송하세요.</p><div id="review"></div><div id="sendDialogError" class="error hidden" role="alert" aria-atomic="true"></div><div class="dialog-actions"><button id="cancelSend" data-i18n="cancel">취소</button><button id="dismissUnknownSend" class="tool hidden" type="button" data-i18n="leaveBlocked">경고를 유지하고 닫기</button><button id="resolveUnknownSend" class="tool danger hidden" type="button" data-i18n="resolveUnknownSend">확인 후 경고 해제</button><button id="confirmSend" class="primary" data-i18n="confirmSend">확인하고 송금</button></div></div></dialog>
+  <dialog id="seedReauthDialog" aria-labelledby="seedReauthTitle"><form id="seedReauthForm" class="dialog-inner"><div class="eyebrow">josimi</div><h2 id="seedReauthTitle">복구 seed 표시</h2><p id="seedReauthMessage" class="fine">현재 지갑 비밀번호를 다시 입력해야 seed를 표시할 수 있습니다. 비밀번호 확인은 임시 메모리 지갑에서 수행되며 기존 지갑 파일을 변경하지 않습니다.</p><label class="seed-reauth-label"><span id="seedReauthPasswordLabel">현재 지갑 비밀번호</span><input id="seedReauthPassword" type="password" autocomplete="current-password" autocapitalize="off" spellcheck="false" /></label><div class="dialog-actions"><button id="seedReauthCancel" type="button">취소</button><button id="seedReauthConfirm" class="primary" type="submit">확인 후 계속</button></div></form></dialog>
   <div id="toast" class="toast hidden" role="status" aria-live="polite" aria-atomic="true"></div>
   <script src="renderer.js"></script>
 </body>

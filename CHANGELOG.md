@@ -1,3 +1,17 @@
+## v1.2.0 — 2026-10-26
+
+- Added an opt-in Windows local-node manager that downloads the pinned official Monero CLI v0.18.5.4 archive, verifies its SHA-256, and runs monerod without a console window.
+- Bound Monero administrative RPC and ZMQ to loopback, enabled pruning, disabled IGD/UPnP, set `--hide-my-port` (which prevents peer-list advertisement but does not stop the P2P listener), and added graceful daemon shutdown.
+- Added local monerod solo mining and local P2Pool main/mini/nano modes; P2Pool receives the primary public wallet address and uses profile-specific peer ports.
+- Kept the P2Pool Stratum listener loopback-only, disabled router UPnP port mapping, and disclosed that P2Pool's peer listener binds to network interfaces.
+- Added SHA-256 verification before XMRig and P2Pool launch, bounded local RPC responses/deadlines, cancellable monerod startup and CLI installation, and cleanup for partial process/download failures.
+- Persisted relay recovery barriers before transmission; the journal uses directory fsync on POSIX and Windows write-through replacement. Restarts require manual transaction-hash review and never automatically rebroadcast an ambiguous transaction.
+- Cleared wallet password/seed fields after use and require a localized native warning plus a fresh wallet-password check against a temporary in-memory wallet before seed display.
+- Corrected mining privacy disclosures for parallel pool probes, the P2Pool address passed to both P2Pool and XMRig, peer connections, local storage, archive retention, CPU-only support, and fee boundaries in four languages.
+- Pinned GitHub Actions by commit SHA, disabled checkout credential persistence in CI and release builds, verified the tag still resolves to the built commit before publishing, and included the build log in the checksum manifest.
+- Restricted relay recovery storage to an explicit field allowlist and preserved case-distinct wallet paths on case-sensitive systems.
+- Added node-manager start/install cancellation, P2Pool-port, durable relay, schema-minimization, and release-workflow regression tests. The scoped source review and its limitations are recorded in SECURITY.md.
+
 ## v1.1.3 — 2026-10-25
 
 - Localized mining privacy notices by mode: direct/automatic pools receive the public primary address; P2Pool mode does not pass it to XMRig and warns users to verify payout configuration.

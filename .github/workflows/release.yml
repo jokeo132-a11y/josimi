@@ -5,23 +5,26 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  release:
+  build:
+    name: Test and build Windows release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check out tagged source
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
           fetch-depth: 0
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -49,15 +52,65 @@ jobs:
           run_logged npm run dist
           SOURCE_ZIP="dist/josimi-${PACKAGE_VERSION}-source.zip"
           git archive --format=zip --prefix="josimi-${PACKAGE_VERSION}/" "$GITHUB_SHA" > "$SOURCE_ZIP"
-          (cd dist && sha256sum josimi.exe "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" > SHA256SUMS.txt)
-      - name: Upload build log artifact
+          (cd dist && sha256sum josimi.exe "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" build.log > SHA256SUMS.txt)
+      - name: Upload build log for diagnosis
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: build-log-${{ github.ref_name }}
           path: dist/build.log
           if-no-files-found: warn
           retention-days: 90
+      - name: Upload verified release files
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-files-${{ github.ref_name }}
+          path: |
+            dist/josimi.exe
+            dist/josimi-*-x64.zip
+            dist/josimi-*-source.zip
+            dist/SHA256SUMS.txt
+            dist/build.log
+          if-no-files-found: error
+          retention-days: 90
+
+  publish:
+    name: Publish verified release files
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download build outputs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-files-${{ github.ref_name }}
+          path: dist
+      - name: Verify transferred checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check SHA256SUMS.txt
+          VERSION="${GITHUB_REF_NAME#v}"
+          test -s josimi.exe
+          test -s "josimi-${VERSION}-x64.zip"
+          test -s "josimi-${VERSION}-source.zip"
+      - name: Verify release tag still points to the built commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHECK_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CHECK_DIR"' EXIT
+          git -C "$CHECK_DIR" init -q
+          git -C "$CHECK_DIR" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$CHECK_DIR" fetch --quiet --depth=1 origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          TAG_COMMIT="$(git -C "$CHECK_DIR" rev-list -n 1 "refs/tags/${GITHUB_REF_NAME}")"
+          if [[ "$TAG_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo "Release tag now resolves to $TAG_COMMIT but this workflow built $GITHUB_SHA" >&2
+            exit 1
+          fi
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -65,12 +118,23 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          CHECK_DIR="$(mktemp -d)"
+          trap 'rm -rf "$CHECK_DIR"' EXIT
+          git -C "$CHECK_DIR" init -q
+          git -C "$CHECK_DIR" remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$CHECK_DIR" fetch --quiet --depth=1 origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+          TAG_COMMIT="$(git -C "$CHECK_DIR" rev-list -n 1 "refs/tags/${GITHUB_REF_NAME}")"
+          if [[ "$TAG_COMMIT" != "$GITHUB_SHA" ]]; then
+            echo "Release tag now resolves to $TAG_COMMIT but this workflow built $GITHUB_SHA" >&2
+            exit 1
+          fi
           gh release create "$GITHUB_REF_NAME" \
-            dist/josimi.exe \
+            "dist/josimi.exe" \
             "dist/josimi-${VERSION}-x64.zip" \
             "dist/josimi-${VERSION}-source.zip" \
             dist/SHA256SUMS.txt \
             dist/build.log \
+            --repo "$GITHUB_REPOSITORY" \
             --verify-tag \
             --generate-notes \
             --title "josimi ${GITHUB_REF_NAME}"

@@ -37,6 +37,16 @@ function validateMiningThreads(count) {
   return threads;
 }
 
+function p2poolPeerPort(profile) {
+  const ports = { main: 37889, mini: 37888, nano: 37890 };
+  if (!Object.hasOwn(ports, profile)) throw new RangeError('P2Pool profile must be main, mini, or nano.');
+  return ports[profile];
+}
+
+function isValidMoneroTxHash(value) {
+  return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
+}
+
 function normalizeWalletIndex(value, field = '지갑 인덱스') {
   if (value === undefined || value === null || (typeof value === 'string' && value.trim() === '')) throw new RangeError(`${field}는 0 이상의 정수여야 합니다.`);
   const index = Number(value);
@@ -94,6 +104,13 @@ function isAllowedNodeRedirect(fromUrl, toUrl) {
   }
 }
 
+function canAppendResponseBytes(currentBytes, incomingBytes, maxBytes) {
+  return Number.isSafeInteger(currentBytes) && currentBytes >= 0
+    && Number.isSafeInteger(incomingBytes) && incomingBytes >= 0
+    && Number.isSafeInteger(maxBytes) && maxBytes > 0
+    && currentBytes <= maxBytes && incomingBytes <= maxBytes - currentBytes;
+}
+
 module.exports = {
   ATOMIC_PER_XMR,
   MAX_ATOMIC,
@@ -104,6 +121,8 @@ module.exports = {
   xmrToAtomic,
   calculateServiceFee,
   validateMiningThreads,
+  p2poolPeerPort,
+  isValidMoneroTxHash,
   normalizeWalletIndex,
   normalizeWalletLabel,
   normalizeTransactionNote,
@@ -111,5 +130,6 @@ module.exports = {
   isRelayAttemptInProgress,
   waitForPromiseOrTimeout,
   isMoneroKeysFile,
-  isAllowedNodeRedirect
+  isAllowedNodeRedirect,
+  canAppendResponseBytes
 };
