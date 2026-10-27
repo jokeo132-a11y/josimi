@@ -12,7 +12,7 @@
     "dist": "electron-builder --win portable zip"
   },
   "dependencies": {
-    "monero-ts": "0.11.20",
+    "monero-ts": "0.11.21",
     "qrcode": "1.5.4"
   },
   "overrides": {
@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "electron": "44.9.3",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.18.0"
   },
   "build": {
     "appId": "com.josimi.wallet",
