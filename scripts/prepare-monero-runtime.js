@@ -104,11 +104,15 @@ function quotePowerShell(value) {
 
 async function extractArchive(archivePath, destination) {
   if (process.platform === 'win32') {
-    const command = `$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; $archive=[System.IO.Compression.ZipFile]::OpenRead(${quotePowerShell(archivePath)}); try { foreach($entry in $archive.Entries) { $member=$entry.FullName.Replace('\\','/'); $parts=@($member.Split('/') | Where-Object { $_ -ne '' }); if([IO.Path]::IsPathRooted($member) -or $member.StartsWith('/') -or $member -match '^[A-Za-z]:' -or ($parts -contains '..') -or ($parts -contains '.')) { throw 'Unsafe Monero archive entry path.' }; foreach($part in $parts) { if($part -match '[<>:"|?*]' -or $part -match '[. ]$' -or $part -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\..*)?$') { throw 'Unsafe Windows Monero archive member.' } } } } finally { $archive.Dispose() }; Expand-Archive -LiteralPath ${quotePowerShell(archivePath)} -DestinationPath ${quotePowerShell(destination)} -Force`;
+    const command = `$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; $archive=[System.IO.Compression.ZipFile]::OpenRead(${quotePowerShell(archivePath)}); $unsafe=$false; try { foreach($entry in $archive.Entries) { $member=$entry.FullName.Replace('\\','/'); $parts=@($member.Split('/') | Where-Object { $_ -ne '' }); if([IO.Path]::IsPathRooted($member) -or $member.StartsWith('/') -or $member -match '^[A-Za-z]:' -or ($parts -contains '..') -or ($parts -contains '.')) { $unsafe=$true; break }; foreach($part in $parts) { if($part -match '[<>:"|?*]' -or $part -match '[. ]$' -or $part -match '^(?i:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\\..*)?$') { $unsafe=$true; break } }; if($unsafe) { break } } } finally { $archive.Dispose() }; if($unsafe) { exit 42 }; Expand-Archive -LiteralPath ${quotePowerShell(archivePath)} -DestinationPath ${quotePowerShell(destination)} -Force`;
     await new Promise((resolve, reject) => {
       const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, stdio: 'ignore' });
       child.once('error', reject);
-      child.once('close', (code) => code === 0 ? resolve() : reject(new Error(`PowerShell Monero archive extraction failed with code ${code}.`)));
+      child.once('close', (code) => {
+        if (code === 0) return resolve();
+        if (code === 42) return reject(new Error('Official Monero archive contains an unsafe ZIP member path.'));
+        reject(new Error(`PowerShell Monero archive extraction failed with code ${code}.`));
+      });
     });
     return;
   }
