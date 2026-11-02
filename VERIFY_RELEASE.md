@@ -13,11 +13,14 @@ if (-not $expected -or $actual -ne $expected) { throw 'SHA-256 mismatch: do not 
 'SHA-256 matches the release checksum.'
 ```
 
-For the ZIP, use the exact filename shown in the release. For v1.2.0:
+For the ZIP, set `$version` to the version you downloaded; the example uses v1.2.1.
 
 ```powershell
-$expected = ((Get-Content .\SHA256SUMS.txt | Where-Object { $_ -match '\s+josimi-1\.2\.0-x64\.zip$' }) -split '\s+')[0].ToLowerInvariant()
-$actual = (Get-FileHash .\josimi-1.2.0-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+$version = '1.2.1' # Change this to the version you downloaded.
+$zip = ".\josimi-$version-x64.zip"
+$zipName = Split-Path $zip -Leaf
+$expected = ((Get-Content .\SHA256SUMS.txt | Where-Object { $_ -match ('\s+' + [regex]::Escape($zipName) + '$') }) -split '\s+')[0].ToLowerInvariant()
+$actual = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
 if (-not $expected -or $actual -ne $expected) { throw 'SHA-256 mismatch: do not extract or run this archive.' }
 'SHA-256 matches the release checksum.'
 ```

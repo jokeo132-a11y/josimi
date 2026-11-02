@@ -9,3 +9,5 @@ dist/*.yml
 dist/*.exe
 .DS_Store
 *.log
+__pycache__/
+*.py[cod]

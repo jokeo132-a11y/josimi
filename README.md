@@ -1,6 +1,6 @@
 # josimi
 
-josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The current development target is **v1.2.0 for Windows x64 Portable**.
+josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The current development target is **v1.2.1 for Windows x64 Portable (unreleased)**.
 
 ## Wallet features
 
@@ -13,18 +13,19 @@ josimi is a non-custodial Monero desktop wallet built with Electron. Its interfa
 
 ## Local node
 
-On Windows, the node panel can download the official Monero CLI v0.18.5.4 archive over HTTPS, verify its source-pinned SHA-256, and start `monerod` as a hidden process. The node uses a pruned blockchain, binds administrative RPC and ZMQ to loopback only, disables UPnP/IGD port mapping, and passes `--hide-my-port` so it is not advertised as a peer-list candidate. The daemon still listens on its Monero P2P port; inbound reachability depends on the computer's firewall and network, which josimi does not configure. Outbound Monero P2P connections continue. The first blockchain sync may take hours or days and use substantial disk space and bandwidth. See [PRIVACY.md](PRIVACY.md) for data paths and network disclosures.
+The Windows release ZIP includes the unmodified official Monero v0.18.5.4 `monerod.exe`, its required runtime DLLs, and upstream license notices. It does **not** include the full Monero CLI archive or its other tools. The full official CLI archive is a temporary build input: the release build checks its SHA-256 against the value published by Monero, extracts only the daemon and required same-directory DLLs, then removes the temporary archive. The app does not download or extract Monero components at runtime. Before launch, it checks the bundled file hashes against the included manifest; that manifest is not independently signed, so this detects file mismatch relative to the manifest but does not authenticate a tampered manifest. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the included Monero license for provenance and redistribution terms. The daemon runs without a console window, uses a pruned blockchain, binds administrative RPC and ZMQ to loopback only, disables UPnP/IGD port mapping, and passes `--hide-my-port` so it is not advertised as a peer-list candidate. It still listens on its Monero P2P port; inbound reachability depends on the computer's firewall and network, which josimi does not configure. Outbound Monero P2P connections continue. The first blockchain sync may take hours or days and use substantial disk space and bandwidth. See [PRIVACY.md](PRIVACY.md) for data paths and network disclosures.
 
 ## Mining
 
 Mining is optional and never starts by default. On Windows, the current implementation supports CPU mining through:
 
 - Direct Stratum pool mining.
-- Automatic pool selection by parallel TCP latency probes. Every reachable candidate can see the user's IP during probing.
+- Automatic pool selection by parallel TLS handshake checks with a connection deadline. Candidate pools can see the user's IP during probing; a handshake does not validate pool login or accepted shares.
+- Named direct-pool presets, including MoneroOcean over TLS at `gulf.moneroocean.stream:20128` with a configurable worker value (default `josimi~rx/0`), plus a custom host/port option.
 - Local P2Pool main, mini, or nano, using the local synchronized monerod, bundled P2Pool, and XMRig.
 - Solo mining through the local monerod RPC.
 
-The app verifies pinned XMRig and P2Pool executable hashes before launch. P2Pool receives the wallet's public primary address and opens its P2P peer listener on all network interfaces; the profile uses its standard peer port and router UPnP mapping is disabled. The local Stratum listener remains loopback-only. CPU mining is supported; GPU mining is not currently implemented. XMRig's default developer donation and any pool fees may apply.
+The app verifies pinned XMRig and P2Pool executable hashes before launch. P2Pool receives the wallet's public primary address; XMRig connects to its loopback Stratum listener without a wallet login. The app checks P2Pool's local HTTP health marker so an unrelated service on port 3333 is less likely to be mistaken for P2Pool; this marker is a local heuristic, not authenticated process identity. P2Pool still needs its own initial sync after monerod is ready; this commonly takes 5–10 minutes, during which XMRig may show a connecting state. P2Pool opens its peer listener on all network interfaces; the profile uses its standard peer port and router UPnP mapping is disabled. In pool and P2Pool modes, the app distinguishes connecting from receiving work and only reports mining after XMRig reports an accepted share. The displayed accepted-share count is XMRig-reported, may include its developer-donation work, and does not confirm a payout credited by the pool. Solo instead reports monerod's active mining status because it does not use XMRig. A custom pool with TLS disabled sends its wallet address and pool login in plaintext; use TLS when the pool supports it. A local hardware recommendation uses the detected logical CPU count and RAM as a conservative starting point; it is not a hashrate or temperature guarantee. CPU mining is supported; GPU mining is not currently implemented. XMRig's default developer donation and any pool fees may apply.
 
 The josimi service fee applies only to outgoing wallet transfers. It is **0.25% of the requested amount, capped at 0.05 XMR**, plus Monero's network fee. No josimi fee is taken from mining rewards.
 
@@ -49,7 +50,7 @@ npm audit --audit-level=moderate
 npm run dist
 ```
 
-The Windows targets are built with `electron-builder`; the release workflow publishes `josimi.exe`, `josimi-1.2.0-x64.zip`, `josimi-1.2.0-source.zip`, `SHA256SUMS.txt`, and `build.log`.
+The Windows targets are built with `electron-builder`; the tagged release workflow publishes `josimi.exe`, a versioned `josimi-<version>-x64.zip`, a matching `josimi-<version>-source.zip`, `SHA256SUMS.txt`, and `build.log`.
 
 ## Important limitations
 

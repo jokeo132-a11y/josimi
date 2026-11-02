@@ -1,0 +1,4 @@
+Monero daemon v0.18.5.4 is redistributed from the official Monero Windows x64 CLI archive. josimi packages the upstream monerod.exe and its required runtime DLLs unmodified; the other Monero CLI tools are not included. The source archive is verified against the SHA-256 published in the official Monero release notes before staging. See MONERO-LICENSE.txt for upstream binary redistribution terms.
+
+Upstream release: https://github.com/monero-project/monero/releases/tag/v0.18.5.4
+Official archive: https://downloads.getmonero.org/cli/monero-win-x64-v0.18.5.4.zip

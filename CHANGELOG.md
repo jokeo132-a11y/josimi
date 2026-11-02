@@ -1,3 +1,19 @@
+## v1.2.1 — Unreleased
+
+- Use the pinned official Monero CLI v0.18.5.4 archive only as a temporary build input; stage just the unmodified `monerod.exe`, required same-directory DLLs, and upstream notices. The release ZIP excludes the full CLI archive and other CLI tools, and the app performs no runtime download or extraction.
+- Correct the MoneroOcean direct-pool preset to the documented TLS endpoint `gulf.moneroocean.stream:20128`, with an editable worker value and default `josimi~rx/0`; use `x` for generic pool passwords.
+- Replace auto-select's raw TCP reachability race with parallel TLS-handshake checks that have an absolute deadline, and add clear named pool presets and honest connection/work/share states.
+- Keep P2Pool main/mini/nano and solo modes. Match upstream P2Pool usage by sending the address only to P2Pool's `--wallet` option; verify its Stratum listener with the upstream HTTP health marker before starting XMRig.
+- Include explicit first-sync guidance for P2Pool, disclose plaintext custom-pool risks when TLS is off, and correct all four localized P2Pool/XMRig wallet-flow notices.
+- Guard thread recommendations against mining-state races, re-render them after language changes, localize thread counts, and reject non-Boolean mining IPC flags.
+- Verify the source archive SHA-256 before staging and check the daemon-only runtime manifest, every packaged file hash, license notices, and exclusion of the full archive in the final Windows ZIP smoke check; report detached mining-process cleanup failures rather than leaving rejected promises unhandled.
+- Keep XMRig, P2Pool, and monerod handles until a real process-close event is observed; shutdown retries no longer erase an unresolved child-process error.
+- Validate mining IPC payload types, preset own-properties, URL/password lengths, and thread bounds; clear stale/disconnected XMRig state while keeping historical share counts distinct from current connectivity.
+- Require P2Pool's exact upstream HTTP status/headers/body and disclose that the local marker is a heuristic, not authenticated process identity.
+- Reject unsafe archive paths during build-time staging, clean generated runtime files after packaging succeeds or fails, and add regressions for daemon-only staging and manifest verification.
+- Clarify in four locales and user docs that XMRig-reported accepted shares can include developer-donation work and do not prove a pool payout.
+- Add regression tests for pool deadlines, P2Pool response parsing, strict mining requests, process-close confirmation, and verified ZIP/runtime contents.
+
 ## v1.2.0 — 2026-10-26
 
 - Added an opt-in Windows local-node manager that downloads the pinned official Monero CLI v0.18.5.4 archive, verifies its SHA-256, and runs monerod without a console window.

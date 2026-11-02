@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('josimi', {
   localNodeStart: () => ipcRenderer.invoke('local-node-start'),
   localNodeStop: () => ipcRenderer.invoke('local-node-stop'),
   miningStatus: () => ipcRenderer.invoke('mining-status'),
+  miningRecommendation: () => ipcRenderer.invoke('mining-recommendation'),
   miningStart: (payload) => ipcRenderer.invoke('mining-start', payload),
   miningStop: () => ipcRenderer.invoke('mining-stop'),
   onNodeStatus: (callback) => ipcRenderer.on('node-status', (_, status) => callback(status)),
