@@ -24,7 +24,7 @@ async function runWithCleanup(prepareRuntime, build, cleanupRuntime) {
 function runElectronBuilder() {
   return new Promise((resolve, reject) => {
     const executable = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'electron-builder.cmd' : 'electron-builder');
-    const child = spawn(executable, ['--win', 'portable', 'zip'], {
+    const child = spawn(executable, ['--win', 'zip'], {
       cwd: ROOT,
       stdio: 'inherit',
       ...(process.platform === 'win32' ? { shell: true } : {})

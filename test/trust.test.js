@@ -88,6 +88,7 @@ test('release build and publish jobs have least-privilege permissions and immuta
   }
   assert.match(release, /sha256sum --check SHA256SUMS\.txt/);
   assert.match(release, /build\.log > SHA256SUMS\.txt/);
+  assert.doesNotMatch(release, /josimi\.exe/);
   assert.match(release, /python scripts\/verify-release-bundle\.py/);
   assert.match(release, /verify-release-bundle\.py/);
   assert.match(read('scripts/verify-release-bundle.py'), /hashlib\.sha256\(data\)\.hexdigest\(\)/);
@@ -103,6 +104,8 @@ test('Windows package stages only the pinned Monero daemon runtime and cleans ge
   const nodeManager = read('src/node-manager.js');
   const verifier = read('scripts/verify-release-bundle.py');
   assert.match(packageJson.scripts.dist, /build-windows\.js/);
+  assert.equal(packageJson.build.win.target, 'zip');
+  assert.doesNotMatch(build, /portable/);
   assert.match(build, /finally/);
   assert.match(prepare, /MONERO_ARCHIVE_SHA256/);
   assert.match(prepare, /downloads\.getmonero\.org/);
@@ -117,7 +120,9 @@ test('Windows package stages only the pinned Monero daemon runtime and cleans ge
   assert.match(verifier, /monerod\.exe/);
   assert.match(verifier, /The full Monero CLI archive must not be shipped/);
   assert.match(verifier, /Nested ZIP archives, including the full Monero CLI archive/);
-  assert.match(verifier, /list_asar_paths/);
+  assert.match(verifier, /list_asar_entries/);
+  assert.match(verifier, /asar\.statFile/);
+  assert.match(verifier, /entry\['unpacked'\]/);
   assert.match(verifier, /Expected exactly one packaged app\.asar/);
   assert.match(verifier, /basename == 'monerod\.exe'/);
   assert.match(verifier, /Bundled Monero runtime file hash mismatch/);
@@ -187,6 +192,8 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(security, /independent security audit/i);
   assert.match(verify, /does not prove/i);
   assert.match(verify, /not Authenticode-signed/i);
+  assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
+  assert.doesNotMatch(verify, /josimi\.exe/);
   assert.match(verify, /\$version = '1\.2\.1'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

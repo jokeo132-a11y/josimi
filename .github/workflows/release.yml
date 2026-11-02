@@ -53,7 +53,7 @@ jobs:
           run_logged python scripts/verify-release-bundle.py "dist/josimi-${PACKAGE_VERSION}-x64.zip"
           SOURCE_ZIP="dist/josimi-${PACKAGE_VERSION}-source.zip"
           git archive --format=zip --prefix="josimi-${PACKAGE_VERSION}/" "$GITHUB_SHA" > "$SOURCE_ZIP"
-          (cd dist && sha256sum josimi.exe "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" build.log > SHA256SUMS.txt)
+          (cd dist && sha256sum "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" build.log > SHA256SUMS.txt)
       - name: Upload build log for diagnosis
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -68,7 +68,6 @@ jobs:
         with:
           name: release-files-${{ github.ref_name }}
           path: |
-            dist/josimi.exe
             dist/josimi-*-x64.zip
             dist/josimi-*-source.zip
             dist/SHA256SUMS.txt
@@ -95,7 +94,6 @@ jobs:
           cd dist
           sha256sum --check SHA256SUMS.txt
           VERSION="${GITHUB_REF_NAME#v}"
-          test -s josimi.exe
           test -s "josimi-${VERSION}-x64.zip"
           test -s "josimi-${VERSION}-source.zip"
       - name: Verify release tag still points to the built commit
@@ -130,7 +128,6 @@ jobs:
             exit 1
           fi
           gh release create "$GITHUB_REF_NAME" \
-            "dist/josimi.exe" \
             "dist/josimi-${VERSION}-x64.zip" \
             "dist/josimi-${VERSION}-source.zip" \
             dist/SHA256SUMS.txt \

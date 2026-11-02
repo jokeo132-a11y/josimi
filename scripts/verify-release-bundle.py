@@ -32,16 +32,22 @@ def allowed_runtime_name(name):
     return bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,123}\.dll', name, re.IGNORECASE))
 
 
-def list_asar_paths(release, asar_path):
+def list_asar_entries(release, asar_path):
     with tempfile.TemporaryDirectory(prefix='josimi-release-asar-') as temp_dir:
         local_asar = Path(temp_dir) / 'app.asar'
         local_asar.write_bytes(release.read(asar_path))
-        command = "const asar=require('@electron/asar'); process.stdout.write(JSON.stringify(asar.listPackage(process.argv[1])))"
+        command = r"""const asar=require('@electron/asar');const path=require('node:path');const archive=process.argv[1];const entries=asar.listPackage(archive).map((member)=>{const normalized=member.replaceAll('\\','/').replace(/^\/+/, '');const filePath=normalized.split('/').join(path.sep);const metadata=asar.statFile(archive,filePath);return {path:member,unpacked:metadata.unpacked===true,isFile:!('files' in metadata)&&!('link' in metadata)}});process.stdout.write(JSON.stringify(entries))"""
         result = subprocess.run(['node', '-e', command, str(local_asar)], check=True, capture_output=True, text=True, timeout=30)
-        paths = json.loads(result.stdout)
-        if not isinstance(paths, list) or not all(isinstance(item, str) for item in paths):
+        entries = json.loads(result.stdout)
+        if not isinstance(entries, list) or not all(
+            isinstance(item, dict)
+            and isinstance(item.get('path'), str)
+            and isinstance(item.get('unpacked'), bool)
+            and isinstance(item.get('isFile'), bool)
+            for item in entries
+        ):
             raise RuntimeError('Could not read a valid file listing from packaged app.asar.')
-        return paths
+        return entries
 
 
 def main():
@@ -113,13 +119,22 @@ def main():
             asar_paths = [name for name in normalized if PurePosixPath(name).name.lower() == 'app.asar']
             if len(asar_paths) != 1:
                 raise RuntimeError(f'Expected exactly one packaged app.asar in the Windows ZIP; found {len(asar_paths)}.')
-            for member in list_asar_paths(release, asar_paths[0]):
+            asar_runtime_files = []
+            runtime_asar_prefix = 'assets/runtime/monero/'
+            for entry in list_asar_entries(release, asar_paths[0]):
+                member = entry['path']
                 clean_member = member.replace('\\', '/').lstrip('/').lower()
                 basename = PurePosixPath(clean_member).name
-                if clean_member.startswith('assets/runtime/monero/'):
-                    raise RuntimeError('Monero runtime files must be unpacked from app.asar and verified as separate package files.')
+                if clean_member.startswith(runtime_asar_prefix):
+                    if not entry['isFile'] or not entry['unpacked']:
+                        raise RuntimeError('Monero runtime entries in app.asar must be files marked unpacked and verified separately.')
+                    asar_runtime_files.append(clean_member[len(runtime_asar_prefix):])
+                    continue
                 if basename.endswith('.zip') or basename == archive_name or basename == 'monerod.exe' or (basename.startswith('monero-') and basename.endswith('.exe')):
                     raise RuntimeError(f'app.asar unexpectedly contains a Monero CLI archive or executable: {member}')
+            expected_asar_runtime = {name.lower() for name in actual_names}
+            if len(asar_runtime_files) != len(set(asar_runtime_files)) or set(asar_runtime_files) != expected_asar_runtime:
+                raise RuntimeError('Unpacked Monero runtime paths in app.asar do not match the separately verified package files.')
     except (OSError, zipfile.BadZipFile, json.JSONDecodeError, RuntimeError) as error:
         fail(str(error))
     print(f'Verified monerod-only Monero v{version} runtime, file hashes, notices, and exclusion of the full CLI archive in {archive_path}.')

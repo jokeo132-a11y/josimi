@@ -43,10 +43,7 @@
       "assets/runtime/**/*"
     ],
     "win": {
-      "target": "portable"
-    },
-    "portable": {
-      "artifactName": "josimi.${ext}"
+      "target": "zip"
     }
   }
 }
