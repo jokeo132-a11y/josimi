@@ -1,4 +1,9 @@
-## v1.2.1 — Unreleased
+## v1.2.2 — Unreleased
+
+- Remove mining from the upcoming app build: delete mining UI and IPC, process lifecycle helpers, XMRig/P2Pool binaries, and the daemon's unused mining-only ZMQ publisher. The published v1.2.1 ZIP is unchanged.
+- Bind wallet account, subaddress, address-book, and transaction-note mutations to the captured wallet session so fast wallet switches cannot redirect delayed work.
+
+## v1.2.1 — 2026-11-03
 
 - Use the pinned official Monero CLI v0.18.5.4 archive only as a temporary build input; stage just the unmodified `monerod.exe`, required same-directory DLLs, and upstream notices. The release ZIP excludes the full CLI archive and other CLI tools, and the app performs no runtime download or extraction.
 - Correct the MoneroOcean direct-pool preset to the documented TLS endpoint `gulf.moneroocean.stream:20128`, with an editable worker value and default `josimi~rx/0`; use `x` for generic pool passwords.

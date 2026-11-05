@@ -1,17 +1,17 @@
 const $ = (id) => document.getElementById(id);
 const LANG = {
-  ko: { lock:'잠금', heroTitle:'내 키는<br/><span>내 기기에.</span>', heroText:'josimi는 seed와 private key를 서버로 보내지 않는 비수탁형 Monero 지갑입니다.', walletTitle:'josimi 지갑', feeNotice:'서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료', reviewEyebrow:'송금 검토', reviewDescription:'아래 내용을 확인한 뒤 한 번만 전송하세요.', walletSubtitle:'지갑을 열거나 새로 만드세요.', open:'열기', create:'새 지갑', restore:'복구', walletPassword:'지갑 비밀번호', passwordPlaceholder:'8자 이상', nodeMode:'노드', localNode:'원격 노드 사용', remoteNode:'원격 노드 사용', nodeAddress:'노드 주소', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25단어 seed', seedOffset:'Seed offset passphrase (선택)', seedOffsetPlaceholder:'없으면 비워두세요', restoreHeight:'복구 시작 블록 높이', restoreHeightPlaceholder:'첫 입금 전의 블록 높이(모르면 낮게 입력)', createdAtHeight:'생성 시 블록 높이', openWallet:'지갑 열기', createWallet:'새 지갑 만들기', restoreWallet:'seed로 복구', authFine:'송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.', totalBalance:'TOTAL BALANCE', syncWaiting:'동기화 대기', myAddress:'내 주소', copyAddress:'주소 복사', showQr:'QR 보기', send:'보내기', recipientAddress:'받는 주소', recipientPlaceholder:'Monero 주소를 붙여넣으세요', sendAmount:'보낼 금액 (XMR)', priority:'우선순위', low:'낮음', normal:'보통', high:'높음', review:'검토하기', recentTransactions:'최근 거래', localRecord:'로컬 기록', noTransactions:'아직 거래가 없습니다.', walletTools:'지갑 도구', backupWallet:'지갑 파일 백업', showSeed:'복구용 seed 표시', seedFine:'seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.', reviewTitle:'송금 내용을 확인하세요', cancel:'취소', confirmSend:'확인하고 송금', miningTitle:'채굴', miningStopped:'중지됨', miningMining:'채굴 중', miningRemote:'원격 채굴만 지원', miningThreads:'CPU 스레드', miningBackground:'백그라운드 채굴', miningIgnoreBattery:'배터리 상태 무시', startMining:'채굴 시작', stopMining:'채굴 중지' },
-  en: { lock:'Lock', heroTitle:'Your keys,<br/><span>your device.</span>', heroText:'josimi is a non-custodial Monero wallet. Your seed and private keys stay on your device.', walletTitle:'josimi wallet', feeNotice:'Service fee 0.25%, capped at 0.05 XMR + network fee', reviewEyebrow:'Transaction review', reviewDescription:'Check the details below before sending once.', walletSubtitle:'Open an existing wallet or create a new one.', open:'Open', create:'New wallet', restore:'Restore', walletPassword:'Wallet password', passwordPlaceholder:'8 characters or more', nodeMode:'Node', localNode:'Local node (recommended)', remoteNode:'Use a remote node', nodeAddress:'Daemon address', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25-word seed', seedOffset:'Seed offset passphrase (optional)', seedOffsetPlaceholder:'Leave blank if none', restoreHeight:'Restore height', restoreHeightPlaceholder:'Block height before the first incoming transaction', createdAtHeight:'Creation block height', openWallet:'Open wallet', createWallet:'Create wallet', restoreWallet:'Restore from seed', authFine:'Always check the address, amount, and service fee before sending.', totalBalance:'TOTAL BALANCE', syncWaiting:'Waiting for sync', myAddress:'My address', copyAddress:'Copy address', showQr:'Show QR', send:'Send', recipientAddress:'Recipient address', recipientPlaceholder:'Paste a Monero address', sendAmount:'Amount (XMR)', priority:'Priority', low:'Low', normal:'Normal', high:'High', review:'Review', recentTransactions:'Recent transactions', localRecord:'Local record', noTransactions:'No transactions yet.', walletTools:'Wallet tools', backupWallet:'Back up wallet file', showSeed:'Show recovery seed', seedFine:'Showing your seed can expose it. Keep it offline.', reviewTitle:'Review transaction', cancel:'Cancel', confirmSend:'Confirm and send', miningTitle:'Mining', miningStopped:'Stopped', miningMining:'Mining', miningRemote:'Remote pools only', miningThreads:'CPU threads', miningBackground:'Background mining', miningIgnoreBattery:'Ignore battery state', startMining:'Start mining', stopMining:'Stop mining' },
-  zh: { lock:'锁定', heroTitle:'你的密钥，<br/><span>在你的设备。</span>', heroText:'josimi 是非托管 Monero 钱包。您的 seed 和私钥只保存在您的设备上。', walletTitle:'josimi 钱包', feeNotice:'服务费 0.25%，最高 0.05 XMR + 网络手续费', reviewEyebrow:'交易检查', reviewDescription:'发送前请确认以下内容。', walletSubtitle:'打开现有钱包或创建新钱包。', open:'打开', create:'新建钱包', restore:'恢复', walletPassword:'钱包密码', passwordPlaceholder:'至少 8 个字符', nodeMode:'节点', localNode:'使用本机节点（推荐）', remoteNode:'使用远程节点', nodeAddress:'节点地址', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25 个单词的 seed', seedOffset:'Seed offset passphrase（可选）', seedOffsetPlaceholder:'没有则留空', restoreHeight:'恢复起始区块高度', restoreHeightPlaceholder:'首次收款前的区块高度（不确定时填低一些）', createdAtHeight:'创建时区块高度', openWallet:'打开钱包', createWallet:'创建钱包', restoreWallet:'从 seed 恢复', authFine:'发送前请务必核对地址、金额和服务费。', totalBalance:'总余额', syncWaiting:'等待同步', myAddress:'我的地址', copyAddress:'复制地址', showQr:'显示二维码', send:'发送', recipientAddress:'收款地址', recipientPlaceholder:'粘贴 Monero 地址', sendAmount:'发送金额 (XMR)', priority:'优先级', low:'低', normal:'普通', high:'高', review:'检查', recentTransactions:'最近交易', localRecord:'本地记录', noTransactions:'暂无交易。', walletTools:'钱包工具', backupWallet:'备份钱包文件', showSeed:'显示恢复 seed', seedFine:'显示 seed 可能导致泄露。请离线保存。', reviewTitle:'检查交易内容', cancel:'取消', confirmSend:'确认并发送', miningTitle:'挖矿', miningStopped:'已停止', miningMining:'挖矿中', miningRemote:'仅支持远程矿池', miningThreads:'CPU 线程', miningBackground:'后台挖矿', miningIgnoreBattery:'忽略电池状态', startMining:'开始挖矿', stopMining:'停止挖矿' },
-  ja: { lock:'ロック', heroTitle:'鍵は、<br/><span>あなたの端末に。</span>', heroText:'josimiは非カストディ型のMoneroウォレットです。seedと秘密鍵は端末内に保存されます。', walletTitle:'josimi ウォレット', feeNotice:'サービス手数料 0.25%、上限 0.05 XMR + ネットワーク手数料', reviewEyebrow:'送金確認', reviewDescription:'送信前に以下の内容を確認してください。', walletSubtitle:'ウォレットを開くか、新しく作成します。', open:'開く', create:'新しいウォレット', restore:'復元', walletPassword:'ウォレットパスワード', passwordPlaceholder:'8文字以上', nodeMode:'ノード', localNode:'自分の端末のノード（推奨）', remoteNode:'リモートノードを使う', nodeAddress:'ノードアドレス', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25語のseed', seedOffset:'Seed offset passphrase（任意）', seedOffsetPlaceholder:'なければ空欄', restoreHeight:'復元開始ブロック高', restoreHeightPlaceholder:'最初の入金前のブロック高（不明なら低め）', createdAtHeight:'作成時のブロック高', openWallet:'ウォレットを開く', createWallet:'ウォレットを作成', restoreWallet:'seedから復元', authFine:'送信前にアドレス・金額・サービス手数料を確認してください。', totalBalance:'合計残高', syncWaiting:'同期を待機中', myAddress:'自分のアドレス', copyAddress:'アドレスをコピー', showQr:'QRを表示', send:'送信', recipientAddress:'送金先アドレス', recipientPlaceholder:'Moneroアドレスを貼り付け', sendAmount:'送金額 (XMR)', priority:'優先度', low:'低', normal:'通常', high:'高', review:'確認', recentTransactions:'最近の取引', localRecord:'ローカル記録', noTransactions:'取引はまだありません。', walletTools:'ウォレットツール', backupWallet:'ウォレットファイルをバックアップ', showSeed:'復元用seedを表示', seedFine:'seedを表示すると漏洩する可能性があります。オフラインで保管してください。', reviewTitle:'送金内容を確認', cancel:'キャンセル', confirmSend:'確認して送信', miningTitle:'マイニング', miningStopped:'停止中', miningMining:'マイニング中', miningRemote:'リモートプールのみ対応', miningThreads:'CPUスレッド', miningBackground:'バックグラウンドマイニング', miningIgnoreBattery:'バッテリー状態を無視', startMining:'マイニング開始', stopMining:'マイニング停止' }
+  ko: { lock:'잠금', heroTitle:'내 키는<br/><span>내 기기에.</span>', heroText:'josimi는 seed와 private key를 서버로 보내지 않는 비수탁형 Monero 지갑입니다.', walletTitle:'josimi 지갑', feeNotice:'서비스 수수료 0.25%, 최대 0.05 XMR + 네트워크 수수료', reviewEyebrow:'송금 검토', reviewDescription:'아래 내용을 확인한 뒤 한 번만 전송하세요.', walletSubtitle:'지갑을 열거나 새로 만드세요.', open:'열기', create:'새 지갑', restore:'복구', walletPassword:'지갑 비밀번호', passwordPlaceholder:'8자 이상', nodeMode:'노드', localNode:'원격 노드 사용', remoteNode:'원격 노드 사용', nodeAddress:'노드 주소', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25단어 seed', seedOffset:'Seed offset passphrase (선택)', seedOffsetPlaceholder:'없으면 비워두세요', restoreHeight:'복구 시작 블록 높이', restoreHeightPlaceholder:'첫 입금 전의 블록 높이(모르면 낮게 입력)', createdAtHeight:'생성 시 블록 높이', openWallet:'지갑 열기', createWallet:'새 지갑 만들기', restoreWallet:'seed로 복구', authFine:'송금 전 주소·금액·서비스 수수료를 반드시 확인하세요.', totalBalance:'TOTAL BALANCE', syncWaiting:'동기화 대기', myAddress:'내 주소', copyAddress:'주소 복사', showQr:'QR 보기', send:'보내기', recipientAddress:'받는 주소', recipientPlaceholder:'Monero 주소를 붙여넣으세요', sendAmount:'보낼 금액 (XMR)', priority:'우선순위', low:'낮음', normal:'보통', high:'높음', review:'검토하기', recentTransactions:'최근 거래', localRecord:'로컬 기록', noTransactions:'아직 거래가 없습니다.', walletTools:'지갑 도구', backupWallet:'지갑 파일 백업', showSeed:'복구용 seed 표시', seedFine:'seed는 화면에 표시하는 순간 노출될 수 있습니다. 오프라인에만 보관하세요.', reviewTitle:'송금 내용을 확인하세요', cancel:'취소', confirmSend:'확인하고 송금' },
+  en: { lock:'Lock', heroTitle:'Your keys,<br/><span>your device.</span>', heroText:'josimi is a non-custodial Monero wallet. Your seed and private keys stay on your device.', walletTitle:'josimi wallet', feeNotice:'Service fee 0.25%, capped at 0.05 XMR + network fee', reviewEyebrow:'Transaction review', reviewDescription:'Check the details below before sending once.', walletSubtitle:'Open an existing wallet or create a new one.', open:'Open', create:'New wallet', restore:'Restore', walletPassword:'Wallet password', passwordPlaceholder:'8 characters or more', nodeMode:'Node', localNode:'Local node (recommended)', remoteNode:'Use a remote node', nodeAddress:'Daemon address', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25-word seed', seedOffset:'Seed offset passphrase (optional)', seedOffsetPlaceholder:'Leave blank if none', restoreHeight:'Restore height', restoreHeightPlaceholder:'Block height before the first incoming transaction', createdAtHeight:'Creation block height', openWallet:'Open wallet', createWallet:'Create wallet', restoreWallet:'Restore from seed', authFine:'Always check the address, amount, and service fee before sending.', totalBalance:'TOTAL BALANCE', syncWaiting:'Waiting for sync', myAddress:'My address', copyAddress:'Copy address', showQr:'Show QR', send:'Send', recipientAddress:'Recipient address', recipientPlaceholder:'Paste a Monero address', sendAmount:'Amount (XMR)', priority:'Priority', low:'Low', normal:'Normal', high:'High', review:'Review', recentTransactions:'Recent transactions', localRecord:'Local record', noTransactions:'No transactions yet.', walletTools:'Wallet tools', backupWallet:'Back up wallet file', showSeed:'Show recovery seed', seedFine:'Showing your seed can expose it. Keep it offline.', reviewTitle:'Review transaction', cancel:'Cancel', confirmSend:'Confirm and send' },
+  zh: { lock:'锁定', heroTitle:'你的密钥，<br/><span>在你的设备。</span>', heroText:'josimi 是非托管 Monero 钱包。您的 seed 和私钥只保存在您的设备上。', walletTitle:'josimi 钱包', feeNotice:'服务费 0.25%，最高 0.05 XMR + 网络手续费', reviewEyebrow:'交易检查', reviewDescription:'发送前请确认以下内容。', walletSubtitle:'打开现有钱包或创建新钱包。', open:'打开', create:'新建钱包', restore:'恢复', walletPassword:'钱包密码', passwordPlaceholder:'至少 8 个字符', nodeMode:'节点', localNode:'使用本机节点（推荐）', remoteNode:'使用远程节点', nodeAddress:'节点地址', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25 个单词的 seed', seedOffset:'Seed offset passphrase（可选）', seedOffsetPlaceholder:'没有则留空', restoreHeight:'恢复起始区块高度', restoreHeightPlaceholder:'首次收款前的区块高度（不确定时填低一些）', createdAtHeight:'创建时区块高度', openWallet:'打开钱包', createWallet:'创建钱包', restoreWallet:'从 seed 恢复', authFine:'发送前请务必核对地址、金额和服务费。', totalBalance:'总余额', syncWaiting:'等待同步', myAddress:'我的地址', copyAddress:'复制地址', showQr:'显示二维码', send:'发送', recipientAddress:'收款地址', recipientPlaceholder:'粘贴 Monero 地址', sendAmount:'发送金额 (XMR)', priority:'优先级', low:'低', normal:'普通', high:'高', review:'检查', recentTransactions:'最近交易', localRecord:'本地记录', noTransactions:'暂无交易。', walletTools:'钱包工具', backupWallet:'备份钱包文件', showSeed:'显示恢复 seed', seedFine:'显示 seed 可能导致泄露。请离线保存。', reviewTitle:'检查交易内容', cancel:'取消', confirmSend:'确认并发送' },
+  ja: { lock:'ロック', heroTitle:'鍵は、<br/><span>あなたの端末に。</span>', heroText:'josimiは非カストディ型のMoneroウォレットです。seedと秘密鍵は端末内に保存されます。', walletTitle:'josimi ウォレット', feeNotice:'サービス手数料 0.25%、上限 0.05 XMR + ネットワーク手数料', reviewEyebrow:'送金確認', reviewDescription:'送信前に以下の内容を確認してください。', walletSubtitle:'ウォレットを開くか、新しく作成します。', open:'開く', create:'新しいウォレット', restore:'復元', walletPassword:'ウォレットパスワード', passwordPlaceholder:'8文字以上', nodeMode:'ノード', localNode:'自分の端末のノード（推奨）', remoteNode:'リモートノードを使う', nodeAddress:'ノードアドレス', moneroSeed:'Monero seed', seedPlaceholder:'13/14/25語のseed', seedOffset:'Seed offset passphrase（任意）', seedOffsetPlaceholder:'なければ空欄', restoreHeight:'復元開始ブロック高', restoreHeightPlaceholder:'最初の入金前のブロック高（不明なら低め）', createdAtHeight:'作成時のブロック高', openWallet:'ウォレットを開く', createWallet:'ウォレットを作成', restoreWallet:'seedから復元', authFine:'送信前にアドレス・金額・サービス手数料を確認してください。', totalBalance:'合計残高', syncWaiting:'同期を待機中', myAddress:'自分のアドレス', copyAddress:'アドレスをコピー', showQr:'QRを表示', send:'送信', recipientAddress:'送金先アドレス', recipientPlaceholder:'Moneroアドレスを貼り付け', sendAmount:'送金額 (XMR)', priority:'優先度', low:'低', normal:'通常', high:'高', review:'確認', recentTransactions:'最近の取引', localRecord:'ローカル記録', noTransactions:'取引はまだありません。', walletTools:'ウォレットツール', backupWallet:'ウォレットファイルをバックアップ', showSeed:'復元用seedを表示', seedFine:'seedを表示すると漏洩する可能性があります。オフラインで保管してください。', reviewTitle:'送金内容を確認', cancel:'キャンセル', confirmSend:'確認して送信' }
 };
 let language = localStorage.getItem('josimi.language') || 'ko';
 if (!LANG[language]) language = 'ko';
 const EXTRA_LANG = {
-  ko: { miningFine: 'josimi는 CPU 채굴만 지원합니다. Solo와 P2Pool은 동기화가 끝난 로컬 monerod가 필요하며, P2Pool도 첫 실행 뒤 자체 네트워크를 동기화합니다. 전력과 발열을 고려해 스레드 수를 정하세요.', poolPlaintextWarning:'TLS를 끄면 지갑 주소와 풀 로그인/작업자 정보가 암호화되지 않습니다. 같은 네트워크의 관찰자가 이를 볼 수 있습니다.', miningPrivacyNotice:'채굴을 시작하면 원격 endpoint는 IP와 연결 정보를 볼 수 있습니다. 직접/자동 풀에는 공개 지갑 주소와 설정한 작업자/비밀번호가 전달됩니다. MoneroOcean 프리셋은 TLS를 사용합니다. 사용자 지정 풀에서 TLS를 끄면 로그인 정보가 평문으로 전달되어 네트워크에서 관찰될 수 있습니다. 로컬 P2Pool에는 --wallet으로 공개 주소를 전달하며, XMRig는 loopback Stratum에만 연결하고 주소나 풀 로그인 정보를 받지 않습니다. P2Pool 피어 연결은 IP와 채굴 활동을 노출할 수 있고, 주소는 공개 보상 기록이나 로컬 프로세스 목록에 보일 수 있습니다. Solo는 공개 주소와 채굴 설정을 로컬 monerod에만 전달하며, Monero P2P 피어는 노드 IP와 연결 정보를 볼 수 있습니다. 채굴은 직접 시작해야 합니다. seed와 개인 키는 전송하지 않습니다. 풀 정책과 XMRig 개발자 기부 수수료가 적용될 수 있습니다.', miningPartial: '채굴 프로세스 일부 실패', miningUnsupported: 'Windows에서만 지원', miningUserThreads: '내 지갑', miningFeeThreads: '수수료', reviewRecipient: '받는 주소', reviewAmount: '보낼 금액', reviewServiceFee: '서비스 수수료 (0.25%, 최대 0.05 XMR)', reviewNetworkFee: '네트워크 수수료', reviewTotal: '총 차감액', reviewFeeAddress: '수수료 수취 주소' },
-  en: { miningFine: 'josimi supports CPU mining only; GPU mining is not implemented. Solo and P2Pool require a fully synced local monerod, and P2Pool also needs time to synchronize its own network on first start. Consider power use and heat when setting threads.', poolPlaintextWarning:'With TLS off, your wallet address and pool login/worker value are sent unencrypted and may be visible to network observers.', miningPrivacyNotice:'Starting mining connects to a remote endpoint, which can see your IP and connection details. Direct/automatic pools receive your public wallet address and configured worker/password. The MoneroOcean preset uses TLS. If you disable TLS for a custom pool, the login travels in plaintext and network observers may read it. Local P2Pool receives the public address as --wallet; XMRig connects only to P2Pool\'s loopback Stratum listener and does not receive a wallet address or pool credentials. P2Pool peers can observe your IP and mining activity; your address may also appear in public reward records or local process listings. Solo sends the public address and mining settings only to local monerod; Monero P2P peers can see the node IP and connection metadata. Mining runs only when you start it. josimi does not send your seed or private keys. Pool terms and XMRig developer donations may apply.', miningPartial: 'One mining process failed', miningUnsupported: 'Supported on Windows only', miningUserThreads: 'Your wallet', miningFeeThreads: 'Fee', reviewRecipient: 'Recipient address', reviewAmount: 'Amount', reviewServiceFee: 'Service fee (0.25%, max 0.05 XMR)', reviewNetworkFee: 'Network fee', reviewTotal: 'Total debit', reviewFeeAddress: 'Fee recipient' },
-  zh: { miningFine: 'josimi目前仅支持CPU挖矿，不支持GPU。Solo和P2Pool需要已完全同步的本地monerod；P2Pool首次启动后还需要时间同步自身网络。请根据功耗和温度设置线程数。', poolPlaintextWarning:'关闭TLS后，钱包地址和矿池登录/工作者信息将以明文传输，网络观察者可能看到。', miningPrivacyNotice:'开始挖矿后，远程endpoint可以看到您的IP地址和连接信息。直接/自动矿池会收到您的公开钱包地址及设置的工作者/密码。MoneroOcean预设使用TLS。自定义矿池关闭TLS时，登录信息将以明文传输，网络观察者可能看到。本地P2Pool通过--wallet接收公开地址；XMRig仅连接P2Pool的loopback Stratum，不会收到钱包地址或矿池登录信息。P2Pool节点可能看到您的IP和挖矿活动；地址也可能出现在公开奖励记录或本机进程列表中。Solo仅将公开地址和挖矿设置发送给本地monerod；Monero P2P节点可以看到节点IP和连接信息。挖矿仅在您手动启动后运行。josimi不会发送seed或私钥。矿池条款和XMRig开发者捐赠费用可能适用。', miningPartial: '一个挖矿进程失败', miningUnsupported: '仅支持 Windows', miningUserThreads: '您的钱包', miningFeeThreads: '手续费', reviewRecipient: '收款地址', reviewAmount: '发送金额', reviewServiceFee: '服务费（0.25%，最高 0.05 XMR）', reviewNetworkFee: '网络手续费', reviewTotal: '总扣款', reviewFeeAddress: '手续费收款地址' },
-  ja: { miningFine: 'josimiが対応するのはCPUマイニングのみで、GPUには対応していません。SoloとP2Poolには同期済みのローカルmonerodが必要です。P2Poolも初回起動後に独自のネットワーク同期を行います。電力と温度を考慮してスレッド数を設定してください。', poolPlaintextWarning:'TLSを無効にすると、ウォレットアドレスとプールのログイン/ワーカー情報が暗号化されず、ネットワーク上で傍受される可能性があります。', miningPrivacyNotice:'マイニングを開始すると、リモートendpointにIPアドレスと接続情報が伝わります。直接/自動プールには公開ウォレットアドレスと設定したワーカー/パスワードが送信されます。MoneroOceanのプリセットはTLSを使用します。カスタムプールでTLSを無効にするとログイン情報が平文で送信され、ネットワーク上で見られる可能性があります。ローカルP2Poolには--walletで公開アドレスを渡します。XMRigはP2Poolのloopback Stratumにのみ接続し、ウォレットアドレスやプール認証情報は受け取りません。P2PoolのピアにはIPとマイニング活動が見える場合があり、アドレスは公開報酬記録やローカルのプロセス一覧に表示されることがあります。Soloでは公開アドレスと設定をローカルmonerodにのみ送信し、Monero P2PピアにはノードIPと接続情報が見える場合があります。マイニングは手動で開始した場合のみ動作します。josimiがseedや秘密鍵を送信することはありません。プール規約やXMRigの開発者寄付が適用される場合があります。', miningPartial: 'マイニングプロセスの一部が失敗', miningUnsupported: 'Windowsのみ対応', miningUserThreads: '自分のウォレット', miningFeeThreads: '手数料', reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewServiceFee: 'サービス手数料（0.25%、上限0.05 XMR）', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額', reviewFeeAddress: '手数料の受取先' }
+  ko: {        reviewRecipient: '받는 주소', reviewAmount: '보낼 금액', reviewServiceFee: '서비스 수수료 (0.25%, 최대 0.05 XMR)', reviewNetworkFee: '네트워크 수수료', reviewTotal: '총 차감액', reviewFeeAddress: '수수료 수취 주소' },
+  en: {        reviewRecipient: 'Recipient address', reviewAmount: 'Amount', reviewServiceFee: 'Service fee (0.25%, max 0.05 XMR)', reviewNetworkFee: 'Network fee', reviewTotal: 'Total debit', reviewFeeAddress: 'Fee recipient' },
+  zh: {        reviewRecipient: '收款地址', reviewAmount: '发送金额', reviewServiceFee: '服务费（0.25%，最高 0.05 XMR）', reviewNetworkFee: '网络手续费', reviewTotal: '总扣款', reviewFeeAddress: '手续费收款地址' },
+  ja: {        reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewServiceFee: 'サービス手数料（0.25%、上限0.05 XMR）', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額', reviewFeeAddress: '手数料の受取先' }
 };
 for (const code of Object.keys(EXTRA_LANG)) Object.assign(LANG[code], EXTRA_LANG[code]);
 const GUI_LANG = {
@@ -25,22 +25,10 @@ Object.assign(LANG.ko, { txConfirmed:'확정', txLocked:'잠금 중', txPending:
 Object.assign(LANG.en, { txConfirmed:'Confirmed', txLocked:'Locked', txPending:'Pending' });
 Object.assign(LANG.zh, { txConfirmed:'已确认', txLocked:'锁定中', txPending:'待处理' });
 Object.assign(LANG.ja, { txConfirmed:'確定済み', txLocked:'ロック中', txPending:'保留中' });
-Object.assign(LANG.ko, { miningStarting: '채굴 준비 중' });
-Object.assign(LANG.en, { miningStarting: 'Preparing mining' });
-Object.assign(LANG.zh, { miningStarting: '正在准备挖矿' });
-Object.assign(LANG.ja, { miningStarting: 'マイニングを準備中' });
 Object.assign(LANG.ko, { reviewPriority: '우선순위' });
 Object.assign(LANG.en, { reviewPriority: 'Priority' });
 Object.assign(LANG.zh, { reviewPriority: '优先级' });
 Object.assign(LANG.ja, { reviewPriority: '優先度' });
-Object.assign(LANG.ko, { miningMining: '채굴 중' });
-Object.assign(LANG.en, { miningMining: 'Mining' });
-Object.assign(LANG.zh, { miningMining: '挖矿中' });
-Object.assign(LANG.ja, { miningMining: 'マイニング中' });
-Object.assign(LANG.ko, { miningTitle: '채굴', miningMode: '채굴 방식', miningPool: '직접 풀', miningAuto: '자동으로 풀 선택', miningP2pool: 'P2Pool', poolAddress: '풀 주소', poolTls: 'TLS 사용', p2poolProfile: 'P2Pool 네트워크', p2poolNodeMode: 'P2Pool 노드', p2poolRemote: '원격 P2Pool stratum 사용', p2poolNodeAddress: 'P2Pool 주소', miningAuto100: 'CPU 자동 100% 사용', miningFine: 'josimi는 CPU 채굴만 지원하며 GPU 채굴은 지원하지 않습니다. Solo와 P2Pool은 완전히 동기화된 로컬 monerod가 필요합니다. 전력과 발열을 고려해 스레드 수를 정하세요.', miningRemote: '원격 노드 모드' });
-Object.assign(LANG.en, { miningTitle: 'Mining', miningMode: 'Mining mode', miningPool: 'Direct pool', miningAuto: 'Auto-select pool', miningP2pool: 'P2Pool', poolAddress: 'Pool address', poolTls: 'Use TLS', p2poolProfile: 'P2Pool network', p2poolNodeMode: 'P2Pool node', p2poolRemote: 'Use a remote P2Pool stratum', p2poolNodeAddress: 'P2Pool address', miningAuto100: 'Automatically use 100% CPU', miningFine: 'josimi supports CPU mining only; GPU mining is not supported. Solo and P2Pool require a fully synced local monerod. Consider power use and heat when setting threads.', miningRemote: 'Remote node mode' });
-Object.assign(LANG.zh, { miningAuto100: '自动使用 100% CPU' });
-Object.assign(LANG.ja, { miningAuto100: 'CPUを自動で100%使用' });
 Object.assign(LANG.ko, { walletSubtitle: '새 지갑 만들기부터 시작하세요.', existingKeysOpen: '이미 지갑이 있나요? .keys 파일 열기', selectedKeyFile: '선택한 .keys 파일' });
 Object.assign(LANG.en, { walletSubtitle: 'Start by creating a new wallet.', existingKeysOpen: 'Already have a wallet? Open a .keys file', selectedKeyFile: 'Selected .keys file' });
 Object.assign(LANG.zh, { walletSubtitle: '请先创建一个新钱包。', existingKeysOpen: '已有钱包？打开 .keys 文件', selectedKeyFile: '已选 .keys 文件' });
@@ -61,8 +49,6 @@ Object.assign(LANG.ko, { openPasswordPlaceholder: '기존 지갑의 비밀번호
 Object.assign(LANG.en, { openPasswordPlaceholder: 'Existing wallet password (leave blank if none)' });
 Object.assign(LANG.zh, { openPasswordPlaceholder: '原有钱包密码（若无密码请留空）' });
 Object.assign(LANG.ja, { openPasswordPlaceholder: '既存ウォレットのパスワード（なければ空欄）' });
-Object.assign(LANG.zh, { miningMode: '挖矿模式', miningPool: '直接矿池', miningAuto: '自动选择矿池', miningP2pool: 'P2Pool', poolAddress: '矿池地址', poolTls: '使用 TLS', p2poolProfile: 'P2Pool 网络', p2poolNodeMode: 'P2Pool 节点', p2poolRemote: '使用远程 P2Pool stratum', p2poolNodeAddress: 'P2Pool 地址', miningFine: '使用远程节点和矿池，不运行本地 monerod。请留意电量、温度以及操作系统的实际处理能力。', miningRemote: '远程节点模式' });
-Object.assign(LANG.ja, { miningMode: 'マイニング方式', miningPool: '直接プール', miningAuto: 'プールを自動選択', miningP2pool: 'P2Pool', poolAddress: 'プールアドレス', poolTls: 'TLSを使用', p2poolProfile: 'P2Poolネットワーク', p2poolNodeMode: 'P2Poolノード', p2poolRemote: 'リモートP2Pool stratumを使用', p2poolNodeAddress: 'P2Poolアドレス', miningFine: 'ローカルmonerodを使わず、リモートノードとプールを使用します。電力、温度、OSの処理能力に注意してください。', miningRemote: 'リモートノードモード' });
 Object.assign(LANG.ko, { seedFine: 'seed는 화면에 표시되는 순간 노출될 수 있습니다. seed offset passphrase를 사용했다면 별도로 보관하세요. 둘 다 오프라인에 보관하세요.' });
 Object.assign(LANG.en, { seedFine: 'Showing your seed can expose it. If you used a seed offset passphrase, keep it separately. Store both offline.' });
 Object.assign(LANG.zh, { seedFine: '显示 seed 可能导致泄露。若使用了 seed offset passphrase，请单独保存。请将两者离线保管。' });
@@ -77,9 +63,9 @@ const LOCALIZED_RUNTIME = {
     localNodeStorageNotice:'첫 동기화는 수 시간 또는 며칠이 걸리고 큰 저장 공간과 대역폭을 쓸 수 있습니다. pruning과 UPnP 비활성화를 적용하지만 monerod는 네트워크 인터페이스의 기본 P2P 포트 18080에서 계속 수신 대기합니다. --hide-my-port는 피어 후보로 광고되는 것만 막으며, 외부 연결 가능성은 PC 방화벽에 달려 있습니다.',
     localNodeUnsupported:'로컬 노드는 Windows에서만 지원됩니다.', localNodeMissing:'포함된 monerod 런타임을 찾지 못했습니다. 공식 josimi Windows ZIP을 다시 설치하세요. 실행 중 다운로드는 하지 않습니다.',
     localNodeVerifying:'포함된 monerod 파일 검증 중', localNodeInstalled:'monerod와 필요한 런타임 파일이 포함되어 있습니다. 실행 전 각 파일의 SHA-256을 포함된 manifest와 대조합니다. manifest 자체는 별도 서명되지 않았습니다.', localNodeRunning:'monerod 실행 중 — 동기화 상태를 확인하세요.', localNodeStopped:'로컬 monerod 중지됨', localNodeSynced:'로컬 노드 동기화 완료', localNodeSyncing:'로컬 노드 동기화 중',
-    miningFine:'josimi는 CPU 채굴만 지원하며 GPU 채굴은 지원하지 않습니다. Solo와 P2Pool은 동기화가 끝난 로컬 monerod가 필요하고, P2Pool은 첫 실행 뒤 자체 네트워크도 동기화합니다. 전력과 발열을 고려해 스레드 수를 정하세요.',
-    miningPrivacyNotice:'직접 풀은 IP, 공개 지갑 주소(-u), 풀 비밀번호/작업자(-p)를 받습니다. MoneroOcean 기본 주소는 gulf.moneroocean.stream:20128(TLS)이며 작업자 기본값은 josimi~rx/0입니다. 자동 선택은 후보에 TLS 연결만 병렬 확인하므로 후보는 IP와 연결 시점을 볼 수 있지만 지갑 주소나 채굴 작업은 받지 않습니다. 사용자 지정 풀에서 TLS를 끄면 로그인 정보가 평문으로 전달되어 네트워크에서 관찰될 수 있습니다. P2Pool에는 공개 주소를 --wallet으로 전달합니다. XMRig는 P2Pool의 127.0.0.1:3333 loopback Stratum에만 연결하고 주소나 풀 자격정보를 받지 않습니다. P2Pool 명령줄이나 공개 보상 기록에는 주소가 보일 수 있습니다. P2Pool 피어는 IP와 채굴 활동을 볼 수 있으며 P2P 리스너는 모든 네트워크 인터페이스에서 수신 대기할 수 있습니다. 방화벽이 허용하면 피어가 연결할 수 있고, UPnP 포트 개방은 하지 않습니다. Solo는 공개 주소와 채굴 설정을 로컬 monerod에만 전달합니다. Monero P2P 피어는 노드 IP와 연결 정보를 볼 수 있습니다. seed와 개인 키는 전송하지 않습니다. josimi 수수료 0.25%는 지갑 송금에만 적용되고 채굴 보상에는 적용되지 않습니다. XMRig 기본 개발자 기부율은 1%입니다.',
-    miningPool:'직접 풀', miningAuto:'자동으로 풀 선택', miningP2pool:'로컬 P2Pool', miningSolo:'Solo (monerod)', p2poolLocalNotice:'로컬 P2Pool과 XMRig는 숨김 프로세스로 실행됩니다. monerod 동기화 후 P2Pool도 첫 동기화에 보통 5~10분이 걸릴 수 있으며, 이 동안 XMRig 상태는 연결 중일 수 있습니다. P2Pool 피어 포트는 네트워크 인터페이스에서 수신 대기할 수 있고 방화벽이 허용하면 외부 피어가 연결할 수 있습니다. UPnP 라우터 포트 개방은 끕니다.',
+
+
+
     relayRestartUnknown:'앱이 다시 시작된 뒤 이전 송금 전파 결과가 확인되지 않았습니다. 아래 해시를 지갑·신뢰할 수 있는 노드에서 확인하세요. 같은 거래가 전파됐을 가능성이 있으므로 확인 전 새 송금을 만들지 마세요. 서명된 거래 원문은 재시작 후 보관되지 않아 자동 재전송할 수 없습니다.',
     recoveryTxHash:'확인할 거래 해시', leaveBlocked:'차단 상태로 닫기', resolveUnknownSend:'확인 후 차단 해제', resolveSendSuccess:'이전 송금 차단을 해제했습니다. 반드시 이전 거래 상태를 확인한 뒤 새 송금을 진행하세요.'
   },
@@ -92,9 +78,9 @@ const LOCALIZED_RUNTIME = {
     localNodeStorageNotice:'Initial sync may take hours or days and use substantial disk space and bandwidth. Pruning is enabled and UPnP is disabled, but monerod still listens on the default P2P port 18080 across network interfaces. --hide-my-port only prevents peer-list advertisement; inbound reachability depends on the PC firewall.',
     localNodeUnsupported:'Local node is supported on Windows only.', localNodeMissing:'The bundled monerod runtime was not found. Reinstall the official josimi Windows ZIP; the app does not download it at runtime.',
     localNodeVerifying:'Verifying bundled monerod files', localNodeInstalled:'monerod and its required runtime files are bundled; file SHA-256 values are checked against the included manifest before launch. The manifest itself is not separately signed.', localNodeRunning:'monerod is running — check sync status.', localNodeStopped:'Local monerod stopped', localNodeSynced:'Local node synced', localNodeSyncing:'Local node syncing',
-    miningFine:'josimi supports CPU mining only; GPU mining is not implemented. Solo and P2Pool require a fully synced local monerod, and P2Pool also synchronizes its own network on first start. Consider power use and heat when setting threads.',
-    miningPrivacyNotice:'Direct pools receive your IP, public wallet address (-u), and pool password/worker (-p). MoneroOcean defaults to gulf.moneroocean.stream:20128 (TLS) and worker value josimi~rx/0. Auto-select makes parallel TLS connection checks, so candidates see your IP and connection time but not your wallet address or mining work. Disabling TLS for a custom pool sends the login in plaintext, where network observers may read it. P2Pool receives the public address as --wallet. XMRig connects only to P2Pool\'s loopback Stratum at 127.0.0.1:3333 and receives no wallet address or pool credentials. The P2Pool command line or public reward records may expose the address. P2Pool peers can see your IP and mining activity; its peer listener may accept connections on all network interfaces if the firewall permits. UPnP port mapping is disabled. Solo sends the public address and mining settings only to local monerod; Monero P2P peers can see the node IP and connection metadata. Seed and private keys are not sent. The 0.25% josimi fee applies only to wallet transfers, not mining rewards. XMRig\'s default developer donation is 1%.',
-    miningPool:'Direct pool', miningAuto:'Auto-select pool', miningP2pool:'Local P2Pool', miningSolo:'Solo (monerod)', p2poolLocalNotice:'Local P2Pool and XMRig run as hidden processes. After monerod is synced, P2Pool may need about 5–10 minutes for its first sync; XMRig can remain in a connecting state during that time. P2Pool peers may connect through its network-interface listener if the firewall permits. Router UPnP mapping is disabled.',
+
+
+
     relayRestartUnknown:'The previous transaction relay result is unknown after the app restarted. Check the hash below in your wallet or a trusted node. Do not create another transfer until you know whether the transaction was relayed. Signed transaction data is not retained across restarts, so this app cannot automatically retry it.',
     recoveryTxHash:'Transaction hash to check', leaveBlocked:'Close and keep blocked', resolveUnknownSend:'Clear block after checking', resolveSendSuccess:'The previous-send block was cleared. Verify the old transaction before sending again.'
   },
@@ -107,9 +93,9 @@ const LOCALIZED_RUNTIME = {
     localNodeStorageNotice:'首次同步可能需要数小时或数天，并占用大量磁盘空间和网络流量。已启用裁剪并禁用 UPnP，但 monerod 仍会在网络接口的默认 P2P 端口 18080 上监听。--hide-my-port 仅阻止节点被列为候选节点；外部能否连接取决于电脑防火墙。',
     localNodeUnsupported:'本地节点仅支持 Windows。', localNodeMissing:'未找到内置 monerod 运行文件。请重新安装官方 josimi Windows ZIP；应用运行时不会下载节点。',
     localNodeVerifying:'正在验证内置 monerod 文件', localNodeInstalled:'已包含 monerod 和必要运行库；启动前会将文件 SHA-256 与内置清单核对。该清单本身未单独签名。', localNodeRunning:'monerod 正在运行 — 请查看同步状态。', localNodeStopped:'本地 monerod 已停止', localNodeSynced:'本地节点已同步', localNodeSyncing:'本地节点同步中',
-    miningFine:'josimi目前仅支持CPU挖矿，不支持GPU。Solo和P2Pool需要已完全同步的本地monerod；P2Pool首次启动后还需要同步自身网络。请根据功耗和温度设置线程数。',
-    miningPrivacyNotice:'直接矿池会收到您的IP、公开钱包地址（-u）和矿池密码/工作者值（-p）。MoneroOcean默认地址为gulf.moneroocean.stream:20128（TLS），默认工作者值为josimi~rx/0。自动选择会并行进行TLS连接检查，候选矿池可看到IP和连接时间，但不会收到钱包地址或挖矿工作。自定义矿池关闭TLS时，登录信息将以明文传输，网络观察者可能看到。本地P2Pool通过--wallet接收公开地址；XMRig仅连接P2Pool的127.0.0.1:3333 loopback Stratum，不会收到钱包地址或矿池凭据。P2Pool命令行或公开奖励记录可能暴露地址。P2Pool节点可能看到您的IP和挖矿活动；其P2P监听器可能在所有网络接口上接受连接，具体取决于防火墙。已禁用UPnP端口映射。Solo仅将公开地址和挖矿设置发送给本地monerod；Monero P2P节点可以看到节点IP和连接信息。不会发送seed或私钥。josimi的0.25%手续费仅适用于钱包转账，不从挖矿奖励收取。XMRig默认开发者捐赠比例为1%。',
-    miningPool:'直接矿池', miningAuto:'自动选择矿池', miningP2pool:'本地 P2Pool', miningSolo:'Solo（monerod）', p2poolLocalNotice:'本地P2Pool和XMRig以隐藏进程运行。monerod同步后，P2Pool首次同步通常还需约5至10分钟；此期间XMRig可能显示正在连接。防火墙允许时，其他节点可能通过网络接口上的P2Pool监听器连接。已禁用路由器UPnP端口映射。',
+
+
+
     relayRestartUnknown:'应用重启后，上一笔交易的广播结果尚不确定。请在钱包或可信节点中核对下方哈希。在确认交易状态前不要创建另一笔转账。应用不会跨重启保存已签名交易原文，因此无法自动重试。',
     recoveryTxHash:'需要核对的交易哈希', leaveBlocked:'保持阻止并关闭', resolveUnknownSend:'核对后解除阻止', resolveSendSuccess:'已解除上一笔交易的阻止状态。再次转账前请确认旧交易状态。'
   },
@@ -122,9 +108,9 @@ const LOCALIZED_RUNTIME = {
     localNodeStorageNotice:'初回同期には数時間から数日かかり、大きなストレージと通信量を使う場合があります。pruningとUPnP無効化を適用しますが、monerodはネットワークインターフェースの既定P2Pポート18080で引き続き待ち受けます。--hide-my-portはピア候補としての広告だけを止め、外部からの接続可否はPCのファイアウォールに依存します。',
     localNodeUnsupported:'ローカルノードはWindowsのみ対応です。', localNodeMissing:'同梱monerodランタイムが見つかりません。公式josimi Windows ZIPを再インストールしてください。実行中のダウンロードはありません。',
     localNodeVerifying:'同梱monerodファイルを検証中', localNodeInstalled:'monerodと必要なランタイムファイルを同梱しています。起動前に各ファイルのSHA-256を同梱マニフェストと照合します。マニフェスト自体は個別に署名されていません。', localNodeRunning:'monerod実行中 — 同期状態を確認してください。', localNodeStopped:'ローカルmonerod停止中', localNodeSynced:'ローカルノード同期完了', localNodeSyncing:'ローカルノード同期中',
-    miningFine:'josimiはCPUマイニングのみ対応し、GPUには対応していません。SoloとP2Poolには同期済みのローカルmonerodが必要です。P2Poolも初回起動後に独自ネットワークを同期します。電力と温度を考慮してスレッド数を設定してください。',
-    miningPrivacyNotice:'直接プールにはIP、公開ウォレットアドレス（-u）、プールパスワード/ワーカー（-p）が伝わります。MoneroOceanの既定先はgulf.moneroocean.stream:20128（TLS）、既定ワーカーはjosimi~rx/0です。自動選択は候補へTLS接続確認を並行して行うため、候補にはIPと接続時刻が見えますが、ウォレットアドレスや採掘ジョブは送信しません。カスタムプールでTLSを無効にするとログイン情報が平文で送信され、ネットワーク上で傍受される可能性があります。ローカルP2Poolには公開アドレスを--walletで渡します。XMRigはP2Poolの127.0.0.1:3333 loopback Stratumにのみ接続し、ウォレットアドレスやプール認証情報を受け取りません。P2Poolのコマンドラインや公開報酬記録にアドレスが表示される場合があります。P2PoolのピアにはIPとマイニング活動が見える可能性があり、ファイアウォールの設定によっては全ネットワークインターフェースで待ち受けます。UPnPポート転送は無効です。Soloでは公開アドレスとマイニング設定をローカルmonerodにのみ送信し、Monero P2PピアにはノードIPと接続情報が見える場合があります。seedや秘密鍵は送信しません。josimiの0.25%手数料はウォレット送金にのみ適用され、採掘報酬にはかかりません。XMRigの既定開発者寄付率は1%です。',
-    miningPool:'直接プール', miningAuto:'プールを自動選択', miningP2pool:'ローカルP2Pool', miningSolo:'Solo（monerod）', p2poolLocalNotice:'ローカルP2PoolとXMRigは非表示プロセスとして実行されます。monerod同期後、P2Poolの初回同期には通常さらに約5～10分かかる場合があり、その間XMRigは接続中のままになることがあります。ファイアウォールが許可すると、P2Poolはネットワークインターフェースでピア接続を受け入れます。ルーターのUPnPポート転送は無効です。',
+
+
+
     relayRestartUnknown:'アプリ再起動後、前の取引の中継結果が不明です。下のハッシュをウォレットまたは信頼できるノードで確認してください。状態が分かるまで別の送金を作成しないでください。署名済み取引データは再起動をまたいで保存しないため、自動再送はできません。',
     recoveryTxHash:'確認する取引ハッシュ', leaveBlocked:'ブロック状態のまま閉じる', resolveUnknownSend:'確認後にブロック解除', resolveSendSuccess:'前の取引ブロックを解除しました。再送金前に旧取引の状態を確認してください。'
   }
@@ -162,10 +148,6 @@ let mode = 'open';
 let pendingSend = null;
 let sendCallInProgress = false;
 let cancelCallInProgress = false;
-let miningCallInProgress = false;
-let miningActive = false;
-let miningPools = [];
-let miningRecommendationInfo = null;
 let localNodeUrl = 'http://127.0.0.1:18081';
 let toastTimer;
 let selectedWalletFile = null;
@@ -446,136 +428,18 @@ syncTimer = setInterval(async () => {
   syncRequestInFlight = true;
   try { await refresh(); } finally { syncRequestInFlight = false; }
 }, 30000);
-function renderMiningStatus(status) {
-  const dict = LANG[language];
-  if (status.state === 'mining') {
-    const endpoint = status.poolUrl || status.p2poolEndpoint || '';
-    const threadText = status.cpuAuto100 ? dict.miningAuto100 : `${dict.miningThreads}: ${status.totalThreads}`;
-    const modeLabel = { pool: dict.miningPool, auto: dict.miningAuto, p2pool: dict.miningP2pool, solo: dict.miningSolo }[status.mode] || '';
-    const shares = status.sharesAccepted ? ` · ${dict.miningShareAccepted}: ${status.sharesAccepted}` : '';
-    $('miningStatus').textContent = `${dict.miningMining}${modeLabel ? ` · ${modeLabel}` : ''} · ${threadText}${endpoint ? ` · ${endpoint}` : ''}${shares}`;
-  } else if (status.state === 'connected' || status.state === 'connecting') {
-    const endpoint = status.poolUrl || status.p2poolEndpoint || '';
-    const threadText = status.cpuAuto100 ? dict.miningAuto100 : `${dict.miningThreads}: ${status.totalThreads}`;
-    const modeLabel = { pool: dict.miningPool, auto: dict.miningAuto, p2pool: dict.miningP2pool, solo: dict.miningSolo }[status.mode] || '';
-    const label = status.state === 'connected' ? dict.miningConnected : dict.miningConnecting;
-    $('miningStatus').textContent = `${label}${modeLabel ? ` · ${modeLabel}` : ''} · ${threadText}${endpoint ? ` · ${endpoint}` : ''}`;
-  } else if (status.state === 'partial') {
-    $('miningStatus').textContent = `${dict.miningPartial} · ${status.processCount}/${status.expectedProcesses}`;
-  } else if (status.state === 'starting') {
-    $('miningStatus').textContent = dict.miningStarting;
-  } else if (status.state === 'remote') {
-    $('miningStatus').textContent = dict.miningRemote;
-  } else if (!status.supported) {
-    $('miningStatus').textContent = dict.miningUnsupported;
-  } else {
-    $('miningStatus').textContent = dict.miningStopped;
-  }
-  const unavailable = ['mining', 'connected', 'connecting', 'starting', 'remote'].includes(status.state) || !status.supported;
-  miningActive = Boolean(status.active);
-  $('startMiningBtn').disabled = miningCallInProgress || unavailable;
-  $('stopMiningBtn').disabled = miningCallInProgress || !status.active;
-  $('startMiningBtn').setAttribute('aria-busy', String(miningCallInProgress));
-  $('stopMiningBtn').setAttribute('aria-busy', String(miningCallInProgress));
-  $('miningThreads').disabled = miningCallInProgress || miningActive || $('miningAuto100').checked;
-  $('miningMode').disabled = miningCallInProgress || miningActive;
-  $('miningAuto100').disabled = miningCallInProgress || miningActive;
-  $('miningIgnoreBattery').disabled = miningCallInProgress || miningActive;
-  $('p2poolProfile').disabled = miningCallInProgress || miningActive;
-  $('miningPoolPassword').disabled = miningCallInProgress || miningActive;
-  $('miningRecommendBtn').disabled = miningCallInProgress || miningActive;
-  updatePoolPresetFields();
-  if (status.error) showError('miningError', new Error(status.error));
-}
-async function refreshMiningStatus() {
-  try { renderMiningStatus(await window.josimi.miningStatus()); }
-  catch (_) {
-    $('miningStatus').textContent = LANG[language].miningStatusUnavailable;
-    $('startMiningBtn').disabled = true;
-    $('stopMiningBtn').disabled = miningCallInProgress || !miningActive;
-    $('startMiningBtn').setAttribute('aria-busy', String(miningCallInProgress));
-    $('stopMiningBtn').setAttribute('aria-busy', String(miningCallInProgress));
-  }
-}
-window.josimi.onMiningStatus(renderMiningStatus);
-async function configureMiningInput() {
+async function configureNodeInput() {
   try {
     const config = await window.josimi.config();
     if (typeof config.localNodeUrl === 'string') localNodeUrl = config.localNodeUrl;
-    miningPools = Array.isArray(config.miningPools) ? config.miningPools : [];
-    updatePoolPresetFields();
     $('nodeMode').querySelector('option[value="local"]').disabled = !config.localNodeSupported;
     if (!config.localNodeSupported && $('nodeMode').value === 'local') $('nodeMode').value = 'remote';
     updateNodeModeFields();
-    const input = $('miningThreads');
-    input.min = '1';
-    input.step = '1';
-    input.removeAttribute('max');
-    input.value = '1';
   } catch (_) {}
 }
-function updateMiningModeFields() {
-  const mode = $('miningMode').value;
-  $('poolSettings').classList.toggle('hidden', mode !== 'pool');
-  $('p2poolSettings').classList.toggle('hidden', mode !== 'p2pool');
-}
-function updatePoolPresetFields() {
-  const poolId = $('miningPoolPreset').value;
-  const custom = poolId === 'custom';
-  const pool = miningPools.find((candidate) => candidate.id === poolId);
-  const customUrl = $('miningPoolUrl').value.trim().toLowerCase();
-  const explicitlyPlain = customUrl.startsWith('stratum+tcp://');
-  const explicitlyTls = customUrl.startsWith('stratum+ssl://');
-  const effectiveTls = explicitlyTls || (!explicitlyPlain && $('miningPoolTls').checked);
-  $('customPoolAddressField').classList.toggle('hidden', !custom);
-  $('customPoolTlsRow').classList.toggle('hidden', !custom);
-  $('miningPoolPlaintextNotice').classList.toggle('hidden', !custom || effectiveTls);
-  $('miningPoolUrl').required = custom;
-  $('miningPoolUrl').disabled = !custom || miningCallInProgress || miningActive;
-  $('miningPoolTls').disabled = !custom || miningCallInProgress || miningActive;
-  $('miningPoolPreset').disabled = miningCallInProgress || miningActive;
-  $('miningPoolPassword').disabled = miningCallInProgress || miningActive;
-  const endpoint = $('miningPoolEndpoint');
-  endpoint.classList.toggle('hidden', custom || !pool);
-  if (pool) endpoint.textContent = LANG[language].poolEndpointTemplate.replace('{endpoint}', `${pool.host}:${pool.port}`);
-  $('miningPoolPassword').placeholder = poolId === 'moneroocean' ? 'josimi~rx/0' : 'x';
-}
-function updateAutoThreadsField() {
-  $('miningThreads').disabled = miningCallInProgress || miningActive || $('miningAuto100').checked;
-}
-function renderMiningRecommendation() {
-  if (!miningRecommendationInfo) return;
-  const recommendation = miningRecommendationInfo;
-  const dict = LANG[language];
-  const template = dict.miningRecommendationTemplate;
-  $('miningRecommendation').textContent = `${template.replace('{cpuModel}', recommendation.cpuModel).replace('{processors}', recommendation.logicalProcessors).replace('{memory}', recommendation.memoryGiB).replace('{threads}', recommendation.recommendedThreads)} — ${dict.miningRecommendationNote}`;
-}
-$('miningMode').addEventListener('change', updateMiningModeFields);
-$('miningPoolPreset').addEventListener('change', updatePoolPresetFields);
-$('miningPoolTls').addEventListener('change', updatePoolPresetFields);
-$('miningPoolUrl').addEventListener('input', updatePoolPresetFields);
-$('miningAuto100').addEventListener('change', updateAutoThreadsField);
-updateMiningModeFields();
-updatePoolPresetFields();
-updateAutoThreadsField();
-$('miningRecommendBtn').addEventListener('click', async () => {
-  if (miningCallInProgress || miningActive) return;
-  try {
-    const recommendation = await window.josimi.miningRecommendation();
-    if (miningCallInProgress || miningActive) return;
-    miningRecommendationInfo = recommendation;
-    $('miningThreads').value = String(recommendation.recommendedThreads);
-    $('miningAuto100').checked = false;
-    updateAutoThreadsField();
-    renderMiningRecommendation();
-  } catch (error) { showError('miningError', error); }
-});
-$('startMiningBtn').addEventListener('click', async () => { if (miningCallInProgress) return; clearError('miningError'); miningCallInProgress = true; renderMiningStatus({ state: 'starting', supported: true, active: true }); try { const mode = $('miningMode').value; const status = await window.josimi.miningStart({ mode, threads: $('miningThreads').value, cpuAuto100: $('miningAuto100').checked, ignoreBattery: $('miningIgnoreBattery').checked, poolPreset: $('miningPoolPreset').value, poolUrl: $('miningPoolUrl').value, poolTls: $('miningPoolTls').checked, poolPassword: $('miningPoolPassword').value, p2poolProfile: $('p2poolProfile').value }); renderMiningStatus(status); const toastKey = status.state === 'mining' ? 'miningMining' : status.state === 'connected' ? 'miningConnected' : status.state === 'connecting' ? 'miningConnecting' : 'miningStopped'; showToast(LANG[language][toastKey]); } catch (e) { showError('miningError', e); await refreshMiningStatus(); } finally { miningCallInProgress = false; await refreshMiningStatus(); } });
-$('stopMiningBtn').addEventListener('click', async () => { if (miningCallInProgress) return; clearError('miningError'); miningCallInProgress = true; try { await window.josimi.miningStop(); showToast(LANG[language].miningStopped); } catch (e) { showError('miningError', e); } finally { miningCallInProgress = false; await refreshMiningStatus(); } });
-configureMiningInput();
-refreshMiningStatus();
-setInterval(refreshMiningStatus, 5000);
-$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); renderMiningRecommendation(); refreshMiningStatus(); });
+configureNodeInput();
+
+$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
   const action = mode;
@@ -613,7 +477,7 @@ $('walletForm').addEventListener('submit', async (event) => {
       result = await window.josimi.restore({ ...payload, seed: seedValue, seedOffset: seedOffsetValue === '' ? undefined : seedOffsetValue });
     }
     else result = await window.josimi.open(payload);
-    renderSummary(result); await refreshMiningStatus();
+    renderSummary(result);
     await resumePendingSendDialog();
     if (action === 'create') showToast(LANG[language].seedBackupReminder);
     else if (result.restored) showToast(LANG[language].restoredWallet);
@@ -733,14 +597,6 @@ $('sendForm').addEventListener('submit', async (event) => {
  $('reviewPendingSendBtn').addEventListener('click', async () => { try { const pending = await window.josimi.pendingSend(); if (pending?.requiresManualReview) { pendingSend = { pendingId: pending.pendingId, requiresManualReview: true }; renderManualRelayReview(pending); $('confirmDialog').showModal(); await applyPendingSendStatus(pending); } } catch (error) { showError('sendError', error); } });
 $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
 setMode('create');
-Object.assign(LANG.ko, { miningPoolPreset:'풀 선택', poolMoneroOcean:'MoneroOcean · TLS', poolHashVault:'HashVault · TLS', poolSupportXMR:'SupportXMR · TLS', poolCustom:'사용자 지정 풀', poolAddressPlaceholder:'예: pool.example.com:3333', poolPassword:'풀 비밀번호 / 작업자', poolPasswordHint:'MoneroOcean 작업자 값은 작업자~알고리즘 형식입니다. 기본값 josimi~rx/0을 사용합니다.', poolEndpointTemplate:'연결 주소: {endpoint} · TLS', miningRecommend:'PC 사양으로 스레드 추천', miningRecommendationTemplate:'{cpuModel} · 논리 프로세서 {processors}개 · RAM {memory} GB · 권장 {threads} 스레드', miningRecommendationNote:'보수적인 시작값입니다. CPU 온도와 PC 반응 속도를 확인하며 조정하세요.', miningConnecting:'풀 연결 중', miningConnected:'작업 수신 중', miningShareAccepted:'XMRig 보고 승인 share', miningShareNotice:'표시되는 승인 share 수는 XMRig 로그 기준이며 개발자 기부 share가 포함될 수 있습니다. 실제 풀 입금이나 지갑 지급을 보장하지 않습니다.' });
-Object.assign(LANG.en, { miningPoolPreset:'Pool', poolMoneroOcean:'MoneroOcean · TLS', poolHashVault:'HashVault · TLS', poolSupportXMR:'SupportXMR · TLS', poolCustom:'Custom pool', poolAddressPlaceholder:'Example: pool.example.com:3333', poolPassword:'Pool password / worker', poolPasswordHint:'MoneroOcean uses worker~algorithm format; the default is josimi~rx/0.', poolEndpointTemplate:'Endpoint: {endpoint} · TLS', miningRecommend:'Recommend threads for this PC', miningRecommendationTemplate:'{cpuModel} · {processors} logical processors · {memory} GB RAM · suggested {threads} threads', miningRecommendationNote:'A conservative starting point. Adjust after checking CPU temperature and PC responsiveness.', miningConnecting:'Connecting to pool', miningConnected:'Receiving work', miningShareAccepted:'XMRig accepted shares', miningShareNotice:'The count is reported by XMRig and may include developer-donation shares; it does not confirm that your pool credited a payout.' });
-Object.assign(LANG.zh, { miningPoolPreset:'矿池', poolMoneroOcean:'MoneroOcean · TLS', poolHashVault:'HashVault · TLS', poolSupportXMR:'SupportXMR · TLS', poolCustom:'自定义矿池', poolAddressPlaceholder:'例如：pool.example.com:3333', poolPassword:'矿池密码 / 工作者', poolPasswordHint:'MoneroOcean 使用“工作者~算法”格式；默认值为 josimi~rx/0。', poolEndpointTemplate:'连接地址：{endpoint} · TLS', miningRecommend:'根据此电脑推荐线程数', miningRecommendationTemplate:'{cpuModel} · {processors} 个逻辑处理器 · RAM {memory} GB · 建议 {threads} 个线程', miningRecommendationNote:'这是较保守的起始值。请观察 CPU 温度和电脑响应后再调整。', miningConnecting:'正在连接矿池', miningConnected:'已收到工作', miningShareAccepted:'XMRig报告的已接受份额', miningShareNotice:'此数量来自XMRig日志，可能包含开发者捐赠份额；它不代表矿池已向您的钱包记账或付款。' });
-Object.assign(LANG.ja, { miningPoolPreset:'プール', poolMoneroOcean:'MoneroOcean · TLS', poolHashVault:'HashVault · TLS', poolSupportXMR:'SupportXMR · TLS', poolCustom:'カスタムプール', poolAddressPlaceholder:'例: pool.example.com:3333', poolPassword:'プールパスワード / ワーカー', poolPasswordHint:'MoneroOceanの形式は worker~algorithm です。既定値は josimi~rx/0 です。', poolEndpointTemplate:'接続先: {endpoint} · TLS', miningRecommend:'PCの仕様からスレッド数を提案', miningRecommendationTemplate:'{cpuModel} · 論理プロセッサ {processors} 個 · RAM {memory} GB · 推奨 {threads} スレッド', miningRecommendationNote:'控えめな開始値です。CPU温度とPCの応答を見ながら調整してください。', miningConnecting:'プールに接続中', miningConnected:'ジョブを受信', miningShareAccepted:'XMRigが報告した承認シェア', miningShareNotice:'この件数はXMRigのログに基づき、開発者寄付分を含む場合があります。プールからウォレットへの支払いを確認するものではありません。' });
-Object.assign(LANG.ko, { miningStatusUnavailable:'채굴 상태를 확인할 수 없습니다' });
-Object.assign(LANG.en, { miningStatusUnavailable:'Mining status unavailable' });
-Object.assign(LANG.zh, { miningStatusUnavailable:'无法获取挖矿状态' });
-Object.assign(LANG.ja, { miningStatusUnavailable:'マイニング状態を取得できません' });
 applyLanguage();
 async function applyPendingSendStatus(status) {
   if (!status || status.pendingId !== pendingSend?.pendingId) return;
@@ -795,7 +651,7 @@ async function resumePendingSendDialog() {
   } catch (_) {}
 }
 async function resumeOpenWalletAndPendingSend() {
-  try { renderSummary(await window.josimi.refresh()); resetInactivityTimer(); await refreshMiningStatus(); } catch (_) {}
+  try { renderSummary(await window.josimi.refresh()); resetInactivityTimer(); } catch (_) {}
   await resumePendingSendDialog();
 }
 resumeOpenWalletAndPendingSend();

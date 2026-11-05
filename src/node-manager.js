@@ -15,7 +15,6 @@ const MONERO_DAEMON = 'monerod.exe';
 const closedChildren = new WeakSet();
 const RPC_HOST = '127.0.0.1';
 const RPC_PORT = 18081;
-const ZMQ_PORT = 18083;
 
 function sha256File(filePath) {
   return new Promise((resolve, reject) => {
@@ -41,7 +40,6 @@ function buildMonerodArgs(dataDir, logFile) {
     '--db-sync-mode', 'safe:sync',
     '--rpc-bind-ip', RPC_HOST,
     '--rpc-bind-port', String(RPC_PORT),
-    '--zmq-pub', `tcp://${RPC_HOST}:${ZMQ_PORT}`,
     '--hide-my-port',
     '--no-igd',
     '--log-file', logFile
@@ -273,7 +271,6 @@ module.exports = {
   MONERO_DAEMON,
   RPC_HOST,
   RPC_PORT,
-  ZMQ_PORT,
   sha256File,
   isAllowedRuntimeName,
   buildMonerodArgs,

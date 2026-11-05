@@ -1,6 +1,6 @@
 {
   "name": "josimi",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "josimi",
@@ -8,7 +8,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/core.js && node --check src/mining-config.js && node --check src/miner-status.js && node --check src/pool-probe.js && node --check src/p2pool-probe.js && node --check src/process-guard.js && node --check scripts/prepare-monero-runtime.js && node --check scripts/cleanup-monero-runtime.js && node --check scripts/build-windows.js && node --test --test-concurrency=1",
+    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/core.js && node --check scripts/prepare-monero-runtime.js && node --check scripts/cleanup-monero-runtime.js && node --check scripts/build-windows.js && node --test --test-concurrency=1",
     "dist": "node scripts/build-windows.js"
   },
   "dependencies": {
@@ -31,7 +31,7 @@
     "productName": "josimi",
     "icon": "assets/josimi.ico",
     "asarUnpack": [
-      "assets/runtime/**/*"
+      "assets/runtime/monero/**/*"
     ],
     "artifactName": "josimi-${version}-${arch}.${ext}",
     "files": [
@@ -40,7 +40,7 @@
       "THIRD_PARTY_NOTICES.md",
       "licenses/monero/LICENSE.txt",
       "assets/josimi.ico",
-      "assets/runtime/**/*"
+      "assets/runtime/monero/**/*"
     ],
     "win": {
       "target": "zip"

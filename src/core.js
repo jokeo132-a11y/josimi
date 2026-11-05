@@ -30,19 +30,6 @@ function calculateServiceFee(amountAtomic) {
   return computed > SERVICE_FEE_CAP_ATOMIC ? SERVICE_FEE_CAP_ATOMIC : computed;
 }
 
-function validateMiningThreads(count) {
-  if (typeof count === 'boolean' || (typeof count === 'string' && count.trim() === '')) throw new RangeError('채굴 스레드는 1 이상의 정수여야 합니다.');
-  const threads = Number(count);
-  if (!Number.isSafeInteger(threads) || threads < 1) throw new RangeError('채굴 스레드는 1 이상의 정수여야 합니다.');
-  return threads;
-}
-
-function p2poolPeerPort(profile) {
-  const ports = { main: 37889, mini: 37888, nano: 37890 };
-  if (!Object.hasOwn(ports, profile)) throw new RangeError('P2Pool profile must be main, mini, or nano.');
-  return ports[profile];
-}
-
 function isValidMoneroTxHash(value) {
   return typeof value === 'string' && /^[a-f0-9]{64}$/i.test(value);
 }
@@ -120,8 +107,6 @@ module.exports = {
   atomicToXmr,
   xmrToAtomic,
   calculateServiceFee,
-  validateMiningThreads,
-  p2poolPeerPort,
   isValidMoneroTxHash,
   normalizeWalletIndex,
   normalizeWalletLabel,

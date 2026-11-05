@@ -32,6 +32,16 @@ def allowed_runtime_name(name):
     return bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,123}\.dll', name, re.IGNORECASE))
 
 
+def is_miner_artifact(name):
+    normalized = name.replace('\\', '/').strip('/').lower()
+    parts = PurePosixPath(normalized).parts
+    basename = PurePosixPath(normalized).name
+    return (
+        any(part in ('miner', 'xmrig', 'p2pool') or part.startswith(('xmrig-', 'p2pool-')) for part in parts)
+        or basename in ('xmrig.exe', 'p2pool.exe')
+    )
+
+
 def list_asar_entries(release, asar_path):
     with tempfile.TemporaryDirectory(prefix='josimi-release-asar-') as temp_dir:
         local_asar = Path(temp_dir) / 'app.asar'
@@ -63,6 +73,9 @@ def main():
                 raise RuntimeError('Windows release ZIP contains duplicate normalized member names.')
             if any('/../' in f'/{name}/' or name.startswith('/') for name in normalized):
                 raise RuntimeError('Windows release ZIP contains an unsafe member path.')
+            miner_entries = [name for name in normalized if is_miner_artifact(name)]
+            if miner_entries:
+                raise RuntimeError(f'Windows release ZIP contains a forbidden mining component: {miner_entries[0]}')
             manifest_suffix = 'resources/app.asar.unpacked/assets/runtime/monero/manifest.json'
             manifests = [name for name in normalized if name.endswith(manifest_suffix)]
             if len(manifests) != 1:
@@ -125,6 +138,8 @@ def main():
                 member = entry['path']
                 clean_member = member.replace('\\', '/').lstrip('/').lower()
                 basename = PurePosixPath(clean_member).name
+                if is_miner_artifact(clean_member):
+                    raise RuntimeError(f'app.asar unexpectedly contains a forbidden mining component: {member}')
                 if clean_member.startswith(runtime_asar_prefix):
                     if not entry['isFile'] or not entry['unpacked']:
                         raise RuntimeError('Monero runtime entries in app.asar must be files marked unpacked and verified separately.')

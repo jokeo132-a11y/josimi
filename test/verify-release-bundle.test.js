@@ -15,7 +15,7 @@ const ROOT = path.join(__dirname, '..');
 const PYTHON = process.platform === 'win32' ? 'python' : 'python3';
 const VERIFIER = path.join(ROOT, 'scripts', 'verify-release-bundle.py');
 
-async function makeReleaseZip({ unpackRuntime = true, extraAsarFiles = [] } = {}) {
+async function makeReleaseZip({ unpackRuntime = true, extraAsarFiles = [], extraZipFiles = [] } = {}) {
   const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-release-verifier-test-'));
   const packageRoot = path.join(tempDir, 'package');
   const runtimeDir = path.join(packageRoot, 'resources', 'app.asar.unpacked', 'assets', 'runtime', 'monero');
@@ -60,6 +60,12 @@ async function makeReleaseZip({ unpackRuntime = true, extraAsarFiles = [] } = {}
     streams.push(streamEntry(item.path, Buffer.from(item.content || 'unexpected executable'), Boolean(item.unpacked)));
   }
   await asar.createPackageFromStreams(asarPath, streams);
+
+  for (const item of extraZipFiles) {
+    const target = path.join(packageRoot, ...item.path.split('/'));
+    await fs.mkdir(path.dirname(target), { recursive: true });
+    await fs.writeFile(target, item.content || 'unexpected mining component');
+  }
 
   const zipPath = path.join(tempDir, `josimi-${MONERO_VERSION}-x64.zip`);
   const zipScript = [
@@ -110,6 +116,32 @@ test('release verifier rejects a Monero CLI executable hidden elsewhere in app.a
     const result = verify(fixture.zipPath);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /app\.asar unexpectedly contains a Monero CLI archive or executable/);
+  } finally {
+    await fs.rm(fixture.tempDir, { recursive: true, force: true });
+  }
+});
+
+test('release verifier rejects mining runtimes hidden in app.asar', async () => {
+  const fixture = await makeReleaseZip({
+    extraAsarFiles: [{ path: 'assets/runtime/xmrig/xmrig.exe', content: 'unexpected miner' }]
+  });
+  try {
+    const result = verify(fixture.zipPath);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /app\.asar unexpectedly contains a forbidden mining component/);
+  } finally {
+    await fs.rm(fixture.tempDir, { recursive: true, force: true });
+  }
+});
+
+test('release verifier rejects mining binaries elsewhere in the outer ZIP', async () => {
+  const fixture = await makeReleaseZip({
+    extraZipFiles: [{ path: 'resources/app.asar.unpacked/assets/runtime/p2pool/p2pool.exe', content: 'unexpected miner' }]
+  });
+  try {
+    const result = verify(fixture.zipPath);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /Windows release ZIP contains a forbidden mining component/);
   } finally {
     await fs.rm(fixture.tempDir, { recursive: true, force: true });
   }

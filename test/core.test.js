@@ -8,8 +8,6 @@ const {
   MAX_ATOMIC,
   calculateServiceFee,
   SERVICE_FEE_CAP_ATOMIC,
-  validateMiningThreads,
-  p2poolPeerPort,
   isValidMoneroTxHash,
   normalizeWalletIndex,
   normalizeWalletLabel,
@@ -47,20 +45,6 @@ test('service fee is 0.25 percent and capped at 0.05 XMR', () => {
   assert.equal(calculateServiceFee(100000000000000n), SERVICE_FEE_CAP_ATOMIC);
   assert.equal(calculateServiceFee(0n), 0n);
   assert.throws(() => calculateServiceFee(-1n), RangeError);
-});
-
-test('mining thread input accepts any positive safe integer without CPU-count or 20-step limits', () => {
-  assert.equal(validateMiningThreads(1), 1);
-  assert.equal(validateMiningThreads(21), 21);
-  assert.equal(validateMiningThreads(4097), 4097);
-  for (const value of [0, -1, 1.5, NaN, Infinity, 'threads']) assert.throws(() => validateMiningThreads(value), RangeError);
-});
-
-test('P2Pool peer listener uses the upstream port for each sidechain profile', () => {
-  assert.equal(p2poolPeerPort('main'), 37889);
-  assert.equal(p2poolPeerPort('mini'), 37888);
-  assert.equal(p2poolPeerPort('nano'), 37890);
-  for (const profile of ['', 'unknown', null]) assert.throws(() => p2poolPeerPort(profile), RangeError);
 });
 
 test('Monero transaction hashes must be exactly 64 hexadecimal characters', () => {

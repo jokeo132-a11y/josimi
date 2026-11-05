@@ -1,33 +1,19 @@
 const { app, BrowserWindow, ipcMain: electronIpcMain, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
-const os = require('node:os');
 const http = require('node:http');
 const crypto = require('node:crypto');
 const https = require('node:https');
-const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, p2poolPeerPort, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
-const { LocalNodeManager, sha256File, MONERO_VERSION, RPC_HOST, RPC_PORT, ZMQ_PORT } = require('./node-manager');
+const { atomicToXmr, xmrToAtomic, calculateServiceFee, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
+const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
-const { DEFAULT_MINING_POOLS, createMiningPoolConfig, buildXmrigArgs, validateMiningRequest, recommendMiningThreads } = require('./mining-config');
-const { probeMiningPool } = require('./pool-probe');
-const { waitForP2PoolStratum } = require('./p2pool-probe');
-const { markProcessClosed, isProcessCloseConfirmed, waitForProcessClose } = require('./process-guard');
-const { MINER_ACTIVITY_STALE_MS, createMinerOutputParser, deriveMiningState, isMinerPoolReady } = require('./miner-status');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
 const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
-const XMRIG_VERSION = '6.26.0';
-const XMRIG_URL = 'https://github.com/xmrig/xmrig/releases/download/v6.26.0/xmrig-6.26.0-windows-x64.zip';
-const XMRIG_SHA256 = 'bba8097cb37d9b458a1cb1137876b27cde6740d17fe4ccbc086ba07d87d9e147';
-const XMRIG_EXE_SHA256 = '6fa80698d7268f6e88aa88c06fb27ee99e1bcee747c2e76911e6206a5b1aeeb3';
-const P2POOL_VERSION = '4.18.1';
-const P2POOL_ARCHIVE_SHA256 = '257094eb827aca2c08801775028c141e99966c3c640eb42ec094cf540fe588cc';
-const P2POOL_EXE_SHA256 = 'a6f3a9106370ecb0fee7e9a8c45ec4a67d27bfb2914cae97501e3858d5439bdd';
 const LOCAL_NODE_URL = `http://${RPC_HOST}:${RPC_PORT}`;
 const MAX_NODE_RPC_RESPONSE_BYTES = 512 * 1024;
 const NODE_RPC_DEADLINE_MS = 8_000;
@@ -41,15 +27,7 @@ const APP_URL = pathToFileURL(path.join(__dirname, 'index.html')).href;
 let mainWindow;
 let wallet = null;
 let activeConfig = { network: NETWORK, node: DEFAULT_NODES[0] };
-let miningProcesses = [];
-let p2poolProcess = null;
-let miningSession = null;
-let miningStopPromise = null;
-let miningStartRequest = null;
-let miningStartPromise = null;
-let activeMiningConfig = { mode: 'pool', poolUrl: null, poolTls: true, p2poolProfile: 'mini', p2poolEndpoint: null };
 let shutdownRequested = false;
-let miningError = null;
 let selectedWalletDir = null;
 let selectedWalletPath = null;
 let localNodeManager = null;
@@ -74,25 +52,6 @@ const ipcMain = { handle: registerIpcHandler };
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
 else app.on('second-instance', () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.focus(); } });
-
-function requestUrl(url, headers = {}, redirects = 0) {
-  return new Promise((resolve, reject) => {
-    if (redirects > 5) return reject(new Error('GitHub 다운로드 리디렉션이 너무 많습니다.'));
-    const request = https.get(url, { headers: { 'User-Agent': 'josimi-client', ...headers } }, (response) => {
-      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
-        response.resume();
-        return requestUrl(new URL(response.headers.location, url).toString(), headers, redirects + 1).then(resolve, reject);
-      }
-      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`GitHub 응답 오류 (${response.statusCode})`)); }
-      const chunks = [];
-      response.on('data', (chunk) => chunks.push(chunk));
-      response.on('end', () => resolve(Buffer.concat(chunks)));
-    });
-    request.setTimeout(15000, () => request.destroy(new Error('GitHub 연결 시간이 초과되었습니다.')));
-    request.on('error', reject);
-  });
-}
-
 
 function postJson(url, body, redirects = 0, deadline = Date.now() + NODE_RPC_DEADLINE_MS) {
   return new Promise((resolve, reject) => {
@@ -154,17 +113,15 @@ function portableDataDir() {
   const executableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
   return path.join(executableDir, 'josimi');
 }
+function bundledRuntimePath(...parts) {
+  const root = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked') : path.join(__dirname, '..');
+  return path.join(root, 'assets', 'runtime', ...parts);
+}
 function getLocalNodeManager() {
   if (!localNodeManager) {
     localNodeManager = new LocalNodeManager({ root: path.join(app.getPath('userData'), 'local-node'), bundledRuntimeDir: bundledRuntimePath('monero') });
     localNodeManager.on('status', (status) => {
       if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('local-node-status', status);
-    });
-    localNodeManager.on('exit', () => {
-      if (!shutdownRequested && ['solo', 'p2pool'].includes(miningSession?.mode)) {
-        miningError = '로컬 monerod가 중지되어 채굴을 정지했습니다.';
-        void stopMining().catch(() => {});
-      }
     });
   }
   return localNodeManager;
@@ -177,7 +134,6 @@ async function getLocalNodeManagerStatus() {
 }
 async function stopLocalNode() {
   const manager = getLocalNodeManager();
-  if (['solo', 'p2pool'].includes(miningSession?.mode)) await stopMining();
   return manager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {}));
 }
 function hasWalletData(dir) {
@@ -222,41 +178,6 @@ async function getRemoteNodeStatus(node) {
   } catch (_) {
     return { mode, node, state: mode === 'local' ? 'stopped' : 'offline', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
   }
-}
-
-async function downloadFile(url, destination, onProgress, redirects = 0) {
-  if (redirects > 5) throw new Error('다운로드 리디렉션이 너무 많습니다.');
-  return new Promise((resolve, reject) => {
-    const request = https.get(url, { headers: { 'User-Agent': 'josimi-node-installer' } }, (response) => {
-      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) { response.resume(); return downloadFile(new URL(response.headers.location, url).toString(), destination, onProgress, redirects + 1).then(resolve, reject); }
-      if (response.statusCode !== 200) { response.resume(); return reject(new Error(`다운로드 오류 (${response.statusCode})`)); }
-      const total = Number(response.headers['content-length'] || 0); let received = 0;
-      const output = fs.createWriteStream(destination); const hash = crypto.createHash('sha256');
-      response.on('data', (chunk) => { received += chunk.length; hash.update(chunk); if (onProgress) onProgress(total ? received / total : 0); });
-      response.pipe(output);
-      output.on('finish', () => output.close(() => resolve(hash.digest('hex'))));
-      output.on('error', (error) => { response.destroy(); reject(error); });
-    });
-    request.setTimeout(30000, () => request.destroy(new Error('다운로드 시간이 초과되었습니다.')));
-    request.on('error', reject);
-  });
-}
-
-async function extractZip(zipPath, destination, shouldCancel = () => false) {
-  await fs.promises.mkdir(destination, { recursive: true });
-  if (shouldCancel()) throw new Error('설치 작업이 취소되었습니다.');
-  await new Promise((resolve, reject) => {
-    const quote = (value) => `'${String(value).replace(/'/g, "''")}'`;
-    const command = `$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath ${quote(zipPath)} -DestinationPath ${quote(destination)} -Force`;
-    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true });
-    let errorText = ''; let settled = false;
-    const finish = (error) => { if (settled) return; settled = true; clearTimeout(timeout); clearInterval(cancelPoll); error ? reject(error) : resolve(); };
-    const timeout = setTimeout(() => { child.kill(); finish(new Error('ZIP 압축 해제 시간이 60초를 초과했습니다.')); }, 60000);
-    const cancelPoll = setInterval(() => { if (shouldCancel()) { child.kill(); finish(new Error('설치 작업이 취소되었습니다.')); } }, 200);
-    child.stderr?.on('data', (chunk) => { errorText += chunk.toString(); });
-    child.on('error', finish);
-    child.on('close', (code) => code === 0 ? finish() : finish(new Error(`ZIP 압축 해제 실패: ${errorText.trim()}`)));
-  });
 }
 
 function withTimeout(promise, timeoutMs, message) {
@@ -403,6 +324,13 @@ async function assertMainnetAddress(address, label) {
   if (!(await monerojs.MoneroUtils.isValidAddress(address, 'mainnet'))) throw new Error(`${label}가 유효한 Monero mainnet 주소가 아닙니다.`);
 }
 function ensureWallet() { if (!wallet) throw new Error('먼저 지갑을 열거나 생성해 주세요.'); }
+function captureWalletSession() {
+  ensureWallet();
+  return { activeWallet: wallet, sessionId: walletSessionId };
+}
+function assertWalletSession(activeWallet, sessionId) {
+  if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('지갑 세션이 변경되어 요청을 취소했습니다.');
+}
 function hasUnresolvedRelay() { return Boolean(lastCompletedSend) || [...pendingTransactions.values()].some((pending) => !pending.requiresManualReview && ['relaying', 'relay-unknown'].includes(pending.state)); }
 function assertNoUnresolvedRelay() {
   if (hasUnresolvedRelay()) throw new Error('앞선 송금 결과를 먼저 확인해야 합니다. 완료된 거래는 해시를 확인하고, 미확정 거래는 같은 서명 거래로 재시도하기 전에는 지갑 전환이나 새 송금을 할 수 없습니다.');
@@ -421,257 +349,6 @@ function normalizePriority(priority) {
 async function ensureSendableNode() {
   const info = await getNodeInfo(activeConfig.node);
   if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
-}
-function isMinerRunning(entry) { return Boolean(entry && entry.status === 'running' && entry.child.exitCode === null && entry.child.signalCode === null); }
-async function getMiningStatus() {
-  const mode = activeMiningConfig.mode || 'pool';
-  const running = miningProcesses.filter(isMinerRunning);
-  const p2poolRunning = Boolean(p2poolProcess && p2poolProcess.exitCode === null && p2poolProcess.signalCode === null);
-  const starting = Boolean(miningStartRequest && !miningStartRequest.cancelled);
-  let soloActive = false;
-  if (mode === 'solo' && miningSession?.mode === 'solo' && getLocalNodeManager().isRunning()) {
-    try {
-      const response = await postJson(`${LOCAL_NODE_URL}/get_mining_status`, {});
-      const result = response.result || response;
-      soloActive = Boolean(result.active);
-    } catch (_) {}
-  }
-  const processCount = mode === 'solo' ? Number(soloActive) : running.length + Number(p2poolRunning);
-  const expectedProcesses = mode === 'p2pool' ? 2 : 1;
-  const userMiner = running.find((entry) => entry.role === '사용자 채굴');
-  const connected = isMinerPoolReady(userMiner);
-  const sharesAccepted = Number(userMiner?.sharesAccepted || 0);
-  const state = deriveMiningState({ starting, mode, processCount, expectedProcesses, connected, sharesAccepted });
-  return {
-    active: processCount > 0 || starting,
-    supported: process.platform === 'win32',
-    state,
-    error: miningError,
-    mode,
-    processCount,
-    expectedProcesses,
-    connected,
-    sharesAccepted,
-    totalThreads: miningSession?.threads || 0,
-    cpuAuto100: Boolean(miningSession?.cpuAuto100),
-    poolUrl: activeMiningConfig.poolUrl,
-    p2poolEndpoint: activeMiningConfig.p2poolEndpoint
-  };
-}
-function emitMiningStatus() {
-  if (mainWindow && !mainWindow.isDestroyed()) getMiningStatus().then((status) => mainWindow?.webContents.send('mining-status', status)).catch(() => {});
-}
-function minerDataDir() { return path.join(app.getPath('userData'), 'miner'); }
-function minerBinaryPath() { return path.join(minerDataDir(), 'xmrig-6.26.0', 'xmrig.exe'); }
-function bundledRuntimePath(...parts) {
-  const root = app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked') : path.join(__dirname, '..');
-  return path.join(root, 'assets', 'runtime', ...parts);
-}
-function bundledXMRigPath() { return bundledRuntimePath('xmrig', 'xmrig-6.26.0', 'xmrig.exe'); }
-function bundledP2PoolPath() { return bundledRuntimePath('p2pool', 'p2pool-v4.18.1-windows-x64', 'p2pool.exe'); }
-async function verifyPinnedExecutable(filePath, expectedHash, label) {
-  if (!fs.existsSync(filePath) || !fs.statSync(filePath).isFile()) throw new Error(`${label} 실행 파일을 찾지 못했습니다.`);
-  const actualHash = await sha256File(filePath);
-  if (actualHash !== expectedHash) throw new Error(`${label} 실행 파일 SHA-256이 고정된 공식 값과 일치하지 않습니다. 실행을 차단했습니다.`);
-  return filePath;
-}
-async function installXMRig() {
-  if (process.platform !== 'win32') throw new Error('XMRig 채굴은 Windows에서 지원됩니다.');
-  const bundled = bundledXMRigPath();
-  await verifyPinnedExecutable(bundled, XMRIG_EXE_SHA256, 'XMRig 번들');
-  const executable = minerBinaryPath();
-  await fs.promises.mkdir(path.dirname(executable), { recursive: true });
-  const installedHash = fs.existsSync(executable) ? await sha256File(executable).catch(() => '') : '';
-  if (installedHash !== XMRIG_EXE_SHA256) {
-    await fs.promises.rm(executable, { force: true });
-    await fs.promises.copyFile(bundled, executable);
-  }
-  return verifyPinnedExecutable(executable, XMRIG_EXE_SHA256, 'XMRig');
-}
-async function chooseMiningPool() {
-  const results = await Promise.allSettled(DEFAULT_MINING_POOLS.map((pool) => probeMiningPool(pool, { timeoutMs: 4500 })));
-  const available = results.filter((result) => result.status === 'fulfilled').map((result) => result.value).sort((a, b) => a.latency - b.latency);
-  if (!available.length) throw new Error('TLS 연결을 확인할 수 있는 채굴 풀에 연결하지 못했습니다. 사전 설정을 직접 선택하거나 사용자 지정 주소를 입력해 보세요.');
-  const selected = available[0];
-  return createMiningPoolConfig({ poolId: selected.id });
-}
-function startXMRig(binary, address, role, threadCount, session, config) {
-  const args = buildXmrigArgs({ mode: config.mode, address, threadCount, cpuAuto100: config.cpuAuto100, ignoreBattery: session.ignoreBattery, pool: config.pool, p2poolEndpoint: config.p2poolEndpoint });
-  const processHandle = spawn(binary, args, { cwd: minerDataDir(), windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  const entry = { child: processHandle, address, role, threads: threadCount, status: 'starting', error: null, closeSeen: false, poolReady: false, lastPoolActivityAt: 0, poolActivityTimer: null, sharesAccepted: 0 };
-  const output = [];
-  const outputParser = createMinerOutputParser(entry, (text, update) => {
-    output.push(text);
-    if (output.length > 20) output.shift();
-    console.info(`[josimi ${role}]`, text);
-    const previouslyConnected = entry.poolReady;
-    if (update.disconnected) {
-      clearTimeout(entry.poolActivityTimer);
-      entry.poolActivityTimer = null;
-    } else if (update.newJob || update.accepted) {
-      clearTimeout(entry.poolActivityTimer);
-      entry.poolActivityTimer = setTimeout(() => {
-        if (!isMinerPoolReady(entry) && entry.poolReady) {
-          entry.poolReady = false;
-          emitMiningStatus();
-        }
-      }, MINER_ACTIVITY_STALE_MS + 1);
-      entry.poolActivityTimer.unref?.();
-    }
-    if (entry.poolReady !== previouslyConnected || update.accepted) emitMiningStatus();
-  });
-  entry.spawned = new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error(`${role} XMRig 프로세스 시작 시간이 초과되었습니다.`)), 10000);
-    processHandle.once('spawn', () => {
-      clearTimeout(timer); entry.status = 'running'; entry.output = output;
-      setTimeout(() => { if (entry.closeSeen && miningSession === session) { miningError = `${role}가 시작 직후 종료되었습니다. ${output.slice(-3).join(' ')}`; emitMiningStatus(); } }, 2500);
-      resolve(); emitMiningStatus();
-    });
-    processHandle.once('error', (error) => { clearTimeout(timer); entry.status = 'error'; entry.error = error.message; reject(error); });
-  });
-  processHandle.stdout.on('data', (chunk) => outputParser.push('stdout', chunk));
-  processHandle.stderr.on('data', (chunk) => outputParser.push('stderr', chunk));
-  processHandle.on('error', (error) => {
-    outputParser.flush('stdout');
-    outputParser.flush('stderr');
-    entry.status = 'error'; entry.error = error.message;
-    entry.poolReady = false;
-    clearTimeout(entry.poolActivityTimer);
-    entry.poolActivityTimer = null;
-    console.warn('[josimi xmrig]', error.message);
-    if (miningSession === session && !session.stopping) { miningError = `${role} 채굴 프로세스 오류: ${error.message}`; stopMiningFromProcessEvent(); }
-    emitMiningStatus();
-  });
-  processHandle.on('close', (code, signal) => {
-    outputParser.flush('stdout');
-    outputParser.flush('stderr');
-    entry.closeSeen = true;
-    markProcessClosed(processHandle);
-    entry.poolReady = false;
-    clearTimeout(entry.poolActivityTimer);
-    entry.poolActivityTimer = null;
-    entry.status = 'stopped';
-    if (miningSession === session && !session.stopping) {
-      const detail = output.slice(-3).join(' ').slice(0, 500);
-      miningError = `${role} 채굴 프로세스가 예기치 않게 종료되었습니다. (code ${code ?? '없음'}, signal ${signal || '없음'})${detail ? ` ${detail}` : ''}`;
-      stopMiningFromProcessEvent();
-    }
-    emitMiningStatus();
-  });
-  return entry;
-}
-async function assertLocalNodeReady() {
-  if (!getLocalNodeManager().isRunning()) throw new Error('먼저 로컬 노드 패널에서 monerod를 설치하고 시작하세요.');
-  const info = await getNodeInfo(LOCAL_NODE_URL);
-  if (info.offline) throw new Error('로컬 monerod가 오프라인입니다.');
-  const height = Number(info.height || 0);
-  const targetHeight = Number(info.target_height || 0);
-  if (info.synchronized === false || (info.synchronized !== true && (!targetHeight || !height || height < targetHeight))) throw new Error('Solo와 P2Pool 채굴 전에 로컬 monerod의 블록체인 동기화가 끝나야 합니다.');
-  return info;
-}
-async function startP2Pool(binary, address, profile, session) {
-  await verifyPinnedExecutable(binary, P2POOL_EXE_SHA256, 'P2Pool 번들');
-  const dataDir = path.join(minerDataDir(), 'p2pool', profile);
-  await fs.promises.mkdir(dataDir, { recursive: true });
-  const logFile = path.join(dataDir, 'p2pool.log');
-  const args = ['--host', RPC_HOST, '--rpc-port', String(RPC_PORT), '--zmq-port', String(ZMQ_PORT), '--wallet', address, '--stratum', `${RPC_HOST}:3333`, '--p2p', `0.0.0.0:${p2poolPeerPort(profile)}`, '--no-upnp', '--data-dir', dataDir, '--log-file', logFile, '--no-console-log'];
-  if (profile === 'mini') args.push('--mini');
-  if (profile === 'nano') args.push('--nano');
-  const child = spawn(binary, args, { cwd: dataDir, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-  p2poolProcess = child;
-  const output = [];
-  const recordOutput = (chunk) => { const text = chunk.toString().trim(); if (text) { output.push(text); if (output.length > 30) output.shift(); console.info('[josimi p2pool]', text); } };
-  child.stdout.on('data', recordOutput);
-  child.stderr.on('data', recordOutput);
-  child.once('error', (error) => {
-    if (miningSession === session && !session.stopping) { miningError = `P2Pool 실행 오류: ${error.message}`; stopMiningFromProcessEvent(); }
-    emitMiningStatus();
-  });
-  child.once('close', (code, signal) => {
-    markProcessClosed(child);
-    if (p2poolProcess === child) p2poolProcess = null;
-    if (miningSession === session && !session.stopping) {
-      miningError = `P2Pool 프로세스가 예기치 않게 종료되었습니다 (code ${code ?? '없음'}, signal ${signal || '없음'}). ${output.slice(-3).join(' ')}`;
-      stopMiningFromProcessEvent();
-    }
-    emitMiningStatus();
-  });
-  await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => { cleanup(); reject(new Error('P2Pool 프로세스 시작 시간이 초과되었습니다.')); }, 15_000);
-    const onSpawn = () => { cleanup(); resolve(); };
-    const onError = (error) => { cleanup(); reject(error); };
-    const cleanup = () => { clearTimeout(timeout); child.removeListener('spawn', onSpawn); child.removeListener('error', onError); };
-    child.once('spawn', onSpawn);
-    child.once('error', onError);
-  });
-  await waitForP2PoolStratum(RPC_HOST, 3333, 60_000, () => session.stopping || shutdownRequested);
-  if (p2poolProcess !== child || child.exitCode !== null || child.signalCode !== null) {
-    throw new Error('P2Pool 프로세스가 Stratum 준비 확인 전에 종료되었습니다.');
-  }
-  return child;
-}
-function waitForMinerClose(entry) {
-  if (!entry) return Promise.resolve();
-  const child = entry.child;
-  if (isProcessCloseConfirmed(child, entry)) return Promise.resolve(true);
-  let termTimer; let forceTimer;
-  termTimer = setTimeout(() => {
-    try { if (!isProcessCloseConfirmed(child, entry)) child.kill('SIGTERM'); } catch (_) {}
-    forceTimer = setTimeout(() => {
-      try { if (!isProcessCloseConfirmed(child, entry)) child.kill('SIGKILL'); } catch (_) {}
-    }, 2000);
-  }, 5000);
-  return waitForProcessClose(entry, { timeoutMs: 10_000 }).finally(() => {
-    clearTimeout(termTimer);
-    clearTimeout(forceTimer);
-  });
-}
-async function stopMining({ preserveStarting = false } = {}) {
-  if (miningStartRequest && !preserveStarting) miningStartRequest.cancelled = true;
-  if (miningStopPromise) return miningStopPromise;
-  const session = miningSession;
-  if (session) session.stopping = true;
-  const entries = [...miningProcesses];
-  miningStopPromise = (async () => {
-    let stopError = null;
-    for (const entry of entries) {
-      try { if (entry.child.exitCode === null && entry.child.signalCode === null) entry.child.kill('SIGTERM'); } catch (_) {}
-    }
-    const minerResults = await Promise.allSettled(entries.map(waitForMinerClose));
-    const failedMiner = minerResults.find((result) => result.status === 'rejected');
-    if (failedMiner) stopError = failedMiner.reason;
-    miningProcesses = entries.filter((entry) => !isProcessCloseConfirmed(entry.child, entry));
-    if (p2poolProcess) {
-      const processHandle = p2poolProcess;
-      try { if (processHandle.exitCode === null && processHandle.signalCode === null) processHandle.kill('SIGTERM'); } catch (_) {}
-      try { await waitForMinerClose({ child: processHandle, role: 'P2Pool' }); }
-      catch (error) { if (!stopError) stopError = error; }
-      if (isProcessCloseConfirmed(processHandle) && p2poolProcess === processHandle) p2poolProcess = null;
-    }
-    if (session?.mode === 'solo' && getLocalNodeManager().isRunning()) {
-      try {
-        await postJson(`${LOCAL_NODE_URL}/stop_mining`, {});
-        const status = await postJson(`${LOCAL_NODE_URL}/get_mining_status`, {});
-        if (Boolean((status.result || status).active)) throw new Error('monerod에서 Solo 채굴 중지를 확인하지 못했습니다.');
-      } catch (error) { if (!stopError) stopError = error; }
-    }
-    if (!stopError) miningSession = null;
-    if (stopError) miningError = stopError.message;
-    emitMiningStatus();
-    if (stopError) throw stopError;
-  })();
-  try { await miningStopPromise; } finally { miningStopPromise = null; }
-}
-function stopMiningFromProcessEvent() {
-  void stopMining().catch((error) => {
-    const detail = error instanceof Error ? error.message : String(error);
-    miningError = [miningError, `채굴 프로세스 정리 실패: ${detail}`].filter(Boolean).join(' · ').slice(0, 1000);
-    console.error('[josimi mining] cleanup after process event failed', error);
-    emitMiningStatus();
-  });
-}
-function hasUnconfirmedMiningChildren() {
-  return miningProcesses.some((entry) => !isProcessCloseConfirmed(entry.child, entry)) || Boolean(p2poolProcess && !isProcessCloseConfirmed(p2poolProcess));
 }
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');
@@ -727,6 +404,12 @@ async function loadAccounts(activeWallet = wallet) {
     };
   }));
 }
+async function loadAccountsForSession(activeWallet, sessionId) {
+  assertWalletSession(activeWallet, sessionId);
+  const accounts = await loadAccounts(activeWallet);
+  assertWalletSession(activeWallet, sessionId);
+  return accounts;
+}
 async function assertAccountExists(activeWallet, accountIndex) {
   const accounts = await activeWallet.getAccounts(false);
   if (!accounts.some((account) => Number(account.getIndex()) === accountIndex)) throw new Error('선택한 Monero 계정을 찾을 수 없습니다.');
@@ -739,6 +422,12 @@ async function loadAddressBook(activeWallet = wallet) {
     description: entry.getDescription() || '',
     paymentId: entry.getPaymentId() || ''
   }));
+}
+async function loadAddressBookForSession(activeWallet, sessionId) {
+  assertWalletSession(activeWallet, sessionId);
+  const entries = await loadAddressBook(activeWallet);
+  assertWalletSession(activeWallet, sessionId);
+  return entries;
 }
 async function loadSummary() {
   ensureWallet();
@@ -761,7 +450,7 @@ async function makeWindow() {
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION, miningPools: DEFAULT_MINING_POOLS.map(({ id, name, host, port, tls: poolTls }) => ({ id, name, host, port, tls: poolTls })), p2poolProfiles: ['main', 'mini', 'nano'] }));
+ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION }));
 ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   if (action === 'save') {
     const result = await dialog.showSaveDialog(mainWindow, {
@@ -796,7 +485,6 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
   wallet = null;
   walletSessionId += 1;
   pendingTransactions.clear();
-  await stopMining();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   const creationHeight = await getNodeHeight(activeConfig.node);
@@ -839,8 +527,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
     wallet = null;
     walletSessionId += 1;
     pendingTransactions.clear();
-    await stopMining();
-    if (previousWallet) await previousWallet.close(true).catch(() => {});
+      if (previousWallet) await previousWallet.close(true).catch(() => {});
     activeConfig = { network: NETWORK, node: await resolveNode(node) };
     const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
     const customPath = selectedWalletPath;
@@ -881,7 +568,6 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   wallet = null;
   walletSessionId += 1;
   pendingTransactions.clear();
-  await stopMining();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
   try {
@@ -946,82 +632,107 @@ ipcMain.handle('wallet-seed', async (_, payload = {}) => {
   }
 });
 ipcMain.handle('wallet-account-create', async (_, { label = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const accountLabel = normalizeWalletLabel(label, '계정 이름');
-  await wallet.createAccount(accountLabel);
-  await wallet.save();
-  return loadAccounts();
+  await activeWallet.createAccount(accountLabel);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAccountsForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-account-label', async (_, { accountIndex, label = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const index = normalizeWalletIndex(accountIndex, '계정 인덱스');
   const accountLabel = normalizeWalletLabel(label, '계정 이름');
-  await assertAccountExists(wallet, index);
-  await wallet.setAccountLabel(index, accountLabel);
-  await wallet.save();
-  return loadAccounts();
+  await assertAccountExists(activeWallet, index);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.setAccountLabel(index, accountLabel);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAccountsForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-subaddress-create', async (_, { accountIndex, label = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const index = normalizeWalletIndex(accountIndex, '계정 인덱스');
   const subaddressLabel = normalizeWalletLabel(label, '하위 주소 이름');
-  await assertAccountExists(wallet, index);
-  await wallet.createSubaddress(index, subaddressLabel);
-  await wallet.save();
-  return loadAccounts();
+  await assertAccountExists(activeWallet, index);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.createSubaddress(index, subaddressLabel);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAccountsForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-subaddress-label', async (_, { accountIndex, subaddressIndex, label = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const account = normalizeWalletIndex(accountIndex, '계정 인덱스');
   const subaddress = normalizeWalletIndex(subaddressIndex, '하위 주소 인덱스');
   const subaddressLabel = normalizeWalletLabel(label, '하위 주소 이름');
-  await assertAccountExists(wallet, account);
-  const subaddresses = await wallet.getSubaddresses(account);
+  await assertAccountExists(activeWallet, account);
+  assertWalletSession(activeWallet, sessionId);
+  const subaddresses = await activeWallet.getSubaddresses(account);
+  assertWalletSession(activeWallet, sessionId);
   if (!subaddresses.some((entry) => Number(entry.getIndex()) === subaddress)) throw new Error('선택한 하위 주소를 찾을 수 없습니다.');
-  await wallet.setSubaddressLabel(account, subaddress, subaddressLabel);
-  await wallet.save();
-  return loadAccounts();
+  await activeWallet.setSubaddressLabel(account, subaddress, subaddressLabel);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAccountsForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-addressbook-add', async (_, { address, description = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   if (typeof address !== 'string' || address.trim().length < 90) throw new Error('Monero 주소를 확인해 주세요.');
   const normalizedAddress = address.trim();
   const contactName = normalizeWalletLabel(description, '연락처 이름');
   await assertMainnetAddress(normalizedAddress, '주소록 주소');
-  await wallet.addAddressBookEntry(normalizedAddress, contactName);
-  await wallet.save();
-  return loadAddressBook();
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.addAddressBookEntry(normalizedAddress, contactName);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAddressBookForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-addressbook-edit', async (_, { entryIndex, address, description = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const index = normalizeWalletIndex(entryIndex, '주소록 인덱스');
   if (typeof address !== 'string' || address.trim().length < 90) throw new Error('Monero 주소를 확인해 주세요.');
   const normalizedAddress = address.trim();
   const contactName = normalizeWalletLabel(description, '연락처 이름');
   await assertMainnetAddress(normalizedAddress, '주소록 주소');
-  const entries = await wallet.getAddressBookEntries();
+  assertWalletSession(activeWallet, sessionId);
+  const entries = await activeWallet.getAddressBookEntries();
+  assertWalletSession(activeWallet, sessionId);
   if (!entries.some((entry) => Number(entry.getIndex()) === index)) throw new Error('선택한 주소록 항목을 찾을 수 없습니다.');
-  await wallet.editAddressBookEntry(index, true, normalizedAddress, true, contactName);
-  await wallet.save();
-  return loadAddressBook();
+  await activeWallet.editAddressBookEntry(index, true, normalizedAddress, true, contactName);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAddressBookForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-addressbook-delete', async (_, { entryIndex } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   const index = normalizeWalletIndex(entryIndex, '주소록 인덱스');
-  const entries = await wallet.getAddressBookEntries();
+  const entries = await activeWallet.getAddressBookEntries();
+  assertWalletSession(activeWallet, sessionId);
   if (!entries.some((entry) => Number(entry.getIndex()) === index)) throw new Error('선택한 주소록 항목을 찾을 수 없습니다.');
-  await wallet.deleteAddressBookEntry(index);
-  await wallet.save();
-  return loadAddressBook();
+  await activeWallet.deleteAddressBookEntry(index);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
+  return loadAddressBookForSession(activeWallet, sessionId);
 });
 ipcMain.handle('wallet-transaction-note', async (_, { txHash, note = '' } = {}) => {
-  ensureWallet();
+  const { activeWallet, sessionId } = captureWalletSession();
   if (typeof txHash !== 'string' || !/^[0-9a-f]{64}$/i.test(txHash)) throw new Error('거래 해시 형식이 올바르지 않습니다.');
   const normalizedNote = normalizeTransactionNote(note);
-  const tx = await wallet.getTx(txHash);
+  const tx = await activeWallet.getTx(txHash);
+  assertWalletSession(activeWallet, sessionId);
   if (!tx) throw new Error('선택한 거래를 찾을 수 없습니다.');
-  await wallet.setTxNote(txHash, normalizedNote);
-  await wallet.save();
+  await activeWallet.setTxNote(txHash, normalizedNote);
+  assertWalletSession(activeWallet, sessionId);
+  await activeWallet.save();
+  assertWalletSession(activeWallet, sessionId);
   return true;
 });
 ipcMain.handle('node-status', async () => getRemoteNodeStatus(activeConfig.node));
@@ -1035,105 +746,12 @@ ipcMain.handle('local-node-start', async () => {
   return getLocalNodeManager().start();
 });
 ipcMain.handle('local-node-stop', async () => stopLocalNode());
-ipcMain.handle('mining-status', async () => getMiningStatus());
-ipcMain.handle('mining-recommendation', () => {
-  const cpus = os.cpus();
-  const recommendation = recommendMiningThreads(cpus.length, os.totalmem());
-  return { cpuModel: cpus[0]?.model || 'CPU', ...recommendation };
-});
-ipcMain.handle('mining-start', async (_, payload = {}) => {
-  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
-  if (miningStartRequest) throw new Error('채굴 시작 또는 중지가 이미 진행 중입니다.');
-  const { threads, cpuAuto100, ignoreBattery, mode, poolPreset, poolUrl, poolTls, poolPassword, p2poolProfile } = validateMiningRequest(payload);
-  const request = { cancelled: false };
-  miningStartRequest = request;
-  const operation = (async () => {
-    let session = null;
-    let activeWallet = null;
-    let sessionId = null;
-    try {
-      ensureWallet();
-      activeWallet = wallet;
-      sessionId = walletSessionId;
-      if (process.platform !== 'win32') throw new Error('채굴 실행 파일은 현재 Windows에서만 지원됩니다.');
-      const totalThreads = cpuAuto100 ? os.cpus().length : threads;
-      await stopMining({ preserveStarting: true });
-      if (request.cancelled || shutdownRequested) return getMiningStatus();
-      session = { threads: totalThreads, cpuAuto100, ignoreBattery, mode, starting: true, stopping: false };
-      miningSession = session;
-      miningProcesses = [];
-      miningError = null;
-      emitMiningStatus();
-      const address = await activeWallet.getPrimaryAddress();
-      if (request.cancelled || shutdownRequested || session.stopping || wallet !== activeWallet || walletSessionId !== sessionId) return getMiningStatus();
-      await assertMainnetAddress(address, '채굴 주소');
-      const config = { mode, cpuAuto100, poolUrl: null, poolTls, p2poolEndpoint: null, p2poolProfile };
-      if (mode === 'pool' || mode === 'auto') {
-        const selected = mode === 'auto' ? await chooseMiningPool() : createMiningPoolConfig({ poolId: poolPreset, poolUrl, poolTls, poolPassword });
-        config.poolUrl = selected.url;
-        config.poolTls = selected.tls;
-        config.pool = selected;
-      } else if (mode === 'p2pool') {
-        if (!['main', 'mini', 'nano'].includes(p2poolProfile)) throw new Error('P2Pool 프로필이 올바르지 않습니다.');
-        await assertLocalNodeReady();
-        config.p2poolEndpoint = `${RPC_HOST}:3333`;
-      } else {
-        await assertLocalNodeReady();
-      }
-      activeMiningConfig = config;
-      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
-      session.userAddress = address;
-      if (mode === 'solo') {
-        const response = await postJson(`${LOCAL_NODE_URL}/start_mining`, { miner_address: address, threads_count: totalThreads, do_background_mining: false, ignore_battery: ignoreBattery });
-        if (response.status && response.status !== 'OK') throw new Error(`monerod가 Solo 채굴 시작을 거부했습니다: ${response.status}`);
-        const miningStatus = await postJson(`${LOCAL_NODE_URL}/get_mining_status`, {});
-        if (!(miningStatus.result || miningStatus).active) throw new Error('monerod에서 Solo 채굴 시작을 확인하지 못했습니다.');
-        session.starting = false;
-        session.soloStarted = true;
-        emitMiningStatus();
-        return await getMiningStatus();
-      }
-      const binary = await installXMRig();
-      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
-      if (mode === 'p2pool') {
-        const p2poolBinary = bundledP2PoolPath();
-        await verifyPinnedExecutable(p2poolBinary, P2POOL_EXE_SHA256, 'P2Pool 번들');
-        await startP2Pool(p2poolBinary, address, p2poolProfile, session);
-        if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
-      }
-      session.starting = false;
-      const userProcess = startXMRig(binary, address, '사용자 채굴', totalThreads, session, config);
-      miningProcesses.push(userProcess);
-      await userProcess.spawned;
-      if (request.cancelled || shutdownRequested || session.stopping) return getMiningStatus();
-      const statusAfterStart = await getMiningStatus();
-      if (statusAfterStart.processCount !== statusAfterStart.expectedProcesses) throw new Error(mode === 'p2pool' ? 'P2Pool과 XMRig가 모두 실행 상태가 아닙니다.' : 'XMRig 채굴 프로세스가 실행되지 않았습니다.');
-      emitMiningStatus();
-      return statusAfterStart;
-    } catch (error) {
-      if (!request.cancelled && !shutdownRequested && !miningError) miningError = error.message;
-      await stopMining({ preserveStarting: true });
-      if (request.cancelled || shutdownRequested) return getMiningStatus();
-      throw error;
-    }
-  })();
-  miningStartPromise = operation;
-  try {
-    return await operation;
-  } finally {
-    if (miningStartPromise === operation) miningStartPromise = null;
-    if (miningStartRequest === request) miningStartRequest = null;
-    emitMiningStatus();
-  }
-});
-ipcMain.handle('mining-stop', async () => { miningError = null; await stopMining(); return getMiningStatus(); });
 ipcMain.handle('wallet-lock', async () => {
   assertNoUnresolvedRelay();
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
   pendingTransactions.clear();
-  await stopMining();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   selectedWalletPath = null;
   return true;
@@ -1374,18 +992,10 @@ async function waitForPendingRelaySettlements() {
   while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
 }
 async function shutdownRuntime() {
-  const startPromise = miningStartPromise;
   let stopError = null;
-  try { await stopMining(); } catch (error) { stopError = error; }
-  if (startPromise && !await waitForPromiseOrTimeout(startPromise, 45000)) console.warn('[josimi shutdown] mining setup did not settle within 45 seconds; shutdown flag prevents further miner starts');
-  try {
-    await stopMining();
-    if (hasUnconfirmedMiningChildren()) throw new Error('채굴 하위 프로세스의 종료를 확인하지 못해 앱 종료를 중단했습니다.');
-    stopError = null;
-  } catch (error) { if (!stopError) stopError = error; }
   if (localNodeManager) {
     try { await localNodeManager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {})); }
-    catch (error) { if (!stopError) stopError = error; }
+    catch (error) { stopError = error; }
   }
   if (stopError) throw stopError;
   const previousWallet = wallet;
@@ -1432,7 +1042,7 @@ app.on('before-quit', (event) => {
     shutdownRequested = false;
     shutdownPromise = null;
     console.error('[josimi shutdown]', error.message);
-    const options = { type: 'error', title: '앱 종료 전 프로세스 정리 실패', message: '채굴 프로세스가 종료되었는지 확인할 수 없어 앱을 계속 실행합니다.', detail: error.message, buttons: ['확인'], noLink: true };
+    const options = { type: 'error', title: '앱 종료 전 프로세스 정리 실패', message: '로컬 노드 또는 앱 정리를 완료하지 못해 앱을 계속 실행합니다.', detail: error.message, buttons: ['확인'], noLink: true };
     try {
       if (!mainWindow || mainWindow.isDestroyed()) await makeWindow();
       if (mainWindow && !mainWindow.isDestroyed()) await dialog.showMessageBox(mainWindow, options);

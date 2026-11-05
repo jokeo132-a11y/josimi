@@ -15,7 +15,6 @@ const {
   MONERO_DAEMON,
   RPC_HOST,
   RPC_PORT,
-  ZMQ_PORT,
   isAllowedRuntimeName,
   buildMonerodArgs,
   LocalNodeManager
@@ -82,13 +81,13 @@ test('runtime filename allowlist permits only monerod, DLLs and the two notices'
   }
 });
 
-test('monerod binds administrative RPC and ZMQ to loopback, prunes, and disables UPnP', () => {
+test('monerod binds administrative RPC to loopback, prunes, and disables UPnP', () => {
   assert.equal(RPC_HOST, '127.0.0.1');
   const args = buildMonerodArgs(path.join(os.tmpdir(), 'josimi-node-data'), path.join(os.tmpdir(), 'monerod.log'));
   const valueFor = (flag) => args[args.indexOf(flag) + 1];
   assert.equal(valueFor('--rpc-bind-ip'), '127.0.0.1');
   assert.equal(valueFor('--rpc-bind-port'), String(RPC_PORT));
-  assert.equal(valueFor('--zmq-pub'), `tcp://127.0.0.1:${ZMQ_PORT}`);
+  assert.ok(!args.includes('--zmq-pub'));
   assert.ok(args.includes('--prune-blockchain'));
   assert.ok(args.includes('--no-igd'));
   assert.ok(args.includes('--hide-my-port'));

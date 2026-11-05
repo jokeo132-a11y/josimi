@@ -1,6 +1,6 @@
 # josimi
 
-josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The current development target is **v1.2.1 for Windows x64 Portable (unreleased)**.
+josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest stable release is **v1.2.1 for Windows x64**, distributed as a ZIP package. The published v1.2.1 ZIP still includes optional CPU mining; the current unreleased source removes mining, and no replacement download has been published yet.
 
 ## Wallet features
 
@@ -15,7 +15,7 @@ josimi is a non-custodial Monero desktop wallet built with Electron. Its interfa
 
 The Windows release ZIP includes the unmodified official Monero v0.18.5.4 `monerod.exe`, its required runtime DLLs, and upstream license notices. It does **not** include the full Monero CLI archive or its other tools. The full official CLI archive is a temporary build input: the release build checks its SHA-256 against the value published by Monero, extracts only the daemon and required same-directory DLLs, then removes the temporary archive. The app does not download or extract Monero components at runtime. Before launch, it checks the bundled file hashes against the included manifest; that manifest is not independently signed, so this detects file mismatch relative to the manifest but does not authenticate a tampered manifest. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and the included Monero license for provenance and redistribution terms. The daemon runs without a console window, uses a pruned blockchain, binds administrative RPC and ZMQ to loopback only, disables UPnP/IGD port mapping, and passes `--hide-my-port` so it is not advertised as a peer-list candidate. It still listens on its Monero P2P port; inbound reachability depends on the computer's firewall and network, which josimi does not configure. Outbound Monero P2P connections continue. The first blockchain sync may take hours or days and use substantial disk space and bandwidth. See [PRIVACY.md](PRIVACY.md) for data paths and network disclosures.
 
-## Mining
+## Mining in the published v1.2.1 ZIP
 
 Mining is optional and never starts by default. On Windows, the current implementation supports CPU mining through:
 
@@ -35,7 +35,7 @@ The josimi service fee applies only to outgoing wallet transfers. It is **0.25% 
 - [Security reporting policy and review scope](SECURITY.md)
 - [Release verification instructions](VERIFY_RELEASE.md)
 
-CI runs tests and `npm audit --audit-level=moderate`. Release builds run the same checks, create a Windows EXE and ZIP plus a source ZIP, generate SHA-256 checksums and a build log, then publish the files in a separate least-privilege job. GitHub Actions are pinned to commit SHAs.
+CI runs tests and `npm audit --audit-level=moderate`. Release builds run the same checks, create a Windows ZIP and source ZIP, generate SHA-256 checksums and a build log, then publish the files in a separate least-privilege job. There is no standalone EXE release asset. GitHub Actions are pinned to commit SHAs.
 
 A scoped internal source-level review and automated checks are not a formal third-party security audit. Windows executables are not Authenticode-signed, and builds are not independently reproducible or cryptographically attested. A matching checksum detects file mismatch only when the checksum itself is obtained from a trusted source. Do not store significant funds in an unaudited wallet.
 
@@ -50,7 +50,7 @@ npm audit --audit-level=moderate
 npm run dist
 ```
 
-The Windows targets are built with `electron-builder`; the tagged release workflow publishes `josimi.exe`, a versioned `josimi-<version>-x64.zip`, a matching `josimi-<version>-source.zip`, `SHA256SUMS.txt`, and `build.log`.
+The Windows package is built with `electron-builder`; the tagged release workflow publishes `josimi-<version>-x64.zip`, a matching `josimi-<version>-source.zip`, `SHA256SUMS.txt`, and `build.log`. The ZIP contains the app and its bundled local-node runtime; no standalone EXE asset is published.
 
 ## Important limitations
 

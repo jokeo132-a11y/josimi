@@ -11,36 +11,37 @@ function read(relativePath) {
   return fs.readFileSync(path.join(root, relativePath), 'utf8');
 }
 
-test('mining privacy notice is visible and translated in all supported languages', () => {
+test('the current source contains no mining UI, IPC, modules, or bundled runtimes', () => {
   const html = read('src/index.html');
   const renderer = read('src/renderer.js');
-  assert.match(html, /data-i18n="miningPrivacyNotice"/);
-  for (const locale of ['ko', 'en', 'zh', 'ja']) {
-    assert.match(renderer, new RegExp(`\\b${locale}: \\{[^\\n]*miningPrivacyNotice:`));
-    assert.match(renderer, new RegExp(`\\b${locale}: \\{[^\\n]*miningPrivacyNotice:[^\\n]*P2Pool`));
+  const main = read('src/main.js');
+  const preload = read('src/preload.js');
+  const nodeManager = read('src/node-manager.js');
+  const readme = read('README.md');
+  const privacy = read('PRIVACY.md');
+  const packageJson = JSON.parse(read('package.json'));
+  const verifier = read('scripts/verify-release-bundle.py');
+  for (const source of [html, renderer, main, preload, nodeManager]) {
+    assert.doesNotMatch(source, /xmrig|p2pool|mining|start_mining|stop_mining|zmq-pub/i);
   }
-  const localizedStart = renderer.indexOf('const LOCALIZED_RUNTIME = {');
-  const localizedEnd = renderer.indexOf('\n};', localizedStart);
-  const activeLocalization = renderer.slice(localizedStart, localizedEnd);
-  const miningFineLines = activeLocalization.split('\n').filter((line) => line.includes('miningFine:'));
-  assert.equal(miningFineLines.length, 4);
-  assert.ok(miningFineLines.every((line) => /CPU/.test(line)));
-  const nodePrivacyLines = activeLocalization.split('\n').filter((line) => line.includes('nodeLocalNotice:'));
-  const nodeStorageLines = activeLocalization.split('\n').filter((line) => line.includes('localNodeStorageNotice:'));
-  const miningPrivacyLines = activeLocalization.split('\n').filter((line) => line.includes('miningPrivacyNotice:'));
-  assert.equal(nodePrivacyLines.length, 4);
-  assert.equal(nodeStorageLines.length, 4);
-  assert.equal(miningPrivacyLines.length, 4);
-  assert.ok(nodePrivacyLines.every((line) => /18080/.test(line) && /hide-my-port/.test(line)));
-  assert.ok(nodeStorageLines.every((line) => /18080/.test(line) && /hide-my-port/.test(line)));
-  assert.ok(miningPrivacyLines.every((line) => /--wallet/.test(line) && /loopback/.test(line)));
-  assert.match(html, /id="miningPoolPlaintextNotice"[^>]*data-i18n="poolPlaintextWarning"/);
-  assert.equal((renderer.match(/poolPlaintextWarning:/g) || []).length, 4);
-  assert.ok(miningPrivacyLines.every((line) => /TLS/.test(line)));
-  assert.match(html, /P2Pool은 주소.*모든 네트워크 인터페이스/);
+  assert.match(html, /id="localNodeStatus"/);
+  assert.match(main, /ipcMain\.handle\('local-node-stop'/);
+  assert.match(main, /bundledRuntimePath\('monero'\)/);
+  assert.deepEqual(packageJson.build.asarUnpack, ['assets/runtime/monero/**/*']);
+  assert.ok(packageJson.build.files.includes('assets/runtime/monero/**/*'));
+  assert.doesNotMatch(JSON.stringify(packageJson.build), /assets\/runtime\/\*\*\/\*/);
+  for (const relativePath of [
+    'src/mining-config.js', 'src/miner-status.js', 'src/mining-ui-state.js',
+    'src/pool-probe.js', 'src/p2pool-probe.js', 'src/process-guard.js',
+    'src/solo-mining-lifecycle.js', 'assets/runtime/xmrig', 'assets/runtime/p2pool'
+  ]) assert.equal(fs.existsSync(path.join(root, relativePath)), false, relativePath);
+  assert.match(verifier, /is_miner_artifact/);
+  assert.match(verifier, /forbidden mining component/);
+  assert.match(readme, /unreleased source removes mining/i);
+  assert.match(privacy, /published v1\.2\.1 ZIP still includes (optional )?mining/i);
 });
 
-test('privacy docs disclose node pre-contact, mining modes, P2Pool exposure, and fees', () => {
+test('privacy docs disclose released v1.2.1 node, mining, seed, and fee behavior', () => {
   const privacy = read('PRIVACY.md');
   const readme = read('README.md');
   const main = read('src/main.js');
@@ -126,50 +127,10 @@ test('Windows package stages only the pinned Monero daemon runtime and cleans ge
   assert.match(verifier, /Expected exactly one packaged app\.asar/);
   assert.match(verifier, /basename == 'monerod\.exe'/);
   assert.match(verifier, /Bundled Monero runtime file hash mismatch/);
-});
-
-test('mining runtime uses bounded pool probes and a P2Pool-specific Stratum health marker', () => {
-  const main = read('src/main.js');
-  const poolProbe = read('src/pool-probe.js');
-  const p2poolProbe = read('src/p2pool-probe.js');
-  const processGuard = read('src/process-guard.js');
-  const minerStatus = read('src/miner-status.js');
-  const renderer = read('src/renderer.js');
-  const index = read('src/index.html');
-  const readme = read('README.md');
-  const privacy = read('PRIVACY.md');
-  const p2poolStart = main.slice(main.indexOf('async function startP2Pool'), main.indexOf('function waitForMinerClose'));
-  assert.match(main, /probeMiningPool\(pool, \{ timeoutMs: 4500 \}\)/);
-  assert.match(poolProbe, /setTimeout\(\(\) => finish\(new Error\('풀 연결이 제한 시간/);
-  assert.match(main, /validateMiningRequest\(payload\)/);
-  assert.match(main, /const connected = isMinerPoolReady\(userMiner\)/);
-  assert.match(minerStatus, /MINER_ACTIVITY_STALE_MS/);
-  assert.match(minerStatus, /POOL_DISCONNECTED/);
-  assert.match(minerStatus, /function deriveMiningState/);
-  assert.match(minerStatus, /function createMinerOutputParser/);
-  assert.match(main, /createMinerOutputParser\(entry/);
-  assert.match(main, /deriveMiningState\(\{ starting, mode, processCount, expectedProcesses, connected, sharesAccepted \}\)/);
-  assert.match(renderer, /miningStatusUnavailable/);
-  assert.equal((renderer.match(/miningStatusUnavailable:/g) || []).length, 4);
-  const miningPrivacyLines = renderer.slice(renderer.indexOf('const LOCALIZED_RUNTIME = {'), renderer.indexOf('\n};', renderer.indexOf('const LOCALIZED_RUNTIME = {'))).split('\n').filter((line) => line.includes('miningPrivacyNotice:'));
-  assert.equal(miningPrivacyLines.length, 4);
-  assert.ok(miningPrivacyLines.every((line) => /Solo/.test(line) && /monerod/.test(line) && /settings|설정|设置|設定/.test(line)));
-  assert.match(main, /stopMiningFromProcessEvent\(\)/);
-  assert.doesNotMatch(main, /void stopMining\(\);/);
-  assert.doesNotMatch(p2poolStart.slice(p2poolStart.indexOf("child.once('error'"), p2poolStart.indexOf("child.once('close'")), /p2poolProcess\s*=\s*null/);
-  assert.match(p2poolStart.slice(p2poolStart.indexOf("child.once('close'")), /markProcessClosed\(child\)/);
-  assert.match(main, /miningProcesses = entries\.filter\(\(entry\) => !isProcessCloseConfirmed/);
-  assert.match(main, /hasUnconfirmedMiningChildren\(\)/);
-  assert.match(processGuard, /MINER_CLOSE_UNCONFIRMED/);
-  assert.match(processGuard, /child\.once\('close', onClose\)/);
-  assert.match(p2poolProbe, /P2Pool Stratum online/);
-  assert.match(p2poolProbe, /headers\.get\('content-length'\)/);
-  assert.match(p2poolProbe, /body\.equals\(Buffer\.from\(HEALTH_MARKER/);
-  assert.equal((renderer.match(/miningShareNotice:/g) || []).length, 4);
-  assert.match(index, /data-i18n="miningShareNotice"/);
-  assert.match(readme, /may include its developer-donation work/i);
-  assert.match(privacy, /does not prove that a pool credited or paid a reward/i);
-  assert.match(main, /waitForP2PoolStratum\(RPC_HOST, 3333/);
+  assert.deepEqual(packageJson.build.asarUnpack, ['assets/runtime/monero/**/*']);
+  assert.ok(packageJson.build.files.includes('assets/runtime/monero/**/*'));
+  assert.match(verifier, /is_miner_artifact/);
+  assert.match(verifier, /forbidden mining component/);
 });
 
 test('relay state is durable before broadcast and missing transaction hashes fail closed', () => {
@@ -184,6 +145,29 @@ test('relay state is durable before broadcast and missing transaction hashes fai
   assert.match(guard, /fs\.fsyncSync\(fd\)/);
   assert.match(guard, /MoveFileExW/);
   assert.match(guard, /MOVEFILE_WRITE_THROUGH/);
+});
+
+test('wallet metadata mutations are bound to the captured wallet session', () => {
+  const main = read('src/main.js');
+  const handlers = [
+    ['wallet-account-create', 'wallet-account-label'],
+    ['wallet-account-label', 'wallet-subaddress-create'],
+    ['wallet-subaddress-create', 'wallet-subaddress-label'],
+    ['wallet-subaddress-label', 'wallet-addressbook-add'],
+    ['wallet-addressbook-add', 'wallet-addressbook-edit'],
+    ['wallet-addressbook-edit', 'wallet-addressbook-delete'],
+    ['wallet-addressbook-delete', 'wallet-transaction-note'],
+    ['wallet-transaction-note', 'node-status']
+  ];
+  for (const [channel, nextChannel] of handlers) {
+    const start = main.indexOf(`ipcMain.handle('${channel}'`);
+    const end = main.indexOf(`ipcMain.handle('${nextChannel}'`, start);
+    assert.ok(start >= 0 && end > start, `handler ${channel} exists in expected order`);
+    const source = main.slice(start, end);
+    assert.match(source, /captureWalletSession\(\)/, `${channel} captures wallet identity`);
+    assert.match(source, /assertWalletSession\(activeWallet, sessionId\)/, `${channel} validates wallet identity after awaits`);
+    assert.doesNotMatch(source, /await wallet\./, `${channel} does not dereference the mutable global wallet after awaits`);
+  }
 });
 
 test('release verification docs disclose checksum limitations and audit status', () => {
