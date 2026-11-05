@@ -57,9 +57,10 @@ function createChild() {
   return child;
 }
 
-async function waitUntil(predicate) {
-  for (let i = 0; i < 100 && !predicate(); i += 1) await new Promise((resolve) => setImmediate(resolve));
-  assert.equal(predicate(), true, 'expected condition did not become true');
+function createGate() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
 }
 
 test('Monero build input is pinned to the official HTTPS CLI archive and a fixed SHA-256', () => {
@@ -182,27 +183,27 @@ test('monerod starts from the bundled daemon directory as a hidden process', asy
 test('stopping while bundle verification is pending prevents monerod from spawning', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-verify-race-'));
   const bundledRuntimeDir = await createRuntimeBundle(root);
-  let releaseVerification;
-  let verificationEntered = false;
+  const releaseVerification = createGate();
+  const verificationEntered = createGate();
   let spawnCount = 0;
   const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, spawnProcess: () => { spawnCount += 1; throw new Error('unexpected spawn'); } });
   const verify = manager._verifyBundledRuntime.bind(manager);
   manager._verifyBundledRuntime = async () => {
-    verificationEntered = true;
-    await new Promise((resolve) => { releaseVerification = resolve; });
+    verificationEntered.resolve();
+    await releaseVerification.promise;
     return verify();
   };
   try {
     const startPromise = manager.start();
-    await waitUntil(() => verificationEntered);
+    await verificationEntered.promise;
     const stopPromise = manager.stop();
-    releaseVerification();
+    releaseVerification.resolve();
     await stopPromise;
     await startPromise;
     assert.equal(spawnCount, 0);
     assert.equal(manager.getStatus().running, false);
   } finally {
-    if (releaseVerification) releaseVerification();
+    releaseVerification.resolve();
     await fs.rm(root, { recursive: true, force: true });
   }
 });
@@ -210,25 +211,25 @@ test('stopping while bundle verification is pending prevents monerod from spawni
 test('stopping after verification but during data-directory creation prevents the monerod spawn', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-mkdir-race-'));
   const bundledRuntimeDir = await createRuntimeBundle(root);
-  let releaseDirectory;
-  let directoryEntered = false;
+  const releaseDirectory = createGate();
+  const directoryEntered = createGate();
   let spawnCount = 0;
   const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, spawnProcess: () => { spawnCount += 1; throw new Error('unexpected spawn'); } });
   manager._ensureDataDirectory = async () => {
-    directoryEntered = true;
-    await new Promise((resolve) => { releaseDirectory = resolve; });
+    directoryEntered.resolve();
+    await releaseDirectory.promise;
   };
   try {
     const startPromise = manager.start();
-    await waitUntil(() => directoryEntered);
+    await directoryEntered.promise;
     const stopPromise = manager.stop();
-    releaseDirectory();
+    releaseDirectory.resolve();
     await stopPromise;
     await startPromise;
     assert.equal(spawnCount, 0);
     assert.equal(manager.getStatus().running, false);
   } finally {
-    if (releaseDirectory) releaseDirectory();
+    releaseDirectory.resolve();
     await fs.rm(root, { recursive: true, force: true });
   }
 });
@@ -243,7 +244,7 @@ test('unexpected monerod close clears the process handle and records its exit', 
     assert.equal(manager.getStatus().running, true);
     child.exitCode = 1;
     child.emit('close', 1, null);
-    await waitUntil(() => manager.child === null);
+    assert.equal(manager.child, null);
     assert.equal(manager.getStatus().running, false);
     assert.equal(manager.getStatus().lastExit.code, 1);
   } finally {
