@@ -1,3 +1,9 @@
+## v1.2.3 — 2026-11-05
+
+- Apply the provided josimi logo to the Windows app header and icon without changing the existing layout or styling.
+- Include the logo and the verified official `monerod.exe` runtime in the Windows ZIP; no external executable downloads are required at runtime.
+- Make the bundled local node the default, remember the user’s public/local choice, automatically start the local node, and automatically synchronize wallet data in the background.
+
 ## v1.2.2 — 2026-11-05
 
 - Remove mining UI and IPC, process lifecycle helpers, XMRig/P2Pool binaries, and the daemon's unused mining-only ZMQ publisher. The published v1.2.1 ZIP remains unchanged.

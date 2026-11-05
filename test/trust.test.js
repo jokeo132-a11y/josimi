@@ -39,6 +39,16 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(verifier, /forbidden mining component/);
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
+  assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
+  assert.equal(packageJson.version, '1.2.3');
+  assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
+  assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
+  assert.match(html, /<option value="local" selected/);
+  assert.match(renderer, /localStorage\.getItem\('josimi\.nodeMode'\)/);
+  assert.match(renderer, /ensureLocalNodeStarted\(\)\.then\(refreshLocalNodeStatus\)/);
+  assert.match(renderer, /await ensureLocalNodeStarted\(\)/);
+  assert.match(main, /activeWallet\.startSyncing\(10_000\)/);
+  assert.match(preload, /localNodeStart: \(\) => ipcRenderer\.invoke\('local-node-start'\)/);
 });
 
 test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and fee behavior', () => {
@@ -178,6 +188,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.1'/);
+  assert.match(verify, /\$version = '1\.2\.3'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

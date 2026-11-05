@@ -282,6 +282,7 @@ refreshLocalNodeStatus();
 setInterval(refreshLocalNodeStatus, 10000);
 function updateNodeModeFields() {
   const local = $('nodeMode').value === 'local';
+  try { localStorage.setItem('josimi.nodeMode', local ? 'local' : 'remote'); } catch (_) {}
   $('remoteNodeLabel').classList.toggle('hidden', local);
   $('remoteNodeNotice').classList.toggle('hidden', local);
   $('localNodeNotice').classList.toggle('hidden', !local);
@@ -289,7 +290,24 @@ function updateNodeModeFields() {
   if (local) $('localNodePanel').open = true;
 }
 $('nodeMode').addEventListener('change', updateNodeModeFields);
+try {
+  const savedNodeMode = localStorage.getItem('josimi.nodeMode');
+  if (savedNodeMode === 'remote' || savedNodeMode === 'local') $('nodeMode').value = savedNodeMode;
+} catch (_) {}
 updateNodeModeFields();
+async function ensureLocalNodeStarted() {
+  let status = await window.josimi.localNodeStatus();
+  if (!status.running) {
+    await window.josimi.localNodeInstall();
+    await window.josimi.localNodeStart();
+    status = await window.josimi.localNodeStatus();
+  }
+  if (!status.running) throw new Error(LANG[language].localNodeStopped);
+  return status;
+}
+if ($('nodeMode').value === 'local') {
+  ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => showError('localNodeError', error));
+}
 function renderSummary(summary) {
   $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
   $('authView').classList.add('hidden'); $('appView').classList.remove('hidden'); $('lockBtn').classList.remove('hidden');
@@ -455,7 +473,7 @@ $('walletForm').addEventListener('submit', async (event) => {
   let nodeValue = '';
   if (useLocalNode) {
     try {
-      const nodeStatus = await window.josimi.localNodeStatus();
+      const nodeStatus = await ensureLocalNodeStarted();
       if (!nodeStatus.running) { clearSensitiveFields(); showError('authError', new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing)); return; }
       nodeValue = localNodeUrl;
     } catch (error) { clearSensitiveFields(); showError('authError', error); return; }

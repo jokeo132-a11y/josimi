@@ -1,6 +1,6 @@
 {
   "name": "josimi",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "josimi",
@@ -40,6 +40,7 @@
       "THIRD_PARTY_NOTICES.md",
       "licenses/monero/LICENSE.txt",
       "assets/josimi.ico",
+      "assets/josimi-logo.png",
       "assets/runtime/monero/**/*"
     ],
     "win": {

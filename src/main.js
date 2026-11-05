@@ -429,6 +429,12 @@ async function loadAddressBookForSession(activeWallet, sessionId) {
   assertWalletSession(activeWallet, sessionId);
   return entries;
 }
+async function startWalletBackgroundSync(activeWallet = wallet) {
+  if (!activeWallet || typeof activeWallet.startSyncing !== 'function') return;
+  // monero-ts runs wallet scanning in the background and persists its height as blocks arrive.
+  try { await activeWallet.startSyncing(10_000); }
+  catch (error) { console.warn('[josimi wallet sync]', error.message); }
+}
 async function loadSummary() {
   ensureWallet();
   const activeWallet = wallet;
@@ -499,6 +505,7 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     const summary = await loadSummary();
+    await startWalletBackgroundSync(wallet);
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight };
   } catch (error) {
@@ -551,7 +558,9 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
       throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
     }
     if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    return { ...(await loadSummary()), restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
+    const summary = await loadSummary();
+    await startWalletBackgroundSync(wallet);
+    return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
   } finally {
     seed = ''; seedOffset = ''; normalizedSeed = ''; normalizedSeedOffset = undefined; password = '';
     if (payload && typeof payload === 'object') { payload.seed = ''; payload.seedOffset = ''; payload.password = ''; }
@@ -573,7 +582,9 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   try {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     hydrateRelayRecovery(walletPath(), recoveryRecord);
-    return await loadSummary();
+    const summary = await loadSummary();
+    await startWalletBackgroundSync(wallet);
+    return summary;
   } catch (error) {
     if (wallet) await wallet.close(true).catch(() => {});
     wallet = null;

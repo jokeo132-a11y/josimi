@@ -10,7 +10,7 @@
 <body>
   <div class="shell">
     <header class="topbar">
-      <div class="brand"><span class="mark">j</span><span>josimi</span></div>
+      <div class="brand"><img class="mark" src="../assets/josimi-logo.png" alt="" aria-hidden="true" /><span>josimi</span></div>
       <div class="top-actions"><select id="languageSelect" aria-label="Language"><option value="ko">한국어</option><option value="en">English</option><option value="zh">中文</option><option value="ja">日本語</option></select><button id="lockBtn" class="ghost hidden" data-i18n="lock">잠금</button></div>
     </header>
     <details id="localNodePanel" class="node-manager">
@@ -30,7 +30,7 @@
           <div class="tabs" role="tablist" aria-label="Wallet actions"><button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="walletForm" data-tab="create" data-i18n="create">새 지갑</button><button class="tab" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="restore" data-i18n="restore">복구</button><button class="tab hidden" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="open" data-i18n="open">열기</button></div>
           <form id="walletForm">
             <label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label>
-            <label><span data-i18n="nodeMode">노드 유형</span><select id="nodeMode"><option value="remote" selected data-i18n="nodeRemoteChoice">원격 노드</option><option value="local" data-i18n="nodeLocalChoice">내 PC의 로컬 monerod</option></select></label>
+            <label><span data-i18n="nodeMode">노드 유형</span><select id="nodeMode"><option value="remote" data-i18n="nodeRemoteChoice">원격 노드</option><option value="local" selected data-i18n="nodeLocalChoice">내 PC의 로컬 monerod</option></select></label>
             <label id="remoteNodeLabel" class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
             <p id="remoteNodeNotice" class="fine" data-i18n="nodePrivacyNotice">원격 daemon은 IP와 지갑 RPC 요청을 연결해 잔액·활동을 추론할 수 있습니다. 신뢰할 수 있는 노드만 사용하세요.</p>
             <p id="localNodeNotice" class="fine hidden" data-i18n="nodeLocalNotice">로컬 monerod를 사용하면 지갑 RPC는 127.0.0.1에 연결됩니다. 블록체인 동기화 전에 지갑을 만들거나 열면 동기화가 끝날 때까지 기다려야 할 수 있습니다.</p>
