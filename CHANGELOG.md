@@ -1,6 +1,6 @@
-## v1.2.2 — Unreleased
+## v1.2.2 — 2026-11-05
 
-- Remove mining from the upcoming app build: delete mining UI and IPC, process lifecycle helpers, XMRig/P2Pool binaries, and the daemon's unused mining-only ZMQ publisher. The published v1.2.1 ZIP is unchanged.
+- Remove mining UI and IPC, process lifecycle helpers, XMRig/P2Pool binaries, and the daemon's unused mining-only ZMQ publisher. The published v1.2.1 ZIP remains unchanged.
 - Bind wallet account, subaddress, address-book, and transaction-note mutations to the captured wallet session so fast wallet switches cannot redirect delayed work.
 
 ## v1.2.1 — 2026-11-03

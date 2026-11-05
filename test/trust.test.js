@@ -37,11 +37,11 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   ]) assert.equal(fs.existsSync(path.join(root, relativePath)), false, relativePath);
   assert.match(verifier, /is_miner_artifact/);
   assert.match(verifier, /forbidden mining component/);
-  assert.match(readme, /unreleased source removes mining/i);
-  assert.match(privacy, /published v1\.2\.1 ZIP still includes (optional )?mining/i);
+  assert.match(readme, /v1\.2\.2 removes mining entirely/i);
+  assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
 });
 
-test('privacy docs disclose released v1.2.1 node, mining, seed, and fee behavior', () => {
+test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and fee behavior', () => {
   const privacy = read('PRIVACY.md');
   const readme = read('README.md');
   const main = read('src/main.js');
@@ -61,8 +61,8 @@ test('privacy docs disclose released v1.2.1 node, mining, seed, and fee behavior
   assert.match(privacy, /XMRig connects only to P2Pool's loopback Stratum listener/);
   assert.match(privacy, /it receives neither the wallet address nor pool login credentials/);
   assert.match(privacy, /custom pool can use plaintext Stratum when TLS is disabled/);
-  assert.match(readme, /Solo instead reports monerod's active mining status/);
-  assert.match(readme, /custom pool with TLS disabled sends its wallet address and pool login in plaintext/);
+  assert.match(readme, /Solo reported monerod's active mining status/);
+  assert.match(readme, /custom pool with TLS disabled sent its wallet address and pool login in plaintext/);
   assert.match(privacy, /parallel TLS connection checks/);
   assert.match(seedHandler, /monerojs\.openWalletFull\(\{ keysData, cacheData, password/);
   assert.doesNotMatch(seedHandler, /activeWallet\.getSeed\(/);
