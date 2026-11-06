@@ -1,6 +1,6 @@
 # josimi
 
-josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest stable release is **v1.2.3 for Windows x64**, distributed as a ZIP package. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
+josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest published Windows x64 ZIP is available from [GitHub Releases](https://github.com/jokeo132-a11y/josimi/releases/latest). The current source package version is **v1.2.4**. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
 
 ## Wallet features
 

@@ -1,6 +1,6 @@
 {
   "name": "josimi",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "josimi",
@@ -8,8 +8,9 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/core.js && node --check scripts/prepare-monero-runtime.js && node --check scripts/cleanup-monero-runtime.js && node --check scripts/build-windows.js && node --test --test-concurrency=1",
-    "dist": "node scripts/build-windows.js"
+    "test": "node --check src/main.js && node --check src/preload.js && node --check src/renderer.js && node --check src/core.js && node --check scripts/prepare-monero-runtime.js && node --check scripts/cleanup-monero-runtime.js && node --check scripts/build-windows.js && node --check scripts/build-website.js && node --test --test-concurrency=1",
+    "dist": "node scripts/build-windows.js",
+    "build:site": "node scripts/build-website.js"
   },
   "dependencies": {
     "monero-ts": "0.11.20",

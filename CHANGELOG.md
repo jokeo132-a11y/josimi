@@ -1,3 +1,10 @@
+## v1.2.4 — 2026-11-06
+
+- Rework the wallet's first-use, dashboard, receive, send, and activity screens around the user's immediate task while keeping the existing Josimi logo, orange identity, wallet data paths, and safety-critical send confirmation.
+- Make local-node startup and wallet synchronization easier to understand; keep the bundled local node as the default, start it automatically, explain long first syncs, and leave remote-node selection available without silently switching the user.
+- Keep technical node and send options available but quieter until needed, and show a clear retry path when local-node startup fails.
+- Redesign josimi.com for desktop and mobile with a direct route to the current Windows ZIP, first-run expectations, local/public-node privacy tradeoffs, and accurate unsigned-build, unaudited-project, and checksum limitations.
+
 ## v1.2.3 — 2026-11-05
 
 - Apply the provided josimi logo to the Windows app header and icon without changing the existing layout or styling.

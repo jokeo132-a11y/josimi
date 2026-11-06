@@ -144,6 +144,21 @@ function applyLanguage() {
   document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => { if (dict[node.dataset.i18nPlaceholder]) node.placeholder = dict[node.dataset.i18nPlaceholder]; });
   $('languageSelect').value = language;
 }
+const HUMANIZED_COPY = {
+  ko: {
+    walletDescriptor:'MONERO 지갑', heroTitle:'내 키는<br/><span>이 기기에.</span>', heroText:'지갑 파일과 복구 문구를 내 컴퓨터에 보관하고, 이 앱에서 직접 관리합니다.', firstSyncPromise:'내 PC의 로컬 노드는 자동으로 시작합니다. 첫 동기화는 오래 걸릴 수 있어요. 진행 상황은 이 화면에서 확인할 수 있습니다.', networkNote:'공개 노드를 선택하면 운영자가 IP와 연결 정보를 볼 수 있습니다. 로컬 노드도 Monero 피어에 연결됩니다.', getStarted:'지갑을 시작하는 방법', walletTitle:'지갑을 준비해요', walletSubtitle:'처음이라면 새 지갑을 만들고, 이미 사용 중이라면 파일을 열어 계속하세요.', existingKeysOpen:'기존 지갑 열기', create:'새 지갑', restore:'복구', connectionSettings:'연결 방식', nodeMode:'연결 방식', nodeLocalChoice:'내 PC의 로컬 노드 (기본)', nodeRemoteChoice:'공개 노드', nodeLocalNotice:'내 PC에서 Monero 노드를 실행합니다. 첫 동기화는 저장 공간과 인터넷을 사용하고 오래 걸릴 수 있어요.', nodePrivacyNotice:'공개 노드 운영자는 IP와 요청 정보를 볼 수 있습니다. 신뢰하는 노드만 선택하세요.', localNodeSummary:'내 PC의 연결 상태', nodeFirstSyncTitle:'처음 연결은 천천히 준비할게요', localNodeIntro:'로컬 노드는 앱과 함께 자동으로 시작됩니다. 첫 동기화는 시간이 걸릴 수 있고, 진행 상황은 이곳에서 확인할 수 있어요.', localNodeChecking:'로컬 노드 상태 확인 중', localNodeInstall:'포함된 노드 파일 확인', localNodeStart:'로컬 노드 시작', localNodeStop:'노드 중지', nodeAdvancedDetails:'저장 공간과 네트워크 자세히', showDetails:'자세히', nodeLocalPreparing:'로컬 노드 준비 중', nodeLocalSyncingShort:'첫 동기화 중', nodeLocalReady:'노드 연결됨', nodeLocalStoppedShort:'노드가 멈췄어요', nodeLocalMissingShort:'로컬 노드를 찾지 못했어요', nodeRemoteSelected:'공개 노드를 선택했어요', nodeRemoteSummary:'공개 노드에 연결합니다.', retryLocalNode:'다시 시도', syncWaiting:'동기화 상태를 확인하는 중', nodeSyncing:'동기화 중', nodeSynced:'최신 상태', nodeOffline:'연결이 끊겼어요', nodeOfflineDetail:'연결 방식 또는 인터넷 연결을 확인하세요.', syncWaitNotice:'동기화가 끝나기 전까지 잔액과 거래 내역이 바뀔 수 있어요.', syncReadyNotice:'지갑이 네트워크와 동기화되었습니다.', syncMore:'진행 상황 자세히', totalBalance:'내 잔액', authFine:'비밀번호와 복구 문구는 이 기기에만 입력하세요. 송금 전에는 주소와 금액을 다시 확인합니다.', receiveEyebrow:'받기', sendEyebrow:'보내기', activityEyebrow:'기록', receiveHint:'이 주소를 복사해 상대방에게 보내면 됩니다.', addressCheckHint:'주소를 붙여넣은 뒤 전체 주소를 확인하세요. 한 글자만 달라도 다른 곳에 도착할 수 있어요.', sendMoreOptions:'메모와 우선순위 (선택)', walletSecurity:'보안과 백업', walletOrganization:'계정과 주소록', walletOrganizationHint:'필요할 때 펼쳐서 관리하세요'
+  },
+  en: {
+    walletDescriptor:'MONERO WALLET', heroTitle:'Your keys,<br/><span>on this device.</span>', heroText:'Your wallet files and recovery phrase stay on your computer, where you manage them directly.', firstSyncPromise:'Your local node starts automatically. The first sync can take a while; you can check its progress here.', networkNote:'A public-node operator can see your IP and connection details. A local node also connects to Monero peers.', getStarted:'Choose how to begin', walletTitle:'Let’s get your wallet ready', walletSubtitle:'Create a wallet if this is your first time, or open your existing file to continue.', existingKeysOpen:'Open existing wallet', create:'New wallet', restore:'Restore', connectionSettings:'Connection', nodeMode:'Connection', nodeLocalChoice:'This PC (default)', nodeRemoteChoice:'Public node', nodeLocalNotice:'A Monero node runs on this PC. The first sync uses storage and internet and may take a while.', nodePrivacyNotice:'A public-node operator can see your IP and request metadata. Choose a node you trust.', localNodeSummary:'This PC connection', nodeFirstSyncTitle:'The first connection needs time', localNodeIntro:'The local node starts with the app. Its first sync may take a while; progress appears here.', localNodeChecking:'Checking local node status', localNodeInstall:'Check bundled node files', localNodeStart:'Start local node', localNodeStop:'Stop node', nodeAdvancedDetails:'Storage and network details', showDetails:'Details', nodeLocalPreparing:'Preparing local node', nodeLocalSyncingShort:'First sync in progress', nodeLocalReady:'Node connected', nodeLocalStoppedShort:'Node is stopped', nodeLocalMissingShort:'Local node not found', nodeRemoteSelected:'Public node selected', nodeRemoteSummary:'Connects to a public node.', retryLocalNode:'Try again', syncWaiting:'Checking wallet sync', nodeSyncing:'Syncing', nodeSynced:'Up to date', nodeOffline:'Connection lost', nodeOfflineDetail:'Check the connection setting or internet connection.', syncWaitNotice:'Your balance and transaction list may change until sync finishes.', syncReadyNotice:'Your wallet is synchronized with the network.', syncMore:'Sync details', totalBalance:'Your balance', authFine:'Enter passwords and recovery phrases only in this app. Check the address and amount before sending.', receiveEyebrow:'RECEIVE', sendEyebrow:'SEND', activityEyebrow:'ACTIVITY', receiveHint:'Copy this address and share it with the person sending you Monero.', addressCheckHint:'After pasting an address, check the full address. One character can send funds somewhere else.', sendMoreOptions:'Note and priority (optional)', walletSecurity:'Security and backup', walletOrganization:'Accounts and address book', walletOrganizationHint:'Open when you need them'
+  },
+  zh: {
+    walletDescriptor:'MONERO 钱包', heroTitle:'你的密钥，<br/><span>留在这台设备。</span>', heroText:'钱包文件和恢复短语保存在你的电脑上，由你直接管理。', firstSyncPromise:'本地节点会自动启动。首次同步可能需要一些时间，进度会显示在这里。', networkNote:'公共节点运营者可以看到你的 IP 和连接信息。本地节点也会连接 Monero 网络节点。', getStarted:'选择开始方式', walletTitle:'准备好你的钱包', walletSubtitle:'第一次使用可以新建钱包；已有钱包则打开文件继续。', existingKeysOpen:'打开已有钱包', create:'新建钱包', restore:'恢复', connectionSettings:'连接方式', nodeMode:'连接方式', nodeLocalChoice:'这台电脑（默认）', nodeRemoteChoice:'公共节点', nodeLocalNotice:'Monero 节点将在这台电脑运行。首次同步会占用存储空间和网络，可能需要较长时间。', nodePrivacyNotice:'公共节点运营者可以看到你的 IP 和请求信息。请选择你信任的节点。', localNodeSummary:'本机连接状态', nodeFirstSyncTitle:'首次连接需要一点时间', localNodeIntro:'本地节点会随应用自动启动。首次同步可能需要较长时间，进度会显示在这里。', localNodeChecking:'正在检查本地节点状态', localNodeInstall:'检查内置节点文件', localNodeStart:'启动本地节点', localNodeStop:'停止节点', nodeAdvancedDetails:'存储和网络详情', showDetails:'详情', nodeLocalPreparing:'正在准备本地节点', nodeLocalSyncingShort:'首次同步进行中', nodeLocalReady:'节点已连接', nodeLocalStoppedShort:'节点已停止', nodeLocalMissingShort:'未找到本地节点', nodeRemoteSelected:'已选择公共节点', nodeRemoteSummary:'将连接到公共节点。', retryLocalNode:'重试', syncWaiting:'正在检查钱包同步状态', nodeSyncing:'同步中', nodeSynced:'已同步至最新状态', nodeOffline:'连接已断开', nodeOfflineDetail:'请检查连接方式或互联网连接。', syncWaitNotice:'同步完成前，余额和交易记录可能会变化。', syncReadyNotice:'钱包已与网络同步。', syncMore:'查看同步详情', totalBalance:'我的余额', authFine:'请只在此应用中输入密码和恢复短语。发送前请再次核对地址和金额。', receiveEyebrow:'收款', sendEyebrow:'发送', activityEyebrow:'记录', receiveHint:'复制此地址并分享给向你发送 Monero 的人。', addressCheckHint:'粘贴后请核对完整地址。即使一个字符不同，资金也可能发往别处。', sendMoreOptions:'备注与优先级（可选）', walletSecurity:'安全与备份', walletOrganization:'账户和地址簿', walletOrganizationHint:'需要时再展开管理'
+  },
+  ja: {
+    walletDescriptor:'MONERO WALLET', heroTitle:'鍵は、<br/><span>この端末の中に。</span>', heroText:'ウォレットファイルと復元フレーズは自分のPCに保管し、このアプリで管理します。', firstSyncPromise:'ローカルノードは自動で起動します。初回同期には時間がかかることがあります。進み具合はここで確認できます。', networkNote:'パブリックノードの運営者にはIPアドレスや接続情報が見える場合があります。ローカルノードもMoneroのピアに接続します。', getStarted:'始め方を選ぶ', walletTitle:'ウォレットを準備しましょう', walletSubtitle:'初めてなら新しく作成し、すでにお持ちならファイルを開いて続けられます。', existingKeysOpen:'既存のウォレットを開く', create:'新規作成', restore:'復元', connectionSettings:'接続方法', nodeMode:'接続方法', nodeLocalChoice:'このPC（既定）', nodeRemoteChoice:'パブリックノード', nodeLocalNotice:'このPCでMoneroノードを実行します。初回同期はストレージと通信量を使い、時間がかかることがあります。', nodePrivacyNotice:'パブリックノード運営者にはIPアドレスやリクエスト情報が見える場合があります。信頼できるノードを選んでください。', localNodeSummary:'このPCの接続状態', nodeFirstSyncTitle:'最初の接続には時間がかかります', localNodeIntro:'ローカルノードはアプリと一緒に自動で起動します。初回同期には時間がかかることがあり、進捗はここに表示されます。', localNodeChecking:'ローカルノードの状態を確認中', localNodeInstall:'同梱ノードファイルを確認', localNodeStart:'ローカルノードを起動', localNodeStop:'ノードを停止', nodeAdvancedDetails:'ストレージとネットワークの詳細', showDetails:'詳細', nodeLocalPreparing:'ローカルノードを準備中', nodeLocalSyncingShort:'初回同期中', nodeLocalReady:'ノード接続済み', nodeLocalStoppedShort:'ノードが停止しています', nodeLocalMissingShort:'ローカルノードが見つかりません', nodeRemoteSelected:'パブリックノードを選択中', nodeRemoteSummary:'パブリックノードに接続します。', retryLocalNode:'再試行', syncWaiting:'ウォレットの同期状態を確認中', nodeSyncing:'同期中', nodeSynced:'最新の状態です', nodeOffline:'接続が切れました', nodeOfflineDetail:'接続方法またはインターネット接続を確認してください。', syncWaitNotice:'同期が終わるまでは残高や取引履歴が変わる場合があります。', syncReadyNotice:'ウォレットはネットワークと同期しています。', syncMore:'同期の詳細', totalBalance:'残高', authFine:'パスワードと復元フレーズはこのアプリにだけ入力してください。送金前にアドレスと金額を再確認します。', receiveEyebrow:'受取', sendEyebrow:'送金', activityEyebrow:'履歴', receiveHint:'このアドレスをコピーして、Moneroを送る相手に共有してください。', addressCheckHint:'貼り付けた後、アドレス全体を確認してください。1文字違うだけでも別の宛先になります。', sendMoreOptions:'メモと優先度（任意）', walletSecurity:'セキュリティとバックアップ', walletOrganization:'アカウントとアドレス帳', walletOrganizationHint:'必要なときに開いて管理できます'
+  }
+};
+for (const code of Object.keys(HUMANIZED_COPY)) Object.assign(LANG[code], HUMANIZED_COPY[code]);
 let mode = 'open';
 let pendingSend = null;
 let sendCallInProgress = false;
@@ -251,17 +266,48 @@ function renderReceiveAddress() {
   if (subaddress) $('receiveBalance').textContent = `${LANG[language].accountBalance}: ${formatXmr(subaddress.balance)} XMR · ${LANG[language].unlockedBalance}: ${formatXmr(subaddress.unlockedBalance)} XMR`;
   else $('receiveBalance').textContent = '';
 }
+Object.assign(LANG.ko, { nodeConnectionSummary:'연결 상태' });
+Object.assign(LANG.en, { nodeConnectionSummary:'Connection status' });
+Object.assign(LANG.zh, { nodeConnectionSummary:'连接状态' });
+Object.assign(LANG.ja, { nodeConnectionSummary:'接続状態' });
+Object.assign(LANG.ko, { networkNote:'로컬 노드도 Monero P2P 피어와 통신하므로, IP 주소를 숨기는 기능은 아닙니다.' });
+Object.assign(LANG.en, { networkNote:'A local node still connects to Monero P2P peers; it does not hide your IP address.' });
+Object.assign(LANG.zh, { networkNote:'本地节点仍会连接 Monero P2P 节点，因此不会隐藏您的 IP 地址。' });
+Object.assign(LANG.ja, { networkNote:'ローカルノードもMoneroのP2Pピアに接続するため、IPアドレスを隠すものではありません。' });
 function renderSync(sync = {}) {
   const dict = LANG[language];
+  renderSync.lastStatus = sync;
   const state = sync.state || 'stopped';
   const labels = { downloading: dict.nodeSyncing, starting: dict.nodeSyncing, syncing: dict.nodeSyncing, synced: dict.nodeSynced, remote: dict.nodeRemote, offline: dict.nodeOffline, stopped: dict.nodeStopped };
-  $('status').textContent = labels[state] || state;
-  if (state === 'offline') $('syncDetails').textContent = `${dict.nodeOfflineDetail} · ${sync.node || ''}`;
-  else if (sync.targetHeight) $('syncDetails').textContent = `${sync.progress || 0}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
-  else $('syncDetails').textContent = sync.node || '';
+  $('status').textContent = labels[state] || dict.syncWaiting;
+  $('status').dataset.state = state;
+  const progress = Number(sync.progress);
+  const hasProgress = Number.isFinite(progress) && Number(sync.targetHeight) > 0 && ['downloading', 'syncing'].includes(state);
+  const indeterminate = ['downloading', 'starting', 'syncing'].includes(state) && !hasProgress;
+  $('syncProgress').classList.toggle('hidden', !hasProgress && !indeterminate);
+  if (hasProgress) { $('syncProgress').value = Math.max(0, Math.min(100, progress)); $('syncProgress').setAttribute('aria-valuenow', String(Math.max(0, Math.min(100, progress)))); }
+  else if (indeterminate) { $('syncProgress').removeAttribute('value'); $('syncProgress').removeAttribute('aria-valuenow'); }
+  else { $('syncProgress').value = state === 'synced' ? 100 : 0; $('syncProgress').setAttribute('aria-valuenow', String(state === 'synced' ? 100 : 0)); }
+  if (state === 'offline') {
+    $('syncHint').textContent = dict.nodeOfflineDetail;
+    $('syncDetails').textContent = `${dict.nodeOfflineDetail} · ${sync.node || ''}`;
+  } else if (['downloading', 'starting', 'syncing'].includes(state)) {
+    $('syncHint').textContent = dict.syncWaitNotice;
+    $('syncDetails').textContent = sync.targetHeight ? `${progress || 0}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : (sync.node || dict.nodeSyncing);
+  } else if (state === 'synced') {
+    $('syncHint').textContent = dict.syncReadyNotice;
+    $('syncDetails').textContent = `${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
+  } else if (state === 'remote') {
+    $('syncHint').textContent = dict.nodeRemoteSummary;
+    $('syncDetails').textContent = sync.node || dict.nodeRemoteSummary;
+  } else {
+    $('syncHint').textContent = dict.syncWaitNotice;
+    $('syncDetails').textContent = sync.node || '';
+  }
 }
 function renderLocalNodeStatus(status = {}) {
   const dict = LANG[language];
+  renderLocalNodeStatus.lastStatus = status;
   let label = status.supported ? status.installed ? dict.localNodeInstalled : dict.localNodeMissing : dict.localNodeUnsupported;
   if (status.installing) {
     label = dict.localNodeVerifying;
@@ -273,6 +319,47 @@ function renderLocalNodeStatus(status = {}) {
   $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing);
   $('startLocalNodeBtn').disabled = !status.supported || !status.installed || Boolean(status.installing) || Boolean(status.running);
   $('stopLocalNodeBtn').disabled = !status.running;
+  renderNodeConnectionSummary(status);
+}
+function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus || {}) {
+  const dict = LANG[language];
+  const remote = $('nodeMode').value === 'remote';
+  let headline = dict.nodeLocalPreparing;
+  let detail = dict.localNodeChecking;
+  let progress = Number(status.rpc?.progress);
+  const syncing = Boolean(status.running && ['downloading', 'starting', 'syncing'].includes(status.rpc?.state));
+  if (remote) {
+    headline = dict.nodeRemoteSelected;
+    detail = dict.nodeRemoteSummary;
+  } else if (status.supported === false) {
+    headline = dict.localNodeUnsupported;
+    detail = dict.localNodeUnsupported;
+  } else if (status.installing) {
+    headline = dict.nodeLocalPreparing;
+    detail = dict.localNodeVerifying;
+  } else if (status.running && status.rpc?.state === 'synced') {
+    headline = dict.nodeLocalReady;
+    detail = dict.localNodeSynced;
+  } else if (syncing) {
+    headline = dict.nodeLocalSyncingShort;
+    detail = Number.isFinite(progress) ? `${Math.max(0, Math.min(100, progress))}% · ${dict.localNodeSyncing}` : dict.localNodeSyncing;
+  } else if (status.running) {
+    headline = dict.nodeLocalPreparing;
+    detail = dict.localNodeRunning;
+  } else if (status.supported && status.installed) {
+    headline = dict.nodeLocalStoppedShort;
+    detail = dict.localNodeStopped;
+  } else if (status.supported && status.installed === false) {
+    headline = dict.nodeLocalMissingShort;
+    detail = dict.localNodeMissing;
+  }
+  $('localNodeSummaryStatus').textContent = headline;
+  $('localNodeSummaryDetail').textContent = detail;
+  const showProgress = !remote && syncing;
+  $('localNodeProgress').classList.toggle('hidden', !showProgress);
+  if (showProgress && Number.isFinite(progress) && Number(status.rpc?.targetHeight) > 0) $('localNodeProgress').value = Math.max(0, Math.min(100, progress));
+  else if (showProgress) $('localNodeProgress').removeAttribute('value');
+  else $('localNodeProgress').value = 0;
 }
 async function refreshLocalNodeStatus() {
   try { renderLocalNodeStatus(await window.josimi.localNodeStatus()); } catch (_) {}
@@ -282,12 +369,17 @@ refreshLocalNodeStatus();
 setInterval(refreshLocalNodeStatus, 10000);
 function updateNodeModeFields() {
   const local = $('nodeMode').value === 'local';
+  $('firstSyncPromise').textContent = local ? LANG[language].firstSyncPromise : LANG[language].nodePrivacyNotice;
   try { localStorage.setItem('josimi.nodeMode', local ? 'local' : 'remote'); } catch (_) {}
   $('remoteNodeLabel').classList.toggle('hidden', local);
   $('remoteNodeNotice').classList.toggle('hidden', local);
   $('localNodeNotice').classList.toggle('hidden', !local);
+  $('localNodeChoiceChip').classList.toggle('hidden', !local);
+  $('remoteNodeChoiceChip').classList.toggle('hidden', local);
+  $('localNodePanel').classList.toggle('hidden', !local);
   $('node').required = !local;
-  if (local) $('localNodePanel').open = true;
+  if (!local) { $('localNodeError').classList.add('hidden'); $('retryLocalNodeBtn').classList.add('hidden'); }
+  renderNodeConnectionSummary();
 }
 $('nodeMode').addEventListener('change', updateNodeModeFields);
 try {
@@ -306,7 +398,7 @@ async function ensureLocalNodeStarted() {
   return status;
 }
 if ($('nodeMode').value === 'local') {
-  ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => showError('localNodeError', error));
+  ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); });
 }
 function renderSummary(summary) {
   $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
@@ -330,7 +422,7 @@ function resetInactivityTimer() {
 }
 ['click', 'keydown', 'mousemove', 'touchstart'].forEach((eventName) => document.addEventListener(eventName, resetInactivityTimer, { passive: true }));
 
-document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
+document.querySelectorAll('.tab:not(#walletChoiceBtn)').forEach((tab) => tab.addEventListener('click', () => setMode(tab.dataset.tab)));
 $('walletChoiceBtn').addEventListener('click', async () => {
   clearError('authError');
   try {
@@ -343,6 +435,7 @@ $('walletChoiceBtn').addEventListener('click', async () => {
 window.josimi.onNodeStatus((status) => { if (!$('appView').classList.contains('hidden')) renderSync(status); });
 for (const id of ['installLocalNodeBtn', 'startLocalNodeBtn', 'stopLocalNodeBtn']) $(id).addEventListener('click', async () => {
   clearError('localNodeError');
+  $('retryLocalNodeBtn').classList.add('hidden');
   const button = $(id);
   button.disabled = true;
   try {
@@ -350,8 +443,16 @@ for (const id of ['installLocalNodeBtn', 'startLocalNodeBtn', 'stopLocalNodeBtn'
     else if (id === 'startLocalNodeBtn') await window.josimi.localNodeStart();
     else await window.josimi.localNodeStop();
     await refreshLocalNodeStatus();
-  } catch (error) { showError('localNodeError', error); await refreshLocalNodeStatus(); }
+  } catch (error) { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); await refreshLocalNodeStatus(); }
   finally { button.disabled = false; }
+});
+$('retryLocalNodeBtn').addEventListener('click', async () => {
+  clearError('localNodeError');
+  $('retryLocalNodeBtn').classList.add('hidden');
+  $('retryLocalNodeBtn').disabled = true;
+  try { await ensureLocalNodeStarted(); await refreshLocalNodeStatus(); }
+  catch (error) { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); }
+  finally { $('retryLocalNodeBtn').disabled = false; }
 });
  $('receiveAccount').addEventListener('change', () => renderAccountManagement(currentAccounts, currentAddressBook));
  $('receiveSubaddress').addEventListener('change', renderReceiveAddress);
@@ -457,7 +558,7 @@ async function configureNodeInput() {
 }
 configureNodeInput();
 
-$('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); setMode(mode); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); });
+ $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); updateNodeModeFields(); setMode(mode); if (renderLocalNodeStatus.lastStatus) renderLocalNodeStatus(renderLocalNodeStatus.lastStatus); if (renderSync.lastStatus) renderSync(renderSync.lastStatus); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); });
 $('walletForm').addEventListener('submit', async (event) => {
   event.preventDefault(); clearError('authError');
   const action = mode;

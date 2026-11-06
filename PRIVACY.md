@@ -1,6 +1,6 @@
 # Privacy and data handling
 
-This document describes the v1.2.3 source and its intended Windows ZIP. Mining disclosures below apply only to the older v1.2.1 ZIP; v1.2.2 and later releases remove mining entirely. This document is based on source and configured release artifacts; it is not an independent privacy or security audit.
+This document describes the v1.2.4 source and its intended Windows ZIP. Mining disclosures below apply only to the older v1.2.1 ZIP; v1.2.2 and later releases remove mining entirely. This document is based on source and configured release artifacts; it is not an independent privacy or security audit.
 
 ## Wallet and application data
 

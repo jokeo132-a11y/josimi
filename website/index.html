@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f2ec" />
+  <meta name="description" content="josimi는 Windows용 Monero 지갑입니다. 지갑 파일은 내 컴퓨터에 보관하고, 포함된 로컬 노드는 자동으로 시작됩니다. 첫 동기화와 개인정보 보호 선택을 확인하세요." />
+  <meta name="robots" content="index,follow" />
+  <link rel="canonical" href="https://josimi.com/" />
+  <link rel="icon" type="image/png" href="/assets/josimi-logo.png" />
+  <link rel="apple-touch-icon" href="/assets/josimi-logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="josimi — 내 컴퓨터에 보관하는 Monero 지갑" />
+  <meta property="og:description" content="Windows용 Monero 지갑. 내 PC의 로컬 노드가 자동으로 시작됩니다. 첫 동기화와 보안 정보를 미리 확인하세요." />
+  <meta property="og:url" content="https://josimi.com/" />
+  <meta property="og:image" content="https://josimi.com/assets/josimi-logo.png" />
+  <meta name="twitter:card" content="summary" />
+  <title>josimi — 내 컴퓨터에 보관하는 Monero 지갑</title>
+  <link rel="stylesheet" href="/assets/site.css" />
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"josimi","applicationCategory":"FinanceApplication","operatingSystem":"Windows 10 or later","softwareVersion":"1.2.3","downloadUrl":"https://github.com/jokeo132-a11y/josimi/releases/latest","url":"https://josimi.com/","description":"Windows용 비수탁 Monero 지갑. 지갑 파일은 사용자의 컴퓨터에 보관됩니다."}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 바로가기</a>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/" aria-label="josimi 홈"><img src="/assets/josimi-logo.png" alt="" width="38" height="38" /><span>josimi</span></a>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="메뉴 열기"><span></span><span></span></button>
+      <nav class="site-nav" id="site-nav" aria-label="주요 메뉴">
+        <a href="#first-run">처음 실행할 때</a>
+        <a href="#privacy">개인정보와 보안</a>
+        <a href="#faq">자주 묻는 질문</a>
+      </nav>
+      <a class="header-cta" href="#download">Windows ZIP <span aria-hidden="true">↗</span></a>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero section-wrap" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="eyebrow-mark"></span> WINDOWS용 MONERO 지갑</div>
+        <h1 id="hero-title">내 지갑은<br /><em>내 컴퓨터에.</em></h1>
+        <p class="hero-lede">josimi는 Monero를 보내고 받기 위한 Windows 지갑입니다. 지갑 파일은 이 PC에 보관되고, 로컬 노드는 앱과 함께 자동으로 시작됩니다.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" id="hero-download" href="https://github.com/jokeo132-a11y/josimi/releases/latest" rel="noopener"><span id="hero-download-label">Windows 릴리스 열기</span><span aria-hidden="true">↗</span></a>
+          <a class="text-link" href="#first-run">처음 실행하면 무엇이 일어나나요? <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="release-line" aria-live="polite">
+          <span class="release-dot" aria-hidden="true"></span>
+          <span>사이트에 기록된 버전 <strong id="release-version">v1.2.3</strong></span>
+          <span class="release-divider" aria-hidden="true">·</span>
+          <time id="release-date" datetime="2026-11-05">2026년 11월 5일 공개</time>
+        </div>
+        <p id="release-state" class="release-state">페이지에 기록된 버전이며, 최신 여부는 GitHub 릴리스에서 직접 확인할 수 있습니다.</p>
+      </div>
+      <div class="hero-art" aria-label="josimi 지갑 화면 예시">
+        <div class="wallet-window">
+          <div class="window-top"><div class="window-brand"><img src="/assets/josimi-logo.png" alt="" width="28" height="28" /><strong>josimi</strong></div><span class="preview-label">화면 예시</span></div>
+          <div class="window-content">
+            <div class="window-kicker">내 지갑 잔액</div>
+            <div class="window-balance">— <small>XMR</small></div>
+            <div class="window-status"><span class="status-pulse" aria-hidden="true"></span><span>첫 동기화를 준비하고 있어요</span></div>
+            <progress class="preview-progress" aria-label="동기화 진행 예시"></progress>
+            <div class="window-hint">동기화가 끝나면 잔액과 거래 내역이 표시됩니다.</div>
+            <div class="window-actions"><span>받기</span><span>보내기</span></div>
+          </div>
+        </div>
+        <p class="preview-caption">실제 지갑 데이터가 아닌 화면 예시입니다.</p>
+        <div class="hero-note"><span class="note-mark" aria-hidden="true">i</span><p><strong>처음 한 번은 기다림이 필요해요.</strong><br />블록체인 동기화는 수 시간 또는 며칠 걸릴 수 있고, 저장 공간과 인터넷을 사용합니다.</p></div>
+      </div>
+    </section>
+
+    <section class="download-section" id="download" aria-labelledby="download-title">
+      <div class="section-wrap">
+        <div class="section-heading compact-heading"><div><span class="eyebrow">DOWNLOAD</span><h2 id="download-title">받기 전에, 필요한 정보만 먼저.</h2></div><p>다운로드는 GitHub 릴리스에서 제공됩니다. 아래 버튼은 최신 Windows ZIP을 찾습니다.</p></div>
+        <div class="download-card">
+          <div class="download-primary">
+            <div class="download-kicker">WINDOWS 64-BIT · ZIP</div>
+            <div class="download-version"><span id="download-version">v1.2.3</span><span class="download-size" id="download-size">약 163 MiB</span></div>
+            <p class="download-date">공개일 <time id="download-date" datetime="2026-11-05">2026년 11월 5일</time></p>
+            <a class="button button-primary download-button" id="download-button" href="https://github.com/jokeo132-a11y/josimi/releases/latest" rel="noopener"><span id="download-button-label">GitHub에서 최신 릴리스 열기</span><span aria-hidden="true">↗</span></a>
+            <div class="download-links"><a id="release-link" href="https://github.com/jokeo132-a11y/josimi/releases/latest" rel="noopener">릴리스 노트와 파일 확인</a><a id="checksum-link" href="https://github.com/jokeo132-a11y/josimi/blob/main/VERIFY_RELEASE.md" rel="noopener">SHA-256 확인 방법</a></div>
+            <p class="release-state download-status" id="download-status" aria-live="polite">GitHub 릴리스에서 날짜와 Windows x64 ZIP을 확인하세요.</p>
+          </div>
+          <aside class="download-caution" aria-labelledby="download-caution-title">
+            <span class="caution-kicker">투명하게 알려드릴게요</span>
+            <h3 id="download-caution-title">Windows에서 경고가 보일 수 있습니다.</h3>
+            <p>앱은 코드 서명되지 않았고, 독립 보안 감사도 아직 받지 않았습니다. Windows SmartScreen이 실행을 막거나 확인을 요청할 수 있습니다.</p>
+            <p class="checksum-note"><strong>체크섬은 안전 인증서가 아닙니다.</strong> SHA-256은 파일이 공개된 파일과 같은지 비교하는 방법일 뿐, 코드가 안전하다는 보장은 아닙니다.</p>
+            <a class="inline-link" href="https://github.com/jokeo132-a11y/josimi/blob/main/SECURITY.md" rel="noopener">보안 상태와 신고 안내 보기 <span aria-hidden="true">↗</span></a>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <section class="first-run section-wrap" id="first-run" aria-labelledby="first-run-title">
+      <div class="section-heading"><div><span class="eyebrow">FIRST RUN</span><h2 id="first-run-title">설치 후에는 이렇게 됩니다.</h2></div><p>무슨 일이 일어나는지 알면, 기다리는 시간이 덜 불안합니다.</p></div>
+      <div class="steps">
+        <article class="step"><span class="step-number">01</span><h3>ZIP을 받고 압축을 풀어요</h3><p>압축을 푼 폴더에서 <code>josimi.exe</code>를 실행합니다. monerod와 필요한 파일은 Windows ZIP에 포함되어 있어 따로 찾을 필요가 없습니다.</p></article>
+        <article class="step"><span class="step-number">02</span><h3>새 지갑·기존 지갑·복구 중 고릅니다</h3><p>새 지갑을 만들거나, 기존 <code>.keys</code> 파일을 열거나, 복구 문구로 되살릴 수 있습니다. 비밀번호와 복구 문구는 이 앱에서만 입력하세요.</p></article>
+        <article class="step"><span class="step-number">03</span><h3>로컬 노드가 자동으로 동기화합니다</h3><p>기본 연결은 내 PC의 노드입니다. 사용자가 시작 버튼을 따로 찾지 않아도 되고, 첫 동기화가 끝나기 전에는 잔액과 거래가 달라질 수 있습니다.</p></article>
+      </div>
+      <div class="wait-note"><span class="wait-icon" aria-hidden="true">↻</span><div><strong>화면이 한동안 그대로여도, 곧바로 고장이라고 단정하지 않아도 돼요.</strong><p>첫 동기화는 수 시간 또는 며칠이 걸릴 수 있습니다. 저장 공간과 대역폭 사용량은 상당할 수 있습니다. josimi를 실행한 상태에서 진행 상황을 확인하세요.</p></div></div>
+    </section>
+
+    <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
+      <div class="section-wrap">
+        <div class="section-heading"><div><span class="eyebrow">PRIVACY, WITHOUT PROMISES</span><h2 id="privacy-title">무엇이 내 PC에 있고,<br class="desktop-break" /> 무엇이 네트워크에 보일까요?</h2></div><p>개인정보를 설명할 때 좋은 말만 남기면 안 되니까요. 연결 방식마다 실제 차이를 적었습니다.</p></div>
+        <div class="privacy-grid">
+          <article class="privacy-card privacy-local"><span class="privacy-index">01</span><h3>지갑 파일은 이 PC에</h3><p>josimi는 비수탁 지갑입니다. 지갑 파일과 복구 문구를 외부 계정으로 보내지 않습니다. 다만 컴퓨터를 잃거나 파일이 손상되면 복구 문구 백업이 필요합니다.</p></article>
+          <article class="privacy-card"><span class="privacy-index">02</span><h3>로컬 노드도 네트워크에 연결됩니다</h3><p>내 PC에서 monerod를 실행해도 Monero P2P 피어와 통신하므로 IP 주소가 네트워크에 노출될 수 있습니다. 로컬 RPC는 127.0.0.1에 묶여 있습니다. 기본 P2P 포트와 방화벽 설명은 앱의 노드 세부 정보에서 확인하세요.</p></article>
+          <article class="privacy-card"><span class="privacy-index">03</span><h3>공개 노드는 더 쉬울 수 있지만</h3><p>공개 노드 운영자는 접속 IP와 요청 메타데이터를 볼 수 있고, RPC 요청으로 잔액이나 활동을 추론할 수 있습니다. 신뢰하는 노드만 선택하세요. 공개 노드는 앱 설정에서 직접 바꿀 수 있습니다.</p></article>
+          <article class="privacy-card privacy-honesty"><span class="privacy-index">04</span><h3>아직 독립 감사를 받지 않았습니다</h3><p>오픈소스라고 해서 자동으로 안전한 것은 아닙니다. 현재 Windows 빌드는 서명되지 않았고, 독립 보안 감사도 없습니다. 사용 전에 이 사실을 알고 결정해 주세요.</p><a class="inline-link" href="https://github.com/jokeo132-a11y/josimi/blob/main/PRIVACY.md" rel="noopener">개인정보 처리 안내 <span aria-hidden="true">↗</span></a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq-section section-wrap" id="faq" aria-labelledby="faq-title">
+      <div class="section-heading"><div><span class="eyebrow">A FEW HONEST ANSWERS</span><h2 id="faq-title">자주 멈칫하는 지점.</h2></div><p>처음 쓰는 사람에게 실제로 필요한 질문부터 골랐습니다.</p></div>
+      <div class="faq-list">
+        <details><summary>첫 동기화가 오래 걸리는 게 정상인가요?</summary><p>그럴 수 있습니다. Monero 블록체인을 처음 확인하므로 수 시간 또는 며칠이 걸릴 수 있고, 저장 공간과 네트워크 사용량도 큽니다. 동기화가 끝날 때까지 잔액이나 거래 목록이 바뀔 수 있습니다.</p></details>
+        <details><summary>공개 노드로 바꿀 수 있나요?</summary><p>네. 지갑 생성·복구 화면의 연결 설정에서 바꿀 수 있습니다. 대신 공개 노드 운영자가 IP와 연결 메타데이터를 볼 수 있으며, RPC 요청으로 지갑 잔액이나 활동을 추론할 수 있습니다.</p></details>
+        <details><summary>체크섬을 확인하면 앱이 안전하다는 뜻인가요?</summary><p>아닙니다. SHA-256 비교는 받은 파일이 게시된 파일과 같은지 확인할 뿐, 소프트웨어의 안전성이나 무결한 개발 과정을 보증하지 않습니다. 현재 앱은 독립 감사를 받지 않았고 Windows 코드 서명도 없습니다.</p></details>
+        <details><summary>복구 문구를 어디에 저장해야 하나요?</summary><p>복구 문구는 누구에게도 보내지 말고, 오프라인으로 안전하게 보관하세요. josimi에서는 현재 지갑 비밀번호를 다시 확인한 뒤에만 화면에 표시됩니다. 화면을 캡처하거나 클라우드 메모에 저장하는 일은 피하세요.</p></details>
+        <details><summary>다운로드 링크가 열리지 않으면 어떻게 하나요?</summary><p>GitHub API에서 버전을 가져오지 못하더라도 릴리스 페이지를 직접 열 수 있습니다. 파일을 받을 때 버전과 Windows x64 ZIP인지 확인하세요.</p><a class="inline-link" href="https://github.com/jokeo132-a11y/josimi/releases/latest" rel="noopener">GitHub 최신 릴리스 열기 <span aria-hidden="true">↗</span></a></details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-inner"><div class="footer-brand"><a class="brand" href="/" aria-label="josimi 홈"><img src="/assets/josimi-logo.png" alt="" width="34" height="34" /><span>josimi</span></a><p>이 프로젝트는 Monero Project와 공식적으로 제휴·승인된 제품이 아닙니다.</p></div><div class="footer-links"><a href="https://github.com/jokeo132-a11y/josimi" rel="noopener">GitHub 저장소</a><a href="https://github.com/jokeo132-a11y/josimi/blob/main/README.md" rel="noopener">사용 안내</a><a href="https://github.com/jokeo132-a11y/josimi/blob/main/PRIVACY.md" rel="noopener">개인정보</a><a href="https://github.com/jokeo132-a11y/josimi/blob/main/VERIFY_RELEASE.md" rel="noopener">릴리스 검증</a></div><p class="footer-small">Monero는 Monero Project의 상표 또는 서비스표일 수 있습니다. 이 페이지의 정보는 독립 프로젝트 josimi에 관한 것입니다.</p></div>
+  </footer>
+  <script src="/assets/site.js" defer></script>
+</body>
+</html>
