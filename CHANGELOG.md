@@ -1,3 +1,10 @@
+## v1.2.5 — 2026-11-06
+
+- Harden automatic local-node startup with RPC readiness polling and bounded retry behavior so wallet synchronization waits for a responsive daemon and resumes after temporary failures.
+- Keep outgoing service-fee review and transaction destinations explicit: 0.25% of the requested amount, capped at 0.05 XMR, sent to the verified mainnet fee address; Monero network fees remain separate.
+- Refine Korean app and website copy around first-run choices, local synchronization delays, and recovery from connection problems.
+- Update josimi.com to point at the v1.2.5 Windows x64 release and document the release's verification limits.
+
 ## v1.2.4 — 2026-11-06
 
 - Rework the wallet's first-use, dashboard, receive, send, and activity screens around the user's immediate task while keeping the existing Josimi logo, orange identity, wallet data paths, and safety-critical send confirmation.

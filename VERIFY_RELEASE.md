@@ -7,7 +7,7 @@ Download release files only from the repository's [GitHub Releases page](https:/
 Download `josimi-<version>-x64.zip` and `SHA256SUMS.txt` from the same GitHub release, open PowerShell in that directory, and run:
 
 ```powershell
-$version = '1.2.4' # Change this to the version you downloaded.
+$version = '1.2.5' # Change this to the version you downloaded.
 $zip = ".\josimi-$version-x64.zip"
 $zipName = Split-Path $zip -Leaf
 $expected = ((Get-Content .\SHA256SUMS.txt | Where-Object { $_ -match ('\s+' + [regex]::Escape($zipName) + '$') }) -split '\s+')[0].ToLowerInvariant()

@@ -17,3 +17,8 @@
 - 릴리스 파일 검증 한계와 안내: `https://github.com/jokeo132-a11y/josimi/blob/main/VERIFY_RELEASE.md`
 
 사이트의 체크섬 설명은 파일 동일성 확인과 소프트웨어 안전성 보장을 구분합니다. 공개 노드 운영자는 IP·연결 정보를 볼 수 있고, 로컬 노드도 Monero P2P 피어에 연결된다는 점을 설명합니다. 이 사실과 디자인 제안은 독립 보안 감사가 아닙니다.
+
+
+## v1.2.5 release update — 2026-11-06
+
+The v1.2.5 Windows release includes the final automatic local-node synchronization hardening and the fee transaction/review behavior documented in the source. The production site should point to the new v1.2.5 GitHub release after its tagged build succeeds.
