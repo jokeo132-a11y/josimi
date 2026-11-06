@@ -262,6 +262,18 @@ class LocalNodeManager extends EventEmitter {
   }
 }
 
+async function waitForRpcReady(readStatus, { timeoutMs = 120_000, intervalMs = 1_200, delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)), now = Date.now } = {}) {
+  if (typeof readStatus !== 'function') throw new TypeError('waitForRpcReady requires a status reader.');
+  const deadline = now() + timeoutMs;
+  while (now() < deadline) {
+    const status = await readStatus();
+    if (!status?.running) throw new Error('LOCAL_NODE_EXITED');
+    if (status.rpc && !['stopped', 'starting', 'offline'].includes(status.rpc.state)) return status;
+    await delay(Math.min(intervalMs, Math.max(0, deadline - now())));
+  }
+  throw new Error('LOCAL_NODE_RPC_TIMEOUT');
+}
+
 module.exports = {
   MONERO_VERSION,
   MONERO_ARCHIVE_URL,
@@ -274,5 +286,6 @@ module.exports = {
   sha256File,
   isAllowedRuntimeName,
   buildMonerodArgs,
+  waitForRpcReady,
   LocalNodeManager
 };

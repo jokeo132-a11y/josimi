@@ -17,6 +17,7 @@ const {
   RPC_PORT,
   isAllowedRuntimeName,
   buildMonerodArgs,
+  waitForRpcReady,
   LocalNodeManager
 } = require('../src/node-manager');
 
@@ -62,6 +63,24 @@ function createGate() {
   const promise = new Promise((done) => { resolve = done; });
   return { promise, resolve };
 }
+
+test('local wallet operations wait for responsive RPC, not only a spawned daemon', async () => {
+  let checks = 0;
+  const ready = await waitForRpcReady(async () => {
+    checks += 1;
+    return { running: true, rpc: { state: checks < 3 ? 'stopped' : 'syncing' } };
+  }, { timeoutMs: 100, intervalMs: 5, delay: async () => {} });
+  assert.equal(checks, 3);
+  assert.equal(ready.rpc.state, 'syncing');
+});
+
+test('local RPC readiness fails promptly if monerod exits and times out when RPC never answers', async () => {
+  await assert.rejects(waitForRpcReady(async () => ({ running: false }), { timeoutMs: 10, delay: async () => {} }), /LOCAL_NODE_EXITED/);
+  let clock = 0;
+  await assert.rejects(waitForRpcReady(async () => ({ running: true, rpc: { state: 'stopped' } }), {
+    timeoutMs: 10, intervalMs: 5, now: () => clock, delay: async (ms) => { clock += ms; }
+  }), /LOCAL_NODE_RPC_TIMEOUT/);
+});
 
 test('Monero build input is pinned to the official HTTPS CLI archive and a fixed SHA-256', () => {
   const url = new URL(MONERO_ARCHIVE_URL);

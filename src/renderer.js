@@ -146,7 +146,7 @@ function applyLanguage() {
 }
 const HUMANIZED_COPY = {
   ko: {
-    walletDescriptor:'MONERO 지갑', heroTitle:'내 키는<br/><span>이 기기에.</span>', heroText:'지갑 파일과 복구 문구를 내 컴퓨터에 보관하고, 이 앱에서 직접 관리합니다.', firstSyncPromise:'내 PC의 로컬 노드는 자동으로 시작합니다. 첫 동기화는 오래 걸릴 수 있어요. 진행 상황은 이 화면에서 확인할 수 있습니다.', networkNote:'공개 노드를 선택하면 운영자가 IP와 연결 정보를 볼 수 있습니다. 로컬 노드도 Monero 피어에 연결됩니다.', getStarted:'지갑을 시작하는 방법', walletTitle:'지갑을 준비해요', walletSubtitle:'처음이라면 새 지갑을 만들고, 이미 사용 중이라면 파일을 열어 계속하세요.', existingKeysOpen:'기존 지갑 열기', create:'새 지갑', restore:'복구', connectionSettings:'연결 방식', nodeMode:'연결 방식', nodeLocalChoice:'내 PC의 로컬 노드 (기본)', nodeRemoteChoice:'공개 노드', nodeLocalNotice:'내 PC에서 Monero 노드를 실행합니다. 첫 동기화는 저장 공간과 인터넷을 사용하고 오래 걸릴 수 있어요.', nodePrivacyNotice:'공개 노드 운영자는 IP와 요청 정보를 볼 수 있습니다. 신뢰하는 노드만 선택하세요.', localNodeSummary:'내 PC의 연결 상태', nodeFirstSyncTitle:'처음 연결은 천천히 준비할게요', localNodeIntro:'로컬 노드는 앱과 함께 자동으로 시작됩니다. 첫 동기화는 시간이 걸릴 수 있고, 진행 상황은 이곳에서 확인할 수 있어요.', localNodeChecking:'로컬 노드 상태 확인 중', localNodeInstall:'포함된 노드 파일 확인', localNodeStart:'로컬 노드 시작', localNodeStop:'노드 중지', nodeAdvancedDetails:'저장 공간과 네트워크 자세히', showDetails:'자세히', nodeLocalPreparing:'로컬 노드 준비 중', nodeLocalSyncingShort:'첫 동기화 중', nodeLocalReady:'노드 연결됨', nodeLocalStoppedShort:'노드가 멈췄어요', nodeLocalMissingShort:'로컬 노드를 찾지 못했어요', nodeRemoteSelected:'공개 노드를 선택했어요', nodeRemoteSummary:'공개 노드에 연결합니다.', retryLocalNode:'다시 시도', syncWaiting:'동기화 상태를 확인하는 중', nodeSyncing:'동기화 중', nodeSynced:'최신 상태', nodeOffline:'연결이 끊겼어요', nodeOfflineDetail:'연결 방식 또는 인터넷 연결을 확인하세요.', syncWaitNotice:'동기화가 끝나기 전까지 잔액과 거래 내역이 바뀔 수 있어요.', syncReadyNotice:'지갑이 네트워크와 동기화되었습니다.', syncMore:'진행 상황 자세히', totalBalance:'내 잔액', authFine:'비밀번호와 복구 문구는 이 기기에만 입력하세요. 송금 전에는 주소와 금액을 다시 확인합니다.', receiveEyebrow:'받기', sendEyebrow:'보내기', activityEyebrow:'기록', receiveHint:'이 주소를 복사해 상대방에게 보내면 됩니다.', addressCheckHint:'주소를 붙여넣은 뒤 전체 주소를 확인하세요. 한 글자만 달라도 다른 곳에 도착할 수 있어요.', sendMoreOptions:'메모와 우선순위 (선택)', walletSecurity:'보안과 백업', walletOrganization:'계정과 주소록', walletOrganizationHint:'필요할 때 펼쳐서 관리하세요'
+    walletDescriptor:'MONERO 지갑', heroTitle:'지갑 파일은<br/><span>내 PC에 보관돼요.</span>', heroText:'복구 문구와 개인 키는 이 PC에서 관리합니다. josimi 서버로 보내지 않습니다.', firstSyncPromise:'이 PC의 노드는 앱을 열면 자동으로 시작됩니다. 처음에는 블록체인을 내려받고 확인하느라 시간이 걸릴 수 있어요. 저장 공간과 인터넷도 사용합니다.', networkNote:'내 PC에서 노드를 실행해도 Monero 네트워크와 연결됩니다. IP 주소를 숨겨 주는 기능은 아닙니다.', getStarted:'지갑을 시작하는 방법', walletTitle:'지갑을 준비해요', walletSubtitle:'처음이면 새 지갑을 만들고, 이미 지갑 파일이 있으면 열어 주세요.', existingKeysOpen:'기존 지갑 열기', create:'새 지갑', restore:'복구', connectionSettings:'연결 방식', nodeMode:'연결 방식', nodeLocalChoice:'내 PC에서 직접 실행 (기본)', nodeRemoteChoice:'원격 노드', nodeLocalNotice:'이 PC에서 Monero 노드를 직접 실행합니다. 처음 동기화할 때는 저장 공간과 네트워크를 사용하며, 완료까지 시간이 걸릴 수 있습니다.', nodePrivacyNotice:'다른 사람이 운영하는 노드에 연결합니다. 운영자는 접속 IP와 요청 정보를 볼 수 있으니 믿을 수 있는 노드만 사용하세요.', localNodeSummary:'내 PC의 연결 상태', nodeFirstSyncTitle:'처음 동기화는 시간이 걸릴 수 있어요', localNodeIntro:'로컬 노드는 앱을 열면 자동으로 시작됩니다. 처음에는 블록체인 데이터를 내려받고 확인하느라 시간이 걸릴 수 있어요.', localNodeChecking:'로컬 노드 상태 확인 중', localNodeInstall:'포함된 노드 파일 확인', localNodeStart:'로컬 노드 시작', localNodeStop:'노드 중지', nodeAdvancedDetails:'저장 공간과 네트워크 자세히', showDetails:'자세히', nodeLocalPreparing:'노드에 연결하고 있어요', nodeLocalSyncingShort:'블록체인을 확인하고 있어요', nodeLocalReady:'노드가 준비됐어요', nodeLocalStoppedShort:'노드가 멈췄어요', nodeLocalMissingShort:'로컬 노드를 찾지 못했어요', nodeRemoteSelected:'원격 노드에 연결합니다', nodeRemoteSummary:'선택한 원격 노드에 연결합니다.', retryLocalNode:'자동 시작이 안 됐어요. 다시 시도', syncWaiting:'지갑 동기화 상태를 확인하고 있어요', nodeSyncing:'지갑 거래를 확인하고 있어요', nodeSynced:'최신 상태예요', nodeOffline:'연결이 끊겼어요', nodeOfflineDetail:'연결 방식 또는 인터넷 연결을 확인하세요.', syncWaitNotice:'아직 동기화가 끝나지 않았어요. 확인이 더 진행되면 잔액이나 거래 내역이 달라질 수 있습니다.', syncReadyNotice:'지갑 동기화가 끝났어요.', syncMore:'동기화 진행 상황', totalBalance:'내 잔액', authFine:'비밀번호와 복구 문구는 이 기기에만 입력하세요. 송금 전에는 주소와 금액을 다시 확인합니다.', receiveEyebrow:'받기', sendEyebrow:'보내기', activityEyebrow:'기록', receiveHint:'이 주소를 복사해 상대방에게 보내면 됩니다.', addressCheckHint:'주소를 붙여넣은 뒤 전체 주소를 확인하세요. 한 글자만 달라도 다른 곳에 도착할 수 있어요.', sendMoreOptions:'메모와 우선순위 (선택)', walletSecurity:'보안과 백업', walletOrganization:'계정과 주소록', walletOrganizationHint:'필요할 때 펼쳐서 관리하세요'
   },
   en: {
     walletDescriptor:'MONERO WALLET', heroTitle:'Your keys,<br/><span>on this device.</span>', heroText:'Your wallet files and recovery phrase stay on your computer, where you manage them directly.', firstSyncPromise:'Your local node starts automatically. The first sync can take a while; you can check its progress here.', networkNote:'A public-node operator can see your IP and connection details. A local node also connects to Monero peers.', getStarted:'Choose how to begin', walletTitle:'Let’s get your wallet ready', walletSubtitle:'Create a wallet if this is your first time, or open your existing file to continue.', existingKeysOpen:'Open existing wallet', create:'New wallet', restore:'Restore', connectionSettings:'Connection', nodeMode:'Connection', nodeLocalChoice:'This PC (default)', nodeRemoteChoice:'Public node', nodeLocalNotice:'A Monero node runs on this PC. The first sync uses storage and internet and may take a while.', nodePrivacyNotice:'A public-node operator can see your IP and request metadata. Choose a node you trust.', localNodeSummary:'This PC connection', nodeFirstSyncTitle:'The first connection needs time', localNodeIntro:'The local node starts with the app. Its first sync may take a while; progress appears here.', localNodeChecking:'Checking local node status', localNodeInstall:'Check bundled node files', localNodeStart:'Start local node', localNodeStop:'Stop node', nodeAdvancedDetails:'Storage and network details', showDetails:'Details', nodeLocalPreparing:'Preparing local node', nodeLocalSyncingShort:'First sync in progress', nodeLocalReady:'Node connected', nodeLocalStoppedShort:'Node is stopped', nodeLocalMissingShort:'Local node not found', nodeRemoteSelected:'Public node selected', nodeRemoteSummary:'Connects to a public node.', retryLocalNode:'Try again', syncWaiting:'Checking wallet sync', nodeSyncing:'Syncing', nodeSynced:'Up to date', nodeOffline:'Connection lost', nodeOfflineDetail:'Check the connection setting or internet connection.', syncWaitNotice:'Your balance and transaction list may change until sync finishes.', syncReadyNotice:'Your wallet is synchronized with the network.', syncMore:'Sync details', totalBalance:'Your balance', authFine:'Enter passwords and recovery phrases only in this app. Check the address and amount before sending.', receiveEyebrow:'RECEIVE', sendEyebrow:'SEND', activityEyebrow:'ACTIVITY', receiveHint:'Copy this address and share it with the person sending you Monero.', addressCheckHint:'After pasting an address, check the full address. One character can send funds somewhere else.', sendMoreOptions:'Note and priority (optional)', walletSecurity:'Security and backup', walletOrganization:'Accounts and address book', walletOrganizationHint:'Open when you need them'
@@ -159,6 +159,14 @@ const HUMANIZED_COPY = {
   }
 };
 for (const code of Object.keys(HUMANIZED_COPY)) Object.assign(LANG[code], HUMANIZED_COPY[code]);
+Object.assign(LANG.ko, { nodeLocalStarting:'노드가 연결을 준비하고 있어요', syncStartRetrying:'지갑 동기화 연결이 잠시 끊겼어요. 자동으로 다시 연결하고 있습니다.' });
+Object.assign(LANG.en, { nodeLocalStarting:'Waiting for the node to accept connections', syncStartRetrying:'Wallet sync lost its connection briefly. Reconnecting automatically.' });
+Object.assign(LANG.zh, { nodeLocalStarting:'正在等待节点接受连接', syncStartRetrying:'钱包同步连接暂时中断，正在自动重连。' });
+Object.assign(LANG.ja, { nodeLocalStarting:'ノードの接続準備中です', syncStartRetrying:'ウォレット同期の接続が一時中断しました。自動で再接続しています。' });
+Object.assign(LANG.ko, { localNodeRpcWaitFailed:'노드가 아직 연결을 준비 중이에요. 앱을 켜 두면 계속 확인합니다. 잠시 뒤 다시 시도해 주세요.' });
+Object.assign(LANG.en, { localNodeRpcWaitFailed:'The node is still preparing its connection. Keep the app open; it will continue checking. Please try again shortly.' });
+Object.assign(LANG.zh, { localNodeRpcWaitFailed:'节点仍在准备连接。请保持应用打开，应用会继续检查。请稍后重试。' });
+Object.assign(LANG.ja, { localNodeRpcWaitFailed:'ノードは接続準備中です。アプリを開いたままにすると確認を続けます。少し待ってから再試行してください。' });
 let mode = 'open';
 let pendingSend = null;
 let sendCallInProgress = false;
@@ -169,6 +177,7 @@ let selectedWalletFile = null;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
+let walletSyncStartState = 'running';
 let refreshPromise = null;
 let receiveQrAddress = '';
 let qrGeneration = 0;
@@ -304,6 +313,7 @@ function renderSync(sync = {}) {
     $('syncHint').textContent = dict.syncWaitNotice;
     $('syncDetails').textContent = sync.node || '';
   }
+  if (walletSyncStartState === 'retrying') $('syncHint').textContent = dict.syncStartRetrying;
 }
 function renderLocalNodeStatus(status = {}) {
   const dict = LANG[language];
@@ -312,7 +322,7 @@ function renderLocalNodeStatus(status = {}) {
   if (status.installing) {
     label = dict.localNodeVerifying;
   } else if (status.running) {
-    label = status.rpc?.state === 'synced' ? dict.localNodeSynced : status.rpc?.state === 'syncing' ? dict.localNodeSyncing : dict.localNodeRunning;
+    label = status.rpc?.state === 'synced' ? dict.localNodeSynced : status.rpc?.state === 'syncing' ? dict.localNodeSyncing : ['starting', 'stopped'].includes(status.rpc?.state) ? dict.nodeLocalStarting : dict.localNodeRunning;
     if (status.rpc?.height) label += ` · ${status.rpc.progress || 0}% · ${Number(status.rpc.height).toLocaleString()} / ${Number(status.rpc.targetHeight || 0).toLocaleString()}`;
   } else if (status.installed && status.supported) label += ` · ${dict.localNodeStopped}`;
   $('localNodeStatus').textContent = label;
@@ -327,7 +337,7 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   let headline = dict.nodeLocalPreparing;
   let detail = dict.localNodeChecking;
   let progress = Number(status.rpc?.progress);
-  const syncing = Boolean(status.running && ['downloading', 'starting', 'syncing'].includes(status.rpc?.state));
+  const syncing = Boolean(status.running && ['downloading', 'syncing'].includes(status.rpc?.state));
   if (remote) {
     headline = dict.nodeRemoteSelected;
     detail = dict.nodeRemoteSummary;
@@ -337,6 +347,9 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   } else if (status.installing) {
     headline = dict.nodeLocalPreparing;
     detail = dict.localNodeVerifying;
+  } else if (status.running && ['starting', 'stopped'].includes(status.rpc?.state)) {
+    headline = dict.nodeLocalPreparing;
+    detail = dict.nodeLocalStarting;
   } else if (status.running && status.rpc?.state === 'synced') {
     headline = dict.nodeLocalReady;
     detail = dict.localNodeSynced;
@@ -365,6 +378,10 @@ async function refreshLocalNodeStatus() {
   try { renderLocalNodeStatus(await window.josimi.localNodeStatus()); } catch (_) {}
 }
 window.josimi.onLocalNodeStatus(renderLocalNodeStatus);
+window.josimi.onWalletSyncStatus((status) => {
+  walletSyncStartState = status?.state || 'running';
+  if (renderSync.lastStatus) renderSync(renderSync.lastStatus);
+});
 refreshLocalNodeStatus();
 setInterval(refreshLocalNodeStatus, 10000);
 function updateNodeModeFields() {
@@ -387,20 +404,42 @@ try {
   if (savedNodeMode === 'remote' || savedNodeMode === 'local') $('nodeMode').value = savedNodeMode;
 } catch (_) {}
 updateNodeModeFields();
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function ensureLocalNodeStarted() {
-  let status = await window.josimi.localNodeStatus();
-  if (!status.running) {
-    await window.josimi.localNodeInstall();
-    await window.josimi.localNodeStart();
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let status = await window.josimi.localNodeStatus();
+    if (!status.installed) await window.josimi.localNodeInstall();
     status = await window.josimi.localNodeStatus();
+    if (!status.running) {
+      try { await window.josimi.localNodeStart(); }
+      catch (error) {
+        lastError = error;
+        const afterFailure = await window.josimi.localNodeStatus().catch(() => null);
+        if (afterFailure?.running || attempt === 2) throw error;
+        await wait(1_000 * (attempt + 1));
+        continue;
+      }
+    }
+    try { return await window.josimi.localNodeWaitReady(); }
+    catch (error) {
+      const current = await window.josimi.localNodeStatus().catch(() => null);
+      if (error.message === 'LOCAL_NODE_EXITED' && attempt < 2 && !current?.running) {
+        lastError = error;
+        await wait(1_000 * (attempt + 1));
+        continue;
+      }
+      if (error.message === 'LOCAL_NODE_RPC_TIMEOUT') throw new Error(LANG[language].localNodeRpcWaitFailed);
+      throw error;
+    }
   }
-  if (!status.running) throw new Error(LANG[language].localNodeStopped);
-  return status;
+  throw lastError || new Error(LANG[language].localNodeRpcWaitFailed);
 }
 if ($('nodeMode').value === 'local') {
   ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); });
 }
 function renderSummary(summary) {
+  walletSyncStartState = summary.walletSyncStartState || 'running';
   $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
   $('authView').classList.add('hidden'); $('appView').classList.remove('hidden'); $('lockBtn').classList.remove('hidden');
   $('balance').innerHTML = `${escapeHtml(summary.balanceXmr)} <small>XMR</small>`; renderAccountManagement(summary.accounts, summary.addressBook); renderSync(summary.sync); renderTxs(summary.txs);

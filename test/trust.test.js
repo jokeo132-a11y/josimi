@@ -47,6 +47,10 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(renderer, /localStorage\.getItem\('josimi\.nodeMode'\)/);
   assert.match(renderer, /ensureLocalNodeStarted\(\)\.then\(refreshLocalNodeStatus\)/);
   assert.match(renderer, /await ensureLocalNodeStarted\(\)/);
+  assert.match(renderer, /localNodeWaitReady\(\)/);
+  assert.match(html, /class="node-manager-actions hidden"/);
+  assert.match(main, /waitForRpcReady\(getLocalNodeManagerStatus\)/);
+  assert.match(main, /walletSyncRetryDelayMs/);
   assert.match(main, /activeWallet\.startSyncing\(10_000\)/);
   assert.match(preload, /localNodeStart: \(\) => ipcRenderer\.invoke\('local-node-start'\)/);
 });
@@ -81,6 +85,18 @@ test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and f
   assert.match(privacy, /0\.25% of the requested amount, capped at 0\.05 XMR/);
   assert.ok(privacy.includes(`\`${feeAddress}\``));
   assert.match(privacy, /local monerod's loopback-only `start_mining` RPC/);
+});
+
+test('configured service fee address is a valid Monero mainnet address and matches the disclosure', async () => {
+  const main = read('src/main.js');
+  const privacy = read('PRIVACY.md');
+  const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
+  assert.ok(feeAddress);
+  assert.equal(feeAddress, '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT');
+  const { MoneroUtils, MoneroNetworkType } = require('monero-ts');
+  assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.MAINNET), true);
+  assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.TESTNET), false);
+  assert.ok(privacy.includes(`\`${feeAddress}\``));
 });
 
 test('release build and publish jobs have least-privilege permissions and immutable action pins', () => {

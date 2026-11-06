@@ -33,7 +33,7 @@
             <div><strong data-i18n="nodeFirstSyncTitle">처음 동기화는 시간이 걸릴 수 있어요</strong><p class="fine" data-i18n="localNodeIntro">로컬 노드는 앱과 함께 준비되며, 동기화는 백그라운드에서 진행됩니다.</p></div>
           </div>
           <div id="localNodeStatus" class="status node-technical-status" role="status" aria-live="polite" data-i18n="localNodeChecking">로컬 노드 상태 확인 중</div>
-          <div class="node-manager-actions"><button id="installLocalNodeBtn" class="tool" data-i18n="localNodeInstall">포함된 monerod 확인</button><button id="startLocalNodeBtn" class="tool" data-i18n="localNodeStart">로컬 노드 시작</button><button id="stopLocalNodeBtn" class="tool" data-i18n="localNodeStop">노드 중지</button></div>
+          <div class="node-manager-actions hidden"><button id="installLocalNodeBtn" class="tool" data-i18n="localNodeInstall">포함된 monerod 확인</button><button id="startLocalNodeBtn" class="tool" data-i18n="localNodeStart">로컬 노드 시작</button><button id="stopLocalNodeBtn" class="tool" data-i18n="localNodeStop">노드 중지</button></div>
           <details class="technical-details"><summary data-i18n="nodeAdvancedDetails">저장 공간과 네트워크 자세히</summary><p class="fine" data-i18n="localNodeStorageNotice">첫 동기화는 저장 공간과 네트워크를 사용합니다. 세부 연결 정보는 여기에서 확인할 수 있습니다.</p></details>
         </div>
       </details>
@@ -45,14 +45,14 @@
       <section id="authView" class="auth-view">
         <div class="auth-story">
           <span class="eyebrow"><span class="eyebrow-dot"></span><span data-i18n="walletDescriptor">MONERO WALLET</span></span>
-          <h1 data-i18n-html="heroTitle">내 키는<br /><span>이 기기에.</span></h1>
-          <p data-i18n="heroText">지갑 파일은 이 컴퓨터에 보관됩니다. 비밀번호나 복구 문구를 온라인에 입력하지 않아도 됩니다.</p>
-          <div class="promise-card"><span class="promise-mark" aria-hidden="true">i</span><p id="firstSyncPromise">로컬 노드는 기본으로 자동 시작합니다. 처음 한 번은 동기화가 오래 걸릴 수 있고, 그동안에도 지갑 준비를 이어갈 수 있어요.</p></div>
-          <p class="story-footnote" data-i18n="networkNote">공개 노드를 선택하면 그 운영자가 연결 정보를 볼 수 있습니다. 내 PC의 노드도 Monero 네트워크에 연결됩니다.</p>
+          <h1 data-i18n-html="heroTitle">지갑 파일은<br /><span>내 PC에 보관돼요.</span></h1>
+          <p data-i18n="heroText">복구 문구와 개인 키는 이 PC에서 관리합니다. josimi 서버로 보내지 않습니다.</p>
+          <div class="promise-card"><span class="promise-mark" aria-hidden="true">i</span><p id="firstSyncPromise">이 PC의 노드는 앱을 열면 자동으로 시작됩니다. 처음에는 블록체인을 내려받고 확인하느라 시간이 걸릴 수 있어요. 저장 공간과 인터넷도 사용합니다.</p></div>
+          <p class="story-footnote" data-i18n="networkNote">원격 노드를 선택하면 그 운영자가 연결 정보를 볼 수 있습니다. 내 PC의 노드도 Monero 네트워크에 연결됩니다.</p>
         </div>
 
         <div class="auth-card">
-          <div class="auth-heading"><span class="section-kicker" data-i18n="getStarted">시작하기</span><h2 data-i18n="walletTitle">지갑을 준비해요</h2><p data-i18n="walletSubtitle">처음이라면 새 지갑을 만들고, 이미 사용 중이라면 파일을 열어 계속하세요.</p></div>
+          <div class="auth-heading"><span class="section-kicker" data-i18n="getStarted">시작하기</span><h2 data-i18n="walletTitle">지갑을 준비해요</h2><p data-i18n="walletSubtitle">처음이면 새 지갑을 만들고, 이미 지갑 파일이 있으면 열어 주세요.</p></div>
           <div class="tabs" role="tablist" aria-label="Wallet actions">
             <button class="tab active" type="button" role="tab" aria-selected="true" aria-controls="walletForm" data-tab="create" data-i18n="create">새 지갑</button>
             <button id="walletChoiceBtn" class="tab tab-open" type="button" role="tab" aria-selected="false" aria-controls="walletForm" data-tab="open" data-i18n="existingKeysOpen">기존 지갑 열기</button>
@@ -61,12 +61,12 @@
           <form id="walletForm">
             <label><span data-i18n="walletPassword">지갑 비밀번호</span><input id="password" type="password" minlength="8" autocomplete="current-password" placeholder="8자 이상" data-i18n-placeholder="passwordPlaceholder" required /></label>
             <details id="nodeChoicePanel" class="connection-panel">
-              <summary><span data-i18n="connectionSettings">연결 방식</span><span class="connection-choice"><span id="localNodeChoiceChip" data-i18n="nodeLocalChoice">내 PC의 로컬 노드 (기본)</span><span id="remoteNodeChoiceChip" class="hidden" data-i18n="nodeRemoteChoice">공개 노드</span></span></summary>
+              <summary><span data-i18n="connectionSettings">연결 방식</span><span class="connection-choice"><span id="localNodeChoiceChip" data-i18n="nodeLocalChoice">내 PC에서 직접 실행 (기본)</span><span id="remoteNodeChoiceChip" class="hidden" data-i18n="nodeRemoteChoice">원격 노드</span></span></summary>
               <div class="connection-panel-body">
-                <label><span data-i18n="nodeMode">연결 방식</span><select id="nodeMode"><option value="local" selected data-i18n="nodeLocalChoice">내 PC의 로컬 노드 (기본)</option><option value="remote" data-i18n="nodeRemoteChoice">공개 노드</option></select></label>
-                <p id="localNodeNotice" class="fine" data-i18n="nodeLocalNotice">내 PC에서 노드를 실행합니다. 처음에는 블록체인 동기화에 시간이 걸릴 수 있어요.</p>
+                <label><span data-i18n="nodeMode">연결 방식</span><select id="nodeMode"><option value="local" selected data-i18n="nodeLocalChoice">내 PC에서 직접 실행 (기본)</option><option value="remote" data-i18n="nodeRemoteChoice">원격 노드</option></select></label>
+                <p id="localNodeNotice" class="fine" data-i18n="nodeLocalNotice">이 PC에서 Monero 노드를 직접 실행합니다. 처음 동기화할 때는 저장 공간과 네트워크를 사용하며, 완료까지 시간이 걸릴 수 있습니다.</p>
                 <label id="remoteNodeLabel" class="node-label"><span data-i18n="nodeAddress">원격 Monero 노드</span><input id="node" value="https://node.monerodevs.org:18089" placeholder="https://node.monerodevs.org:18089" required /></label>
-                <p id="remoteNodeNotice" class="fine" data-i18n="nodePrivacyNotice">공개 노드 운영자는 IP 주소와 연결 정보를 볼 수 있습니다. 신뢰하는 노드를 사용하세요.</p>
+                <p id="remoteNodeNotice" class="fine" data-i18n="nodePrivacyNotice">원격 노드 운영자는 IP 주소와 연결 정보를 볼 수 있습니다. 신뢰하는 노드를 사용하세요.</p>
               </div>
             </details>
             <label id="seedLabel" class="hidden"><span data-i18n="moneroSeed">복구 문구</span><textarea id="seed" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="13/14/25단어 seed" data-i18n-placeholder="seedPlaceholder"></textarea></label>

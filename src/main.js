@@ -8,7 +8,7 @@ const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
 const { atomicToXmr, xmrToAtomic, calculateServiceFee, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
-const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT } = require('./node-manager');
+const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT, waitForRpcReady } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
@@ -39,6 +39,8 @@ let sendPreviewInFlight = false;
 const pendingRelaySettlements = new Set();
 let shutdownPromise = null;
 let shutdownComplete = false;
+let walletSyncRetryTimer = null;
+let walletSyncRetryDelayMs = 5_000;
 
 function registerIpcHandler(channel, handler) {
   electronIpcMain.handle(channel, (event, ...args) => {
@@ -429,11 +431,38 @@ async function loadAddressBookForSession(activeWallet, sessionId) {
   assertWalletSession(activeWallet, sessionId);
   return entries;
 }
+function emitWalletSyncStatus(state) {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('wallet-sync-status', { state });
+}
+function cancelWalletSyncRetry() {
+  if (walletSyncRetryTimer) clearTimeout(walletSyncRetryTimer);
+  walletSyncRetryTimer = null;
+  walletSyncRetryDelayMs = 5_000;
+}
 async function startWalletBackgroundSync(activeWallet = wallet) {
-  if (!activeWallet || typeof activeWallet.startSyncing !== 'function') return;
-  // monero-ts runs wallet scanning in the background and persists its height as blocks arrive.
-  try { await activeWallet.startSyncing(10_000); }
-  catch (error) { console.warn('[josimi wallet sync]', error.message); }
+  if (!activeWallet || typeof activeWallet.startSyncing !== 'function') return { state: 'unavailable' };
+  if (walletSyncRetryTimer) clearTimeout(walletSyncRetryTimer);
+  walletSyncRetryTimer = null;
+  const sessionId = walletSessionId;
+  // monero-ts scans in the background and persists its height as blocks arrive.
+  try {
+    await activeWallet.startSyncing(10_000);
+    walletSyncRetryDelayMs = 5_000;
+    if (activeWallet === wallet && sessionId === walletSessionId) emitWalletSyncStatus('running');
+    return { state: 'running' };
+  } catch (error) {
+    console.warn('[josimi wallet sync]', error.message);
+    if (activeWallet !== wallet || sessionId !== walletSessionId || shutdownRequested) return { state: 'stopped' };
+    emitWalletSyncStatus('retrying');
+    const delayMs = walletSyncRetryDelayMs;
+    walletSyncRetryDelayMs = Math.min(walletSyncRetryDelayMs * 2, 60_000);
+    walletSyncRetryTimer = setTimeout(() => {
+      walletSyncRetryTimer = null;
+      if (activeWallet === wallet && sessionId === walletSessionId && !shutdownRequested) void startWalletBackgroundSync(activeWallet);
+    }, delayMs);
+    walletSyncRetryTimer.unref?.();
+    return { state: 'retrying' };
+  }
 }
 async function loadSummary() {
   ensureWallet();
@@ -487,6 +516,7 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   assertNoPersistedRelay(walletPath());
+  cancelWalletSyncRetry();
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
@@ -505,11 +535,12 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     const summary = await loadSummary();
-    await startWalletBackgroundSync(wallet);
+    const walletSync = await startWalletBackgroundSync(wallet);
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
-    return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight };
+    return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight, walletSyncStartState: walletSync.state };
   } catch (error) {
     if (created) await created.close(true).catch(() => {});
+    cancelWalletSyncRetry();
     if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
     removeWalletFiles(creationPath);
     if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
@@ -530,6 +561,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
     normalizedSeed = normalizeSeed(seed);
     assertNoUnresolvedRelay();
     assertNoPersistedRelay(walletPath());
+    cancelWalletSyncRetry();
     const previousWallet = wallet;
     wallet = null;
     walletSessionId += 1;
@@ -559,8 +591,8 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
     }
     if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     const summary = await loadSummary();
-    await startWalletBackgroundSync(wallet);
-    return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
+    const walletSync = await startWalletBackgroundSync(wallet);
+    return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, walletSyncStartState: walletSync.state, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
   } finally {
     seed = ''; seedOffset = ''; normalizedSeed = ''; normalizedSeedOffset = undefined; password = '';
     if (payload && typeof payload === 'object') { payload.seed = ''; payload.seedOffset = ''; payload.password = ''; }
@@ -573,6 +605,7 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
   assertMainnetNetwork(network);
   assertNoUnresolvedRelay();
   const recoveryRecord = getRelayGuardStore().get(walletPath());
+  cancelWalletSyncRetry();
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
@@ -583,8 +616,8 @@ ipcMain.handle('wallet-open', async (_, payload = {}) => {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     hydrateRelayRecovery(walletPath(), recoveryRecord);
     const summary = await loadSummary();
-    await startWalletBackgroundSync(wallet);
-    return summary;
+    const walletSync = await startWalletBackgroundSync(wallet);
+    return { ...summary, walletSyncStartState: walletSync.state };
   } catch (error) {
     if (wallet) await wallet.close(true).catch(() => {});
     wallet = null;
@@ -756,9 +789,14 @@ ipcMain.handle('local-node-start', async () => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   return getLocalNodeManager().start();
 });
+ipcMain.handle('local-node-wait-ready', async () => {
+  if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
+  return waitForRpcReady(getLocalNodeManagerStatus);
+});
 ipcMain.handle('local-node-stop', async () => stopLocalNode());
 ipcMain.handle('wallet-lock', async () => {
   assertNoUnresolvedRelay();
+  cancelWalletSyncRetry();
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
@@ -1003,6 +1041,7 @@ async function waitForPendingRelaySettlements() {
   while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
 }
 async function shutdownRuntime() {
+  cancelWalletSyncRetry();
   let stopError = null;
   if (localNodeManager) {
     try { await localNodeManager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {})); }

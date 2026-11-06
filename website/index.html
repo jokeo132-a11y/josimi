@@ -4,18 +4,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f5f2ec" />
-  <meta name="description" content="josimi는 Windows용 Monero 지갑입니다. 지갑 파일은 내 컴퓨터에 보관하고, 포함된 로컬 노드는 자동으로 시작됩니다. 첫 동기화와 개인정보 보호 선택을 확인하세요." />
+  <meta name="description" content="josimi는 Windows용 Monero 지갑입니다. 지갑 파일은 이 PC에 보관되며, 로컬 노드는 자동으로 시작됩니다. 첫 동기화에 걸리는 시간과 연결 방식의 차이를 확인하세요." />
   <meta name="robots" content="index,follow" />
   <link rel="canonical" href="https://josimi.com/" />
   <link rel="icon" type="image/png" href="/assets/josimi-logo.png" />
   <link rel="apple-touch-icon" href="/assets/josimi-logo.png" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="josimi — 내 컴퓨터에 보관하는 Monero 지갑" />
-  <meta property="og:description" content="Windows용 Monero 지갑. 내 PC의 로컬 노드가 자동으로 시작됩니다. 첫 동기화와 보안 정보를 미리 확인하세요." />
+  <meta property="og:title" content="josimi — 내 PC에 보관하는 Monero 지갑" />
+  <meta property="og:description" content="Windows용 Monero 지갑. 지갑 파일은 이 PC에 보관하고, 로컬 노드는 자동으로 시작됩니다." />
   <meta property="og:url" content="https://josimi.com/" />
   <meta property="og:image" content="https://josimi.com/assets/josimi-logo.png" />
   <meta name="twitter:card" content="summary" />
-  <title>josimi — 내 컴퓨터에 보관하는 Monero 지갑</title>
+  <title>josimi — 내 PC에 보관하는 Monero 지갑</title>
   <link rel="stylesheet" href="/assets/site.css" />
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"SoftwareApplication","name":"josimi","applicationCategory":"FinanceApplication","operatingSystem":"Windows 10 or later","softwareVersion":"1.2.4","downloadUrl":"https://github.com/jokeo132-a11y/josimi/releases/download/v1.2.4/josimi-1.2.4-x64.zip","url":"https://josimi.com/","description":"Windows용 비수탁 Monero 지갑. 지갑 파일은 사용자의 컴퓨터에 보관됩니다."}
@@ -40,8 +40,8 @@
     <section class="hero section-wrap" aria-labelledby="hero-title">
       <div class="hero-copy">
         <div class="eyebrow"><span class="eyebrow-mark"></span> WINDOWS용 MONERO 지갑</div>
-        <h1 id="hero-title">내 지갑은<br /><em>내 컴퓨터에.</em></h1>
-        <p class="hero-lede">josimi는 Monero를 보내고 받기 위한 Windows 지갑입니다. 지갑 파일은 이 PC에 보관되고, 로컬 노드는 앱과 함께 자동으로 시작됩니다.</p>
+        <h1 id="hero-title">지갑 파일은<br /><em>내 PC에 보관돼요.</em></h1>
+        <p class="hero-lede">Monero를 보내고 받는 Windows 지갑이에요. 지갑 파일은 이 PC에 두고, 노드는 앱을 열면 자동으로 시작합니다. 처음 동기화할 때는 시간이 걸릴 수 있어요.</p>
         <div class="hero-actions">
           <a class="button button-primary" id="hero-download" href="https://github.com/jokeo132-a11y/josimi/releases/download/v1.2.4/josimi-1.2.4-x64.zip" rel="noopener"><span id="hero-download-label">Windows ZIP 받기</span><span aria-hidden="true">↗</span></a>
           <a class="text-link" href="#first-run">처음 실행하면 무엇이 일어나나요? <span aria-hidden="true">↓</span></a>
@@ -58,22 +58,22 @@
         <div class="wallet-window">
           <div class="window-top"><div class="window-brand"><img src="/assets/josimi-logo.png" alt="" width="28" height="28" /><strong>josimi</strong></div><span class="preview-label">화면 예시</span></div>
           <div class="window-content">
-            <div class="window-kicker">내 지갑 잔액</div>
+            <div class="window-kicker">내 잔액</div>
             <div class="window-balance">— <small>XMR</small></div>
-            <div class="window-status"><span class="status-pulse" aria-hidden="true"></span><span>첫 동기화를 준비하고 있어요</span></div>
+            <div class="window-status"><span class="status-pulse" aria-hidden="true"></span><span>노드에 연결하고 있어요</span></div>
             <progress class="preview-progress" aria-label="동기화 진행 예시"></progress>
-            <div class="window-hint">동기화가 끝나면 잔액과 거래 내역이 표시됩니다.</div>
+            <div class="window-hint">동기화가 진행되면 잔액과 거래 내역이 차례로 표시됩니다.</div>
             <div class="window-actions"><span>받기</span><span>보내기</span></div>
           </div>
         </div>
         <p class="preview-caption">실제 지갑 데이터가 아닌 화면 예시입니다.</p>
-        <div class="hero-note"><span class="note-mark" aria-hidden="true">i</span><p><strong>처음 한 번은 기다림이 필요해요.</strong><br />블록체인 동기화는 수 시간 또는 며칠 걸릴 수 있고, 저장 공간과 인터넷을 사용합니다.</p></div>
+        <div class="hero-note"><span class="note-mark" aria-hidden="true">i</span><p><strong>처음 동기화는 시간이 걸릴 수 있어요.</strong><br />블록체인 동기화는 수 시간 또는 며칠 걸릴 수 있고, 저장 공간과 인터넷을 사용합니다.</p></div>
       </div>
     </section>
 
     <section class="download-section" id="download" aria-labelledby="download-title">
       <div class="section-wrap">
-        <div class="section-heading compact-heading"><div><span class="eyebrow">DOWNLOAD</span><h2 id="download-title">받기 전에, 필요한 정보만 먼저.</h2></div><p>다운로드는 GitHub 릴리스에서 제공됩니다. 아래 버튼은 최신 Windows ZIP을 찾습니다.</p></div>
+        <div class="section-heading compact-heading"><div><span class="eyebrow">DOWNLOAD</span><h2 id="download-title">다운로드 전에 확인하세요.</h2></div><p>다운로드는 GitHub 릴리스에서 제공됩니다. 아래 버튼은 최신 Windows ZIP을 찾습니다.</p></div>
         <div class="download-card">
           <div class="download-primary">
             <div class="download-kicker">WINDOWS 64-BIT · ZIP</div>
@@ -95,13 +95,13 @@
     </section>
 
     <section class="first-run section-wrap" id="first-run" aria-labelledby="first-run-title">
-      <div class="section-heading"><div><span class="eyebrow">FIRST RUN</span><h2 id="first-run-title">설치 후에는 이렇게 됩니다.</h2></div><p>무슨 일이 일어나는지 알면, 기다리는 시간이 덜 불안합니다.</p></div>
+      <div class="section-heading"><div><span class="eyebrow">FIRST RUN</span><h2 id="first-run-title">설치 후에는 이렇게 됩니다.</h2></div><p>앱이 무엇을 하는지 미리 확인할 수 있습니다.</p></div>
       <div class="steps">
         <article class="step"><span class="step-number">01</span><h3>ZIP을 받고 압축을 풀어요</h3><p>압축을 푼 폴더에서 <code>josimi.exe</code>를 실행합니다. monerod와 필요한 파일은 Windows ZIP에 포함되어 있어 따로 찾을 필요가 없습니다.</p></article>
         <article class="step"><span class="step-number">02</span><h3>새 지갑·기존 지갑·복구 중 고릅니다</h3><p>새 지갑을 만들거나, 기존 <code>.keys</code> 파일을 열거나, 복구 문구로 되살릴 수 있습니다. 비밀번호와 복구 문구는 이 앱에서만 입력하세요.</p></article>
         <article class="step"><span class="step-number">03</span><h3>로컬 노드가 자동으로 동기화합니다</h3><p>기본 연결은 내 PC의 노드입니다. 사용자가 시작 버튼을 따로 찾지 않아도 되고, 첫 동기화가 끝나기 전에는 잔액과 거래가 달라질 수 있습니다.</p></article>
       </div>
-      <div class="wait-note"><span class="wait-icon" aria-hidden="true">↻</span><div><strong>화면이 한동안 그대로여도, 곧바로 고장이라고 단정하지 않아도 돼요.</strong><p>첫 동기화는 수 시간 또는 며칠이 걸릴 수 있습니다. 저장 공간과 대역폭 사용량은 상당할 수 있습니다. josimi를 실행한 상태에서 진행 상황을 확인하세요.</p></div></div>
+      <div class="wait-note"><span class="wait-icon" aria-hidden="true">↻</span><div><strong>처음에는 진행률이 한동안 그대로일 수 있습니다.</strong><p>블록체인 데이터를 내려받고 확인하는 데 시간이 걸립니다. 저장 공간과 인터넷을 사용하니 앱을 켜 둔 채 진행 상황을 확인해 주세요.</p></div></div>
     </section>
 
     <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
@@ -117,7 +117,7 @@
     </section>
 
     <section class="faq-section section-wrap" id="faq" aria-labelledby="faq-title">
-      <div class="section-heading"><div><span class="eyebrow">A FEW HONEST ANSWERS</span><h2 id="faq-title">자주 멈칫하는 지점.</h2></div><p>처음 쓰는 사람에게 실제로 필요한 질문부터 골랐습니다.</p></div>
+      <div class="section-heading"><div><span class="eyebrow">A FEW HONEST ANSWERS</span><h2 id="faq-title">자주 묻는 질문</h2></div><p>처음 사용할 때 궁금해지는 내용을 모았습니다.</p></div>
       <div class="faq-list">
         <details><summary>첫 동기화가 오래 걸리는 게 정상인가요?</summary><p>그럴 수 있습니다. Monero 블록체인을 처음 확인하므로 수 시간 또는 며칠이 걸릴 수 있고, 저장 공간과 네트워크 사용량도 큽니다. 동기화가 끝날 때까지 잔액이나 거래 목록이 바뀔 수 있습니다.</p></details>
         <details><summary>공개 노드로 바꿀 수 있나요?</summary><p>네. 지갑 생성·복구 화면의 연결 설정에서 바꿀 수 있습니다. 대신 공개 노드 운영자가 IP와 연결 메타데이터를 볼 수 있으며, RPC 요청으로 지갑 잔액이나 활동을 추론할 수 있습니다.</p></details>
