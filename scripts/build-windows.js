@@ -21,13 +21,13 @@ async function runWithCleanup(prepareRuntime, build, cleanupRuntime) {
   if (failure) throw failure;
 }
 
-function runElectronBuilder() {
+function runElectronBuilder({ rootDir = ROOT, spawnProcess = spawn, nodeExecutable = process.execPath } = {}) {
   return new Promise((resolve, reject) => {
-    const executable = path.join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'electron-builder.cmd' : 'electron-builder');
-    const child = spawn(executable, ['--win', 'zip'], {
-      cwd: ROOT,
+    const cli = path.join(rootDir, 'node_modules', 'electron-builder', 'cli.js');
+    const child = spawnProcess(nodeExecutable, [cli, '--win', 'zip'], {
+      cwd: rootDir,
       stdio: 'inherit',
-      ...(process.platform === 'win32' ? { shell: true } : {})
+      windowsHide: true
     });
     let settled = false;
     const finish = (error) => {
@@ -50,4 +50,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runWithCleanup };
+module.exports = { runWithCleanup, runElectronBuilder };

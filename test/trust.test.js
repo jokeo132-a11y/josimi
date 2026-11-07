@@ -40,7 +40,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.5');
+  assert.equal(packageJson.version, '1.2.6');
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
@@ -196,6 +196,22 @@ test('wallet metadata mutations are bound to the captured wallet session', () =>
   }
 });
 
+test('wallet selection and lifecycle IPC handlers share the single-flight operation gate', () => {
+  const main = read('src/main.js');
+  const renderer = read('src/renderer.js');
+  for (const channel of ['wallet-file-choose', 'wallet-create', 'wallet-open', 'wallet-restore', 'wallet-lock']) {
+    assert.match(main, new RegExp(`registerWalletOperationHandler\\('${channel}'`));
+  }
+  assert.match(main, /await walletOperationGate\.waitForIdle\(\)/);
+  assert.match(renderer, /if \(walletFormSubmissionInFlight\) return/);
+  assert.match(renderer, /setWalletFormBusy\(true\)/);
+  const summary = main.slice(main.indexOf('async function loadSummary()'), main.indexOf('async function makeWindow()'));
+  assert.match(summary, /loadAccountsForSession\(activeWallet, sessionId\)/);
+  assert.match(summary, /loadAddressBookForSession\(activeWallet, sessionId\)/);
+  assert.match(summary, /walletSessionId: sessionId/);
+  assert.match(renderer, /if \(sessionId < renderedWalletSessionId\) return false/);
+});
+
 test('release verification docs disclose checksum limitations and audit status', () => {
   const security = read('SECURITY.md');
   const verify = read('VERIFY_RELEASE.md');
@@ -204,6 +220,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.5'/);
+  assert.match(verify, /\$version = '1\.2\.6'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

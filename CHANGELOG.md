@@ -1,3 +1,11 @@
+## v1.2.6 — 2026-11-07
+
+- Serialize wallet file selection, create/open/restore and lock operations so overlapping asynchronous transitions cannot replace the intended wallet session or act on another selected path; wait for these operations before shutdown.
+- Revalidate the wallet session after each asynchronous summary read and discard delayed renderer summaries from older wallet sessions.
+- Enforce the local-node RPC readiness deadline even when the last status request finishes after the timeout.
+- Launch electron-builder through Node argv without a shell, preserving checkout paths that contain spaces or shell metacharacters and keeping the build process window hidden.
+- Disable wallet setup controls before file/node preflight and clear submitted password/seed copies on every exit path.
+
 ## v1.2.5 — 2026-11-06
 
 - Harden automatic local-node startup with RPC readiness polling and bounded retry behavior so wallet synchronization waits for a responsive daemon and resumes after temporary failures.

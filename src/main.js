@@ -10,6 +10,7 @@ const QRCode = require('qrcode');
 const { atomicToXmr, xmrToAtomic, calculateServiceFee, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
 const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT, waitForRpcReady } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
+const { WalletOperationGate } = require('./wallet-operation-gate');
 
 const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
 const SERVICE_FEE_RATE = 0.0025;
@@ -50,6 +51,13 @@ function registerIpcHandler(channel, handler) {
   });
 }
 const ipcMain = { handle: registerIpcHandler };
+const walletOperationGate = new WalletOperationGate();
+function registerWalletOperationHandler(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (shutdownRequested) return Promise.reject(new Error('앱 종료가 진행 중입니다.'));
+    return walletOperationGate.run(() => handler(event, ...args));
+  });
+}
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) app.quit();
@@ -468,15 +476,20 @@ async function loadSummary() {
   ensureWallet();
   const activeWallet = wallet;
   const sessionId = walletSessionId;
+  const sessionConfig = { network: activeConfig.network, node: activeConfig.node };
   const address = await activeWallet.getPrimaryAddress();
+  assertWalletSession(activeWallet, sessionId);
   const balance = await activeWallet.getBalance();
+  assertWalletSession(activeWallet, sessionId);
   let txs = [];
   try { txs = await activeWallet.getTxs(); } catch (_) {}
-  const sync = await getRemoteNodeStatus(activeConfig.node);
-  if (activeWallet !== wallet || sessionId !== walletSessionId) throw new Error('요약을 불러오는 중 지갑 세션이 변경되었습니다. 다시 열어 주세요.');
-  const accounts = await loadAccounts(activeWallet);
-  const addressBook = await loadAddressBook(activeWallet);
-  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice().reverse().map(safeTx), accounts, addressBook, network: activeConfig.network, node: activeConfig.node, sync };
+  assertWalletSession(activeWallet, sessionId);
+  const sync = await getRemoteNodeStatus(sessionConfig.node);
+  assertWalletSession(activeWallet, sessionId);
+  const accounts = await loadAccountsForSession(activeWallet, sessionId);
+  const addressBook = await loadAddressBookForSession(activeWallet, sessionId);
+  assertWalletSession(activeWallet, sessionId);
+  return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice().reverse().map(safeTx), accounts, addressBook, network: sessionConfig.network, node: sessionConfig.node, sync, walletSessionId: sessionId };
 }
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
@@ -486,7 +499,7 @@ async function makeWindow() {
 }
 
 ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION }));
-ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
+registerWalletOperationHandler('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   if (action === 'save') {
     const result = await dialog.showSaveDialog(mainWindow, {
       title: '새 josimi 지갑 파일 저장 위치 선택',
@@ -510,7 +523,7 @@ ipcMain.handle('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   selectedWalletPath = base;
   return { canceled: false, path: base, fileName: path.basename(base) };
 });
-ipcMain.handle('wallet-create', async (_, payload = {}) => {
+registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   validateWalletPassword(password);
   assertMainnetNetwork(network);
@@ -548,7 +561,7 @@ ipcMain.handle('wallet-create', async (_, payload = {}) => {
     throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
   }
 });
-ipcMain.handle('wallet-restore', async (_, payload = {}) => {
+registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
   let password = payload?.password;
   let seed = payload?.seed;
   let seedOffset = payload?.seedOffset;
@@ -598,7 +611,7 @@ ipcMain.handle('wallet-restore', async (_, payload = {}) => {
     if (payload && typeof payload === 'object') { payload.seed = ''; payload.seedOffset = ''; payload.password = ''; }
   }
 });
-ipcMain.handle('wallet-open', async (_, payload = {}) => {
+registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
   const { password, node, network = NETWORK } = payload || {};
   validateWalletPassword(password, 0);
   if (!isRegularFile(walletPath()) && !isRegularFile(keyFilePath(walletPath()))) throw new Error('선택한 파일은 Monero 지갑 파일이 아닙니다. 본체 파일 또는 .keys 파일을 선택하세요.');
@@ -794,7 +807,7 @@ ipcMain.handle('local-node-wait-ready', async () => {
   return waitForRpcReady(getLocalNodeManagerStatus);
 });
 ipcMain.handle('local-node-stop', async () => stopLocalNode());
-ipcMain.handle('wallet-lock', async () => {
+registerWalletOperationHandler('wallet-lock', async () => {
   assertNoUnresolvedRelay();
   cancelWalletSyncRetry();
   const previousWallet = wallet;
@@ -1041,6 +1054,7 @@ async function waitForPendingRelaySettlements() {
   while (pendingRelaySettlements.size > 0) await Promise.all([...pendingRelaySettlements]);
 }
 async function shutdownRuntime() {
+  await walletOperationGate.waitForIdle();
   cancelWalletSyncRetry();
   let stopError = null;
   if (localNodeManager) {

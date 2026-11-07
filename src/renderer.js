@@ -174,6 +174,7 @@ let cancelCallInProgress = false;
 let localNodeUrl = 'http://127.0.0.1:18081';
 let toastTimer;
 let selectedWalletFile = null;
+let walletFormSubmissionInFlight = false;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
@@ -184,6 +185,7 @@ let qrGeneration = 0;
 let currentAccounts = [];
 let currentAddressBook = [];
 let currentTransactions = [];
+let renderedWalletSessionId = 0;
 let selectedSendContactName = '';
 
 const formatXmr = (atomic) => {
@@ -218,6 +220,9 @@ async function chooseWalletFile(action) {
   selectedWalletFile = result;
   showWalletFileStatus(result.fileName);
   return true;
+}
+function setWalletFormBusy(busy) {
+  document.querySelectorAll('#authView .tabs button, #walletForm input, #walletForm textarea, #walletForm select, #walletForm button').forEach((control) => { control.disabled = busy; });
 }
 function renderTxs(txs = []) {
   currentTransactions = txs;
@@ -439,12 +444,18 @@ if ($('nodeMode').value === 'local') {
   ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); });
 }
 function renderSummary(summary) {
+  const sessionId = Number(summary?.walletSessionId);
+  if (Number.isSafeInteger(sessionId)) {
+    if (sessionId < renderedWalletSessionId) return false;
+    renderedWalletSessionId = sessionId;
+  }
   walletSyncStartState = summary.walletSyncStartState || 'running';
   $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
   $('authView').classList.add('hidden'); $('appView').classList.remove('hidden'); $('lockBtn').classList.remove('hidden');
   $('balance').innerHTML = `${escapeHtml(summary.balanceXmr)} <small>XMR</small>`; renderAccountManagement(summary.accounts, summary.addressBook); renderSync(summary.sync); renderTxs(summary.txs);
   if (summary.createdAtHeight !== undefined && summary.createdAtHeight !== null) $('walletHeight').textContent = `${LANG[language].createdAtHeight}: ${Number(summary.createdAtHeight).toLocaleString()}`;
   if (summary.restoreHeightUsed !== undefined && summary.restoreHeightUsed !== null) $('walletHeight').textContent = `${LANG[language].restoreHeight}: ${Number(summary.restoreHeightUsed).toLocaleString()}`;
+  return true;
 }
 async function refresh() {
   if (refreshPromise) return refreshPromise;
@@ -599,52 +610,57 @@ configureNodeInput();
 
  $('languageSelect').addEventListener('change', () => { language = $('languageSelect').value; localStorage.setItem('josimi.language', language); applyLanguage(); updateNodeModeFields(); setMode(mode); if (renderLocalNodeStatus.lastStatus) renderLocalNodeStatus(renderLocalNodeStatus.lastStatus); if (renderSync.lastStatus) renderSync(renderSync.lastStatus); renderAccountManagement(currentAccounts, currentAddressBook); renderTxs(currentTransactions); });
 $('walletForm').addEventListener('submit', async (event) => {
-  event.preventDefault(); clearError('authError');
+  event.preventDefault();
+  if (walletFormSubmissionInFlight) return;
+  walletFormSubmissionInFlight = true;
   const action = mode;
-  const clearSensitiveFields = () => { $('password').value = ''; $('seed').value = ''; $('seedOffset').value = ''; };
-  let payload = null;
-  let seedValue = '';
-  let seedOffsetValue = '';
-  try {
-    if (action === 'open' && !selectedWalletFile && !(await chooseWalletFile('open'))) { clearSensitiveFields(); return; }
-    if ((action === 'create' || action === 'restore') && !(await chooseWalletFile('save'))) { clearSensitiveFields(); return; }
-  } catch (error) { clearSensitiveFields(); showError('authError', error); return; }
-  const useLocalNode = $('nodeMode').value === 'local';
-  let nodeValue = '';
-  if (useLocalNode) {
-    try {
-      const nodeStatus = await ensureLocalNodeStarted();
-      if (!nodeStatus.running) { clearSensitiveFields(); showError('authError', new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing)); return; }
-      nodeValue = localNodeUrl;
-    } catch (error) { clearSensitiveFields(); showError('authError', error); return; }
-  } else {
-    nodeValue = $('node').value.trim();
-    if (!nodeValue) { clearSensitiveFields(); showError('authError', new Error(LANG[language].nodeAddressRequired)); return; }
-  }
+  let passwordValue = $('password').value;
+  let seedValue = $('seed').value.trim();
+  let seedOffsetValue = $('seedOffset').value;
   const restoreHeightValue = $('restoreHeight').value.trim();
-  if (action === 'restore' && restoreHeightValue && !/^\d+$/.test(restoreHeightValue)) { clearSensitiveFields(); showError('authError', new Error(LANG[language].restoreHeightInvalid)); return; }
-  payload = { password: $('password').value, node: nodeValue, restoreHeight: action === 'restore' && restoreHeightValue ? Number(restoreHeightValue) : undefined, network: 'mainnet' };
-  $('submitBtn').disabled = true;
+  const nodeModeValue = $('nodeMode').value;
+  const remoteNodeValue = $('node').value.trim();
+  let payload = null;
+  let restorePayload = null;
+  setWalletFormBusy(true);
+  clearError('authError');
+  $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
   try {
     let result;
+    if (action === 'open' && !selectedWalletFile && !(await chooseWalletFile('open'))) return;
+    if ((action === 'create' || action === 'restore') && !(await chooseWalletFile('save'))) return;
+    let nodeValue;
+    if (nodeModeValue === 'local') {
+      const nodeStatus = await ensureLocalNodeStarted();
+      if (!nodeStatus.running) throw new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing);
+      nodeValue = localNodeUrl;
+    } else {
+      nodeValue = remoteNodeValue;
+      if (!nodeValue) throw new Error(LANG[language].nodeAddressRequired);
+    }
+    if (action === 'restore' && restoreHeightValue && !/^\d+$/.test(restoreHeightValue)) throw new Error(LANG[language].restoreHeightInvalid);
+    payload = { password: passwordValue, node: nodeValue, restoreHeight: action === 'restore' && restoreHeightValue ? Number(restoreHeightValue) : undefined, network: 'mainnet' };
     if (action === 'create') result = await window.josimi.create(payload);
     else if (action === 'restore') {
-      seedValue = $('seed').value.trim();
       if (!confirm(LANG[language].restoreConfirm)) return;
-      seedOffsetValue = $('seedOffset').value;
-      result = await window.josimi.restore({ ...payload, seed: seedValue, seedOffset: seedOffsetValue === '' ? undefined : seedOffsetValue });
-    }
-    else result = await window.josimi.open(payload);
+      restorePayload = { ...payload, seed: seedValue, seedOffset: seedOffsetValue === '' ? undefined : seedOffsetValue };
+      result = await window.josimi.restore(restorePayload);
+    } else result = await window.josimi.open(payload);
     renderSummary(result);
     await resumePendingSendDialog();
     if (action === 'create') showToast(LANG[language].seedBackupReminder);
     else if (result.restored) showToast(LANG[language].restoredWallet);
     resetInactivityTimer();
-  } catch (e) { showError('authError', e); } finally {
+  } catch (error) {
+    showError('authError', error);
+  } finally {
     if (payload) { payload.password = ''; payload.node = ''; payload.restoreHeight = undefined; }
-    seedValue = ''; seedOffsetValue = '';
+    if (restorePayload) { restorePayload.password = ''; restorePayload.node = ''; restorePayload.restoreHeight = undefined; restorePayload.seed = ''; restorePayload.seedOffset = ''; }
+    passwordValue = ''; seedValue = ''; seedOffsetValue = '';
     $('password').value = ''; $('seed').value = ''; $('seedOffset').value = '';
-    $('submitBtn').disabled = false; setMode(action);
+    setMode(action);
+    setWalletFormBusy(false);
+    walletFormSubmissionInFlight = false;
   }
 });
  $('refreshBtn').addEventListener('click', refresh);

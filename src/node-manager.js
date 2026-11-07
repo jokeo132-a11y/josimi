@@ -268,6 +268,7 @@ async function waitForRpcReady(readStatus, { timeoutMs = 120_000, intervalMs = 1
   while (now() < deadline) {
     const status = await readStatus();
     if (!status?.running) throw new Error('LOCAL_NODE_EXITED');
+    if (now() >= deadline) throw new Error('LOCAL_NODE_RPC_TIMEOUT');
     if (status.rpc && !['stopped', 'starting', 'offline'].includes(status.rpc.state)) return status;
     await delay(Math.min(intervalMs, Math.max(0, deadline - now())));
   }

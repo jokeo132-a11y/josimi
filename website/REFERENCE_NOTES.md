@@ -22,3 +22,8 @@
 ## v1.2.5 release update — 2026-11-06
 
 The v1.2.5 Windows release includes the final automatic local-node synchronization hardening and the fee transaction/review behavior documented in the source. The production site should point to the new v1.2.5 GitHub release after its tagged build succeeds.
+
+
+## v1.2.6 bug-fix release update — 2026-11-07
+
+The v1.2.6 patch addresses wallet lifecycle races, stale wallet summaries, strict local-node RPC readiness deadlines, and Windows build paths containing spaces or shell metacharacters. The production site should point at v1.2.6 only after the tagged Windows release workflow succeeds.

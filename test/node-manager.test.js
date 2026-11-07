@@ -82,6 +82,14 @@ test('local RPC readiness fails promptly if monerod exits and times out when RPC
   }), /LOCAL_NODE_RPC_TIMEOUT/);
 });
 
+test('local RPC readiness rejects a ready response that arrives after the deadline', async () => {
+  let clock = 0;
+  await assert.rejects(waitForRpcReady(async () => {
+    clock = 11;
+    return { running: true, rpc: { state: 'synced' } };
+  }, { timeoutMs: 10, now: () => clock }), /LOCAL_NODE_RPC_TIMEOUT/);
+});
+
 test('Monero build input is pinned to the official HTTPS CLI archive and a fixed SHA-256', () => {
   const url = new URL(MONERO_ARCHIVE_URL);
   assert.equal(url.protocol, 'https:');
