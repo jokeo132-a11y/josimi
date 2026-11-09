@@ -1,11 +1,11 @@
 # josimi
 
-josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest published Windows x64 ZIP is available from [GitHub Releases](https://github.com/jokeo132-a11y/josimi/releases/latest). The current source package version is **v1.2.7**. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
+josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest published Windows x64 ZIP is available from [GitHub Releases](https://github.com/jokeo132-a11y/josimi/releases/latest). The current source package version is **v1.2.8**. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
 
 ## Wallet features
 
 - The first-run path prioritizes creating a wallet. To open an existing Monero GUI wallet, select its `.keys` file and enter its password.
-- A new wallet can be created while the local node is still starting; node connection and wallet synchronization continue automatically in the background.
+- Wallet creation, opening, and seed restoration do not wait for the local node or synchronization to become ready; node startup and scanning continue automatically in the background.
 - Restore from a standard Monero seed, with optional seed-offset passphrase and restore height. Existing wallet files are preserved before a default-path replacement.
 - Manage multiple accounts and subaddresses, receive addresses and QR codes, address-book entries, transaction notes, and transaction history.
 - Review recipient, amount, service fee, network fee, total debit, and fee address before a transfer is relayed.

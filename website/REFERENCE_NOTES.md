@@ -31,3 +31,7 @@ The v1.2.6 patch addresses wallet lifecycle races, stale wallet summaries, stric
 ## v1.2.7 wallet-creation and fee update — 2026-11-09
 
 The v1.2.7 update lets users create a wallet while the local node starts in the background, changes the service-fee recipient to the address confirmed by the maintainer, and adds default-deny Electron permission handling with a stricter local-page CSP. The site should point to the v1.2.7 Windows ZIP only after the tagged release workflow succeeds. This change is not an independent security audit; the existing site disclosure must continue to say so.
+
+## v1.2.8 wallet lifecycle hardening — 2026-11-09
+
+The v1.2.8 source caps node-status probes at 1 second and sync-start waiting at 1.5 seconds for create, open, and restore operations, so synchronization startup cannot indefinitely hold the wallet screen. A real Monero-engine/app-IPC integration test covers offline create, reopen, and seed restore, including a deliberately pending sync-start response. This test coverage is not an independent security audit; the site must continue to say so.

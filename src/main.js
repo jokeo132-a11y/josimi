@@ -19,7 +19,8 @@ const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const LOCAL_NODE_URL = `http://${RPC_HOST}:${RPC_PORT}`;
 const MAX_NODE_RPC_RESPONSE_BYTES = 512 * 1024;
 const NODE_RPC_DEADLINE_MS = 8_000;
-const WALLET_CREATE_NODE_PROBE_TIMEOUT_MS = 1_000;
+const WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS = 1_000;
+const WALLET_SYNC_START_TIMEOUT_MS = 1_500;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
@@ -474,6 +475,13 @@ async function startWalletBackgroundSync(activeWallet = wallet) {
     return { state: 'retrying' };
   }
 }
+async function startWalletBackgroundSyncWithinDeadline(activeWallet = wallet) {
+  return withTimeout(
+    startWalletBackgroundSync(activeWallet),
+    WALLET_SYNC_START_TIMEOUT_MS,
+    'Wallet synchronization startup continues in the background'
+  ).catch(() => ({ state: 'starting' }));
+}
 async function loadSummary({ nodeStatusTimeoutMs = NODE_RPC_DEADLINE_MS } = {}) {
   ensureWallet();
   const activeWallet = wallet;
@@ -539,7 +547,7 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   pendingTransactions.clear();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
-  const creationHeight = await withTimeout(getNodeHeight(activeConfig.node), WALLET_CREATE_NODE_PROBE_TIMEOUT_MS, 'Optional node height lookup timed out').catch(() => null);
+  const creationHeight = await withTimeout(getNodeHeight(activeConfig.node), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS, 'Optional node height lookup timed out').catch(() => null);
   const customPath = selectedWalletPath;
   if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
   const creationPath = customPath || tempWalletPath('josimi-create');
@@ -550,8 +558,8 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
     await created.close(true);
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_CREATE_NODE_PROBE_TIMEOUT_MS });
-    const walletSync = await startWalletBackgroundSync(wallet);
+    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight, walletSyncStartState: walletSync.state };
   } catch (error) {
@@ -606,8 +614,8 @@ registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
       throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
     }
     if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadSummary();
-    const walletSync = await startWalletBackgroundSync(wallet);
+    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, walletSyncStartState: walletSync.state, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
   } finally {
     seed = ''; seedOffset = ''; normalizedSeed = ''; normalizedSeedOffset = undefined; password = '';
@@ -631,8 +639,8 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
   try {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     hydrateRelayRecovery(walletPath(), recoveryRecord);
-    const summary = await loadSummary();
-    const walletSync = await startWalletBackgroundSync(wallet);
+    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     return { ...summary, walletSyncStartState: walletSync.state };
   } catch (error) {
     if (wallet) await wallet.close(true).catch(() => {});

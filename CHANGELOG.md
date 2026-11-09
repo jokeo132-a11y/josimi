@@ -1,3 +1,8 @@
+## v1.2.8 — 2026-11-09
+
+- Keep wallet creation, opening, and seed restoration usable when node-status checks or synchronization startup are slow: node probes are capped at 1 second and sync-start waiting at 1.5 seconds, while synchronization continues in the background.
+- Add a real Monero-engine and app-IPC integration test that creates, reopens, and restores a mainnet wallet with an unavailable node and a deliberately pending sync-start response; the test never prints the synthetic seed.
+
 ## v1.2.7 — 2026-11-09
 
 - Let users create a new wallet while the local node is still starting; node startup and wallet synchronization continue automatically in the background. Optional node-height and initial-status probes are time-bounded, so a slow/offline node does not hold the creation screen indefinitely.

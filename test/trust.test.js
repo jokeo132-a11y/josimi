@@ -40,7 +40,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.7');
+  assert.equal(packageJson.version, '1.2.8');
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
@@ -114,7 +114,7 @@ test('configured service fee address is a valid Monero mainnet address and match
   assert.ok(privacy.includes(`\`${feeAddress}\``));
 });
 
-test('new wallet creation is not blocked by local node RPC readiness', () => {
+test('wallet lifecycle does not wait indefinitely for node or sync startup', () => {
   const main = read('src/main.js');
   const renderer = read('src/renderer.js');
   const formStart = renderer.indexOf("$('walletForm').addEventListener('submit'");
@@ -123,8 +123,12 @@ test('new wallet creation is not blocked by local node RPC readiness', () => {
   const submitHandler = renderer.slice(formStart, formEnd);
   assert.match(submitHandler, /if \(action === 'create'\) \{\s*startLocalNodeInBackground\(\);/);
   assert.match(submitHandler, /const nodeStatus = await ensureLocalNodeStartedOnce\(\)/);
-  assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_CREATE_NODE_PROBE_TIMEOUT_MS/);
-  assert.match(main, /loadSummary\(\{ nodeStatusTimeoutMs: WALLET_CREATE_NODE_PROBE_TIMEOUT_MS \}\)/);
+  assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS/);
+  assert.match(main, /WALLET_SYNC_START_TIMEOUT_MS = 1_500/);
+  assert.match(main, /async function startWalletBackgroundSyncWithinDeadline\(/);
+  const lifecycle = main.slice(main.indexOf("registerWalletOperationHandler('wallet-create'"), main.indexOf("ipcMain.handle('wallet-refresh'"));
+  assert.equal((lifecycle.match(/loadSummary\(\{ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS \}\)/g) || []).length, 3);
+  assert.equal((lifecycle.match(/startWalletBackgroundSyncWithinDeadline\(wallet\)/g) || []).length, 3);
 });
 
 test('release build and publish jobs have least-privilege permissions and immutable action pins', () => {
@@ -248,6 +252,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.7'/);
+  assert.match(verify, /\$version = '1\.2\.8'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });
