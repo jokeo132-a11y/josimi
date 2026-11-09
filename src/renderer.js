@@ -175,6 +175,7 @@ let localNodeUrl = 'http://127.0.0.1:18081';
 let toastTimer;
 let selectedWalletFile = null;
 let walletFormSubmissionInFlight = false;
+let localNodeStartPromise = null;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
@@ -440,8 +441,20 @@ async function ensureLocalNodeStarted() {
   }
   throw lastError || new Error(LANG[language].localNodeRpcWaitFailed);
 }
+function ensureLocalNodeStartedOnce() {
+  if (!localNodeStartPromise) {
+    localNodeStartPromise = ensureLocalNodeStarted().finally(() => { localNodeStartPromise = null; });
+  }
+  return localNodeStartPromise;
+}
+function startLocalNodeInBackground() {
+  return ensureLocalNodeStartedOnce().then(refreshLocalNodeStatus).catch((error) => {
+    showError('localNodeError', error);
+    $('retryLocalNodeBtn').classList.remove('hidden');
+  });
+}
 if ($('nodeMode').value === 'local') {
-  ensureLocalNodeStarted().then(refreshLocalNodeStatus).catch((error) => { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); });
+  void startLocalNodeInBackground();
 }
 function renderSummary(summary) {
   const sessionId = Number(summary?.walletSessionId);
@@ -631,9 +644,13 @@ $('walletForm').addEventListener('submit', async (event) => {
     if ((action === 'create' || action === 'restore') && !(await chooseWalletFile('save'))) return;
     let nodeValue;
     if (nodeModeValue === 'local') {
-      const nodeStatus = await ensureLocalNodeStarted();
-      if (!nodeStatus.running) throw new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing);
       nodeValue = localNodeUrl;
+      if (action === 'create') {
+        startLocalNodeInBackground();
+      } else {
+        const nodeStatus = await ensureLocalNodeStartedOnce();
+        if (!nodeStatus.running) throw new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing);
+      }
     } else {
       nodeValue = remoteNodeValue;
       if (!nodeValue) throw new Error(LANG[language].nodeAddressRequired);

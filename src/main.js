@@ -11,13 +11,15 @@ const { atomicToXmr, xmrToAtomic, calculateServiceFee, isValidMoneroTxHash, norm
 const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT, waitForRpcReady } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
 const { WalletOperationGate } = require('./wallet-operation-gate');
+const { installPermissionPolicy } = require('./permission-policy');
 
-const FEE_ADDRESS = '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT';
+const FEE_ADDRESS = '47ky8dusihATq9gGbQiEL9dMUfBKzgEm5ExF7yx8ANxvBVDe57e58kY1FV56zyx1CUFUJwT6YqB4XJWnAV9HiKp2MkmSkNt';
 const SERVICE_FEE_RATE = 0.0025;
 const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const LOCAL_NODE_URL = `http://${RPC_HOST}:${RPC_PORT}`;
 const MAX_NODE_RPC_RESPONSE_BYTES = 512 * 1024;
 const NODE_RPC_DEADLINE_MS = 8_000;
+const WALLET_CREATE_NODE_PROBE_TIMEOUT_MS = 1_000;
 const NETWORK = 'mainnet';
 const DEFAULT_NODES = [
   // HTTPS is required for the default public endpoint; users can enter their own node.
@@ -178,10 +180,10 @@ async function getNodeHeight(node) {
   }
 }
 
-async function getRemoteNodeStatus(node) {
+async function getRemoteNodeStatus(node, timeoutMs = NODE_RPC_DEADLINE_MS) {
   const mode = (() => { try { return ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(new URL(node).hostname) ? 'local' : 'remote'; } catch (_) { return 'remote'; } })();
   try {
-    const info = await getNodeInfo(node);
+    const info = await withTimeout(getNodeInfo(node), timeoutMs, 'Node status request timed out');
     const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
     const synchronized = typeof info.synchronized === 'boolean' ? info.synchronized : null;
     return { mode, node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : mode === 'local' ? 'local' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0) };
@@ -472,7 +474,7 @@ async function startWalletBackgroundSync(activeWallet = wallet) {
     return { state: 'retrying' };
   }
 }
-async function loadSummary() {
+async function loadSummary({ nodeStatusTimeoutMs = NODE_RPC_DEADLINE_MS } = {}) {
   ensureWallet();
   const activeWallet = wallet;
   const sessionId = walletSessionId;
@@ -484,7 +486,7 @@ async function loadSummary() {
   let txs = [];
   try { txs = await activeWallet.getTxs(); } catch (_) {}
   assertWalletSession(activeWallet, sessionId);
-  const sync = await getRemoteNodeStatus(sessionConfig.node);
+  const sync = await getRemoteNodeStatus(sessionConfig.node, nodeStatusTimeoutMs);
   assertWalletSession(activeWallet, sessionId);
   const accounts = await loadAccountsForSession(activeWallet, sessionId);
   const addressBook = await loadAddressBookForSession(activeWallet, sessionId);
@@ -493,6 +495,7 @@ async function loadSummary() {
 }
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
+  installPermissionPolicy(mainWindow.webContents.session, APP_URL);
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   mainWindow.webContents.on('will-navigate', (event, url) => { if (url !== APP_URL) event.preventDefault(); });
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
@@ -536,7 +539,7 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   pendingTransactions.clear();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: await resolveNode(node) };
-  const creationHeight = await getNodeHeight(activeConfig.node);
+  const creationHeight = await withTimeout(getNodeHeight(activeConfig.node), WALLET_CREATE_NODE_PROBE_TIMEOUT_MS, 'Optional node height lookup timed out').catch(() => null);
   const customPath = selectedWalletPath;
   if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
   const creationPath = customPath || tempWalletPath('josimi-create');
@@ -547,7 +550,7 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
     await created.close(true);
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadSummary();
+    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_CREATE_NODE_PROBE_TIMEOUT_MS });
     const walletSync = await startWalletBackgroundSync(wallet);
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight, walletSyncStartState: walletSync.state };
@@ -558,7 +561,7 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
     removeWalletFiles(creationPath);
     if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
     if (customPath) selectedWalletPath = null;
-    throw new Error(`지갑 생성에 실패했습니다. 노드 주소를 확인하세요. (${error.message})`);
+    throw new Error(`지갑 파일을 만들지 못했습니다. 저장 위치와 비밀번호를 확인해 주세요. (${error.message})`);
   }
 });
 registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {

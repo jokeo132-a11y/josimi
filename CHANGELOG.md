@@ -1,3 +1,11 @@
+## v1.2.7 — 2026-11-09
+
+- Let users create a new wallet while the local node is still starting; node startup and wallet synchronization continue automatically in the background. Optional node-height and initial-status probes are time-bounded, so a slow/offline node does not hold the creation screen indefinitely.
+- Change the 0.25% service-fee recipient to the user-specified mainnet address; retain the 0.05 XMR cap and separate Monero network fee.
+- Deny Electron web permissions by default except sanitized clipboard writes from the local josimi page, and remove the unnecessary inline-style CSP allowance.
+- Improve wallet-creation failure copy so it points to the save location and password rather than blaming the node when key creation fails.
+- Publish the scope and limits of the AI-assisted internal source review; this is not an independent third-party audit, penetration test, or security guarantee.
+
 ## v1.2.6 — 2026-11-07
 
 - Serialize wallet file selection, create/open/restore and lock operations so overlapping asynchronous transitions cannot replace the intended wallet session or act on another selected path; wait for these operations before shutdown.

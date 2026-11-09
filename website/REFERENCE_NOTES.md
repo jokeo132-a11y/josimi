@@ -27,3 +27,7 @@ The v1.2.5 Windows release includes the final automatic local-node synchronizati
 ## v1.2.6 bug-fix release update — 2026-11-07
 
 The v1.2.6 patch addresses wallet lifecycle races, stale wallet summaries, strict local-node RPC readiness deadlines, and Windows build paths containing spaces or shell metacharacters. The production site should point at v1.2.6 only after the tagged Windows release workflow succeeds.
+
+## v1.2.7 wallet-creation and fee update — 2026-11-09
+
+The v1.2.7 update lets users create a wallet while the local node starts in the background, changes the service-fee recipient to the address confirmed by the maintainer, and adds default-deny Electron permission handling with a stricter local-page CSP. The site should point to the v1.2.7 Windows ZIP only after the tagged release workflow succeeds. This change is not an independent security audit; the existing site disclosure must continue to say so.

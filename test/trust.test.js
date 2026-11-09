@@ -40,19 +40,34 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.6');
+  assert.equal(packageJson.version, '1.2.7');
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
   assert.match(renderer, /localStorage\.getItem\('josimi\.nodeMode'\)/);
-  assert.match(renderer, /ensureLocalNodeStarted\(\)\.then\(refreshLocalNodeStatus\)/);
-  assert.match(renderer, /await ensureLocalNodeStarted\(\)/);
+  assert.match(renderer, /startLocalNodeInBackground\(\)/);
+  assert.match(renderer, /await ensureLocalNodeStartedOnce\(\)/);
   assert.match(renderer, /localNodeWaitReady\(\)/);
   assert.match(html, /class="node-manager-actions hidden"/);
   assert.match(main, /waitForRpcReady\(getLocalNodeManagerStatus\)/);
   assert.match(main, /walletSyncRetryDelayMs/);
   assert.match(main, /activeWallet\.startSyncing\(10_000\)/);
   assert.match(preload, /localNodeStart: \(\) => ipcRenderer\.invoke\('local-node-start'\)/);
+});
+
+test('Electron denies unneeded web permissions and uses a restrictive local-page policy', () => {
+  const html = read('src/index.html');
+  const main = read('src/main.js');
+  const permissionPolicy = read('src/permission-policy.js');
+  const windowSetup = main.slice(main.indexOf('async function makeWindow()'), main.indexOf("ipcMain.handle('app-config'"));
+  assert.match(permissionPolicy, /setPermissionRequestHandler/);
+  assert.match(permissionPolicy, /setPermissionCheckHandler/);
+  assert.match(windowSetup, /installPermissionPolicy\(mainWindow\.webContents\.session, APP_URL\)/);
+  assert.ok(windowSetup.indexOf('installPermissionPolicy') < windowSetup.indexOf('loadFile'));
+  assert.match(windowSetup, /setWindowOpenHandler\(\(\) => \(\{ action: 'deny' \}\)\)/);
+  assert.match(windowSetup, /will-navigate/);
+  assert.match(html, /style-src 'self';/);
+  assert.doesNotMatch(html, /unsafe-inline/);
 });
 
 test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and fee behavior', () => {
@@ -62,7 +77,7 @@ test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and f
   const seedHandler = main.slice(main.indexOf("ipcMain.handle('wallet-seed'"), main.indexOf("ipcMain.handle('wallet-account-create'"));
   const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
   assert.ok(feeAddress);
-  assert.match(privacy, /Wallet creation can contact the selected daemon before the wallet opens/);
+  assert.match(privacy, /a node that is slow or unavailable does not prevent a new wallet from being created/);
   assert.match(privacy, /parallel TLS connection checks/);
   assert.match(privacy, /The P2Pool peer listener binds to all network interfaces/);
   assert.match(privacy, /does \*\*not\*\* stop the daemon from listening on its default P2P port/);
@@ -92,11 +107,24 @@ test('configured service fee address is a valid Monero mainnet address and match
   const privacy = read('PRIVACY.md');
   const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
   assert.ok(feeAddress);
-  assert.equal(feeAddress, '42dHPCXn1K4jVvytbrHP4YZM4c5wpfFbKj38LXmC6AgL9mZcLZpn9DTGBtPjP9DfjXP27ZntfeBHjF2uSQoX11A55RexfyT');
+  assert.equal(feeAddress, '47ky8dusihATq9gGbQiEL9dMUfBKzgEm5ExF7yx8ANxvBVDe57e58kY1FV56zyx1CUFUJwT6YqB4XJWnAV9HiKp2MkmSkNt');
   const { MoneroUtils, MoneroNetworkType } = require('monero-ts');
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.MAINNET), true);
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.TESTNET), false);
   assert.ok(privacy.includes(`\`${feeAddress}\``));
+});
+
+test('new wallet creation is not blocked by local node RPC readiness', () => {
+  const main = read('src/main.js');
+  const renderer = read('src/renderer.js');
+  const formStart = renderer.indexOf("$('walletForm').addEventListener('submit'");
+  const formEnd = renderer.indexOf("$('refreshBtn').addEventListener('click', refresh);", formStart);
+  assert.ok(formStart >= 0 && formEnd > formStart);
+  const submitHandler = renderer.slice(formStart, formEnd);
+  assert.match(submitHandler, /if \(action === 'create'\) \{\s*startLocalNodeInBackground\(\);/);
+  assert.match(submitHandler, /const nodeStatus = await ensureLocalNodeStartedOnce\(\)/);
+  assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_CREATE_NODE_PROBE_TIMEOUT_MS/);
+  assert.match(main, /loadSummary\(\{ nodeStatusTimeoutMs: WALLET_CREATE_NODE_PROBE_TIMEOUT_MS \}\)/);
 });
 
 test('release build and publish jobs have least-privilege permissions and immutable action pins', () => {
@@ -205,7 +233,7 @@ test('wallet selection and lifecycle IPC handlers share the single-flight operat
   assert.match(main, /await walletOperationGate\.waitForIdle\(\)/);
   assert.match(renderer, /if \(walletFormSubmissionInFlight\) return/);
   assert.match(renderer, /setWalletFormBusy\(true\)/);
-  const summary = main.slice(main.indexOf('async function loadSummary()'), main.indexOf('async function makeWindow()'));
+  const summary = main.slice(main.indexOf('async function loadSummary('), main.indexOf('async function makeWindow()'));
   assert.match(summary, /loadAccountsForSession\(activeWallet, sessionId\)/);
   assert.match(summary, /loadAddressBookForSession\(activeWallet, sessionId\)/);
   assert.match(summary, /walletSessionId: sessionId/);
@@ -220,6 +248,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.6'/);
+  assert.match(verify, /\$version = '1\.2\.7'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });
