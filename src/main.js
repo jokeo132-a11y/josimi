@@ -168,7 +168,10 @@ function emitNodeStatus(status) {
 
 async function getNodeInfo(node) {
   const response = await postJson(`${node}/json_rpc`, { jsonrpc: '2.0', id: 'josimi', method: 'get_info' });
-  return response.result || {};
+  if (!response || !response.result || typeof response.result !== 'object' || Array.isArray(response.result)) {
+    throw new Error('노드 RPC get_info 응답 형식이 올바르지 않습니다.');
+  }
+  return response.result;
 }
 
 async function getNodeHeight(node) {
@@ -185,9 +188,13 @@ async function getRemoteNodeStatus(node, timeoutMs = NODE_RPC_DEADLINE_MS) {
   const mode = (() => { try { return ['127.0.0.1', 'localhost', '::1', '[::1]'].includes(new URL(node).hostname) ? 'local' : 'remote'; } catch (_) { return 'remote'; } })();
   try {
     const info = await withTimeout(getNodeInfo(node), timeoutMs, 'Node status request timed out');
-    const height = Number(info.height || 0); const targetHeight = Number(info.target_height || height);
+    const height = Number(info.height);
+    const targetHeight = Number(info.target_height);
+    if (!Number.isSafeInteger(height) || height < 0 || !Number.isSafeInteger(targetHeight) || targetHeight < 0 || targetHeight < height) throw new Error('노드 높이 응답 형식이 올바르지 않습니다.');
     const synchronized = typeof info.synchronized === 'boolean' ? info.synchronized : null;
-    return { mode, node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : mode === 'local' ? 'local' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers: Number(info.outgoing_connections_count || 0) };
+    const peers = Number(info.outgoing_connections_count);
+    if (!Number.isSafeInteger(peers) || peers < 0) throw new Error('노드 피어 수 응답 형식이 올바르지 않습니다.');
+    return { mode, node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : mode === 'local' ? 'local' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers };
   } catch (_) {
     return { mode, node, state: mode === 'local' ? 'stopped' : 'offline', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
   }
@@ -361,7 +368,7 @@ function normalizePriority(priority) {
 }
 async function ensureSendableNode() {
   const info = await getNodeInfo(activeConfig.node);
-  if (info.synchronized === false) throw new Error('원격 Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
+  if (info.synchronized !== true) throw new Error('Monero 노드의 동기화가 끝날 때까지 송금할 수 없습니다.');
 }
 function normalizeSeed(seed) {
   const normalized = String(seed || '').trim().replace(/\s+/g, ' ');

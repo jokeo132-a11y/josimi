@@ -453,7 +453,7 @@ $('nodeMode').addEventListener('change', () => {
   if ($('nodeMode').value === 'local') {
     localNodeExplicitlyStopped = false;
     void startLocalNodeInBackground();
-  } else if ($('appView').classList.contains('hidden')) {
+  } else {
     window.josimi.localNodeStop().then(refreshLocalNodeStatus).catch((error) => {
       showError('localNodeError', error);
       $('retryLocalNodeBtn').classList.remove('hidden');

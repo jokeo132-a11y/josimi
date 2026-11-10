@@ -68,7 +68,7 @@ test('local wallet operations wait for responsive RPC, not only a spawned daemon
   let checks = 0;
   const ready = await waitForRpcReady(async () => {
     checks += 1;
-    return { running: true, rpc: { state: checks < 3 ? 'stopped' : 'syncing' } };
+    return { running: true, rpc: { state: checks < 3 ? 'stopped' : 'syncing', synchronized: checks >= 3 } };
   }, { timeoutMs: 100, intervalMs: 5, delay: async () => {} });
   assert.equal(checks, 3);
   assert.equal(ready.rpc.state, 'syncing');
@@ -82,11 +82,22 @@ test('local RPC readiness fails promptly if monerod exits and times out when RPC
   }), /LOCAL_NODE_RPC_TIMEOUT/);
 });
 
+test('local RPC readiness rejects ambiguous or unsynchronized node states', async () => {
+  let clock = 0;
+  await assert.rejects(waitForRpcReady(async () => ({ running: true, rpc: { state: 'local', synchronized: null } }), {
+    timeoutMs: 10, intervalMs: 5, now: () => clock, delay: async (ms) => { clock += ms; }
+  }), /LOCAL_NODE_RPC_TIMEOUT/);
+  clock = 0;
+  await assert.rejects(waitForRpcReady(async () => ({ running: true, rpc: { state: 'syncing', synchronized: false } }), {
+    timeoutMs: 10, intervalMs: 5, now: () => clock, delay: async (ms) => { clock += ms; }
+  }), /LOCAL_NODE_RPC_TIMEOUT/);
+});
+
 test('local RPC readiness rejects a ready response that arrives after the deadline', async () => {
   let clock = 0;
   await assert.rejects(waitForRpcReady(async () => {
     clock = 11;
-    return { running: true, rpc: { state: 'synced' } };
+    return { running: true, rpc: { state: 'synced', synchronized: true } };
   }, { timeoutMs: 10, now: () => clock }), /LOCAL_NODE_RPC_TIMEOUT/);
 });
 
@@ -400,7 +411,7 @@ test('RPC readiness waits while the real manager is starting an automatic daemon
     assert.equal(manager.getStatus().restarting, true);
     const ready = waitForRpcReady(async () => {
       const status = manager.getStatus();
-      return { ...status, rpc: { state: restartSpawned ? 'syncing' : 'stopped' } };
+      return { ...status, rpc: { state: restartSpawned ? 'syncing' : 'stopped', synchronized: restartSpawned } };
     }, { timeoutMs: 1_000, intervalMs: 5 });
     const observed = ready.then((status) => { settled = true; return { status }; }, (error) => { settled = true; return { error }; });
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -421,9 +432,9 @@ test('RPC readiness waits while the real manager is starting an automatic daemon
 
 test('RPC readiness waits through an automatic restart without treating it as a permanent exit', async () => {
   const states = [
-    { running: true, rpc: { state: 'starting' } },
-    { running: false, restarting: true, rpc: { state: 'stopped' } },
-    { running: true, rpc: { state: 'syncing' } }
+    { running: true, rpc: { state: 'starting', synchronized: null } },
+    { running: false, restarting: true, rpc: { state: 'stopped', synchronized: null } },
+    { running: true, rpc: { state: 'syncing', synchronized: true } }
   ];
   let checks = 0;
   const result = await waitForRpcReady(async () => states[checks++], { timeoutMs: 100, intervalMs: 1, delay: async () => {} });

@@ -410,7 +410,7 @@ async function waitForRpcReady(readStatus, { timeoutMs = 120_000, intervalMs = 1
       throw new Error('LOCAL_NODE_EXITED');
     }
     if (now() >= deadline) throw new Error('LOCAL_NODE_RPC_TIMEOUT');
-    if (status.rpc && !['stopped', 'starting', 'offline'].includes(status.rpc.state)) return status;
+    if (status.rpc && ['syncing', 'synced'].includes(status.rpc.state) && status.rpc.synchronized === true) return status;
     await delay(Math.min(intervalMs, Math.max(0, deadline - now())));
   }
   throw new Error('LOCAL_NODE_RPC_TIMEOUT');
