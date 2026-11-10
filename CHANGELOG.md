@@ -1,4 +1,4 @@
-## v1.2.10 — 2026-11-10
+## v1.2.11 — 2026-11-10
 
 - Prevent duplicate local-daemon starts and make stop-during-start, daemon-exit recovery, and retry cancellation deterministic; RPC waiters see the daemon as restarting throughout recovery. Automatic crash recovery is bounded and user stop remains authoritative.
 - Let wallet create/open/restore continue while the local node starts and syncs in the background; tighten RPC readiness deadlines so stale or late node status cannot block wallet actions.
@@ -6,6 +6,7 @@
 - Explain that power loss or a system crash during initial asynchronous blockchain sync may require database verification or resynchronization; wallet key files are separate.
 - Localize successful-transfer notifications in Korean, English, Chinese, and Japanese.
 - Make the Windows release workflow verify the packaged `monerod.exe --version` and correctly locate the runtime manifest at root-level or wrapped ZIP paths before publication.
+- Normalize ZIP member separators in the release smoke-test regression cases so Windows and Linux runners validate the same paths.
 
 ## v1.2.8 — 2026-11-09
 

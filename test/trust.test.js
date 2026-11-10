@@ -19,6 +19,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   const nodeManager = read('src/node-manager.js');
   const readme = read('README.md');
   const privacy = read('PRIVACY.md');
+  const website = read('website/index.html');
   const packageJson = JSON.parse(read('package.json'));
   const verifier = read('scripts/verify-release-bundle.py');
   for (const source of [html, renderer, main, preload, nodeManager]) {
@@ -40,7 +41,9 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.10');
+  assert.equal(packageJson.version, '1.2.11');
+  assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
+  assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
@@ -265,6 +268,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.10'/);
+  assert.match(verify, /\$version = '1\.2\.11'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

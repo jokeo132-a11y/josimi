@@ -142,7 +142,7 @@ spec = importlib.util.spec_from_file_location('monerod_smoke', Path('scripts/smo
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 suffix = 'resources/app.asar.unpacked/assets/runtime/monero/manifest.json'
-for prefix in ('', 'josimi-1.2.10-x64/'):
+for prefix in ('', 'josimi-1.2.11-x64/'):
     for separator in ('/', '\\'):
         member = (prefix + suffix).replace('/', separator)
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -151,7 +151,7 @@ for prefix in ('', 'josimi-1.2.10-x64/'):
                 archive.writestr(member, '{}')
             with zipfile.ZipFile(archive_path) as archive:
                 found, root, _ = module.find_runtime_manifest(archive)
-                assert found == member, (found, member)
+                assert found.replace('\\', '/') == prefix + suffix, (found, prefix + suffix)
                 assert root.as_posix() == (prefix + suffix).rsplit('/', 1)[0]
 print('manifest-path cases passed')
 `;

@@ -1,6 +1,6 @@
 {
   "name": "josimi",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "josimi — non-custodial Monero wallet",
   "main": "src/main.js",
   "author": "josimi",
