@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.11');
+  assert.equal(packageJson.version, '1.2.12');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -129,6 +129,8 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   assert.match(renderer, /localNodeRpcWaitFailed: '로컬 노드가 응답하지 않아 연결을 확인하지 못했습니다/);
   assert.match(renderer, /status\.restarting/);
   assert.match(read('src/node-manager.js'), /restartMaxAttempts = 5/);
+  assert.match(main, /response\.result\.nettype !== 'mainnet'/);
+  assert.match(main, /info\.synchronized !== true/);
   assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS/);
   assert.match(main, /WALLET_SYNC_START_TIMEOUT_MS = 1_500/);
   assert.match(main, /async function startWalletBackgroundSyncWithinDeadline\(/);

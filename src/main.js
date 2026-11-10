@@ -171,6 +171,7 @@ async function getNodeInfo(node) {
   if (!response || !response.result || typeof response.result !== 'object' || Array.isArray(response.result)) {
     throw new Error('노드 RPC get_info 응답 형식이 올바르지 않습니다.');
   }
+  if (response.result.nettype !== 'mainnet') throw new Error('mainnet Monero 노드가 아닙니다.');
   return response.result;
 }
 
