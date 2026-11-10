@@ -40,7 +40,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.8');
+  assert.equal(packageJson.version, '1.2.9');
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
@@ -121,14 +121,25 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   const formEnd = renderer.indexOf("$('refreshBtn').addEventListener('click', refresh);", formStart);
   assert.ok(formStart >= 0 && formEnd > formStart);
   const submitHandler = renderer.slice(formStart, formEnd);
-  assert.match(submitHandler, /if \(action === 'create'\) \{\s*startLocalNodeInBackground\(\);/);
-  assert.match(submitHandler, /const nodeStatus = await ensureLocalNodeStartedOnce\(\)/);
+  assert.match(submitHandler, /if \(nodeModeValue === 'local'\) \{\s*nodeValue = localNodeUrl;\s*if \(localNodeConfigReady && localNodeSupported && !localNodeExplicitlyStopped\) void startLocalNodeInBackground\(\);/);
+  assert.doesNotMatch(submitHandler, /await ensureLocalNodeStartedOnce\(\)/);
+  assert.match(renderer, /localNodeRpcWaitFailed: '로컬 노드가 응답하지 않아 연결을 확인하지 못했습니다/);
+  assert.match(renderer, /status\.restarting/);
+  assert.match(read('src/node-manager.js'), /restartMaxAttempts = 5/);
   assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS/);
   assert.match(main, /WALLET_SYNC_START_TIMEOUT_MS = 1_500/);
   assert.match(main, /async function startWalletBackgroundSyncWithinDeadline\(/);
   const lifecycle = main.slice(main.indexOf("registerWalletOperationHandler('wallet-create'"), main.indexOf("ipcMain.handle('wallet-refresh'"));
   assert.equal((lifecycle.match(/loadSummary\(\{ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS \}\)/g) || []).length, 3);
   assert.equal((lifecycle.match(/startWalletBackgroundSyncWithinDeadline\(wallet\)/g) || []).length, 3);
+});
+
+test('successful transfer notifications use the active locale', () => {
+  const renderer = read('src/renderer.js');
+  for (const code of ['ko', 'en', 'zh', 'ja']) assert.match(renderer, new RegExp(`Object\\.assign\\(LANG\\.${code}, \\{ sendSuccess:`));
+  assert.match(renderer, /showTransferSuccessToast\(result\.txHashes\)/);
+  assert.match(renderer, /showTransferSuccessToast\(status\.txHashes\)/);
+  assert.doesNotMatch(renderer, /showToast\(`송금 완료/);
 });
 
 test('release build and publish jobs have least-privilege permissions and immutable action pins', () => {
@@ -150,6 +161,8 @@ test('release build and publish jobs have least-privilege permissions and immuta
   assert.doesNotMatch(release, /josimi\.exe/);
   assert.match(release, /python scripts\/verify-release-bundle\.py/);
   assert.match(release, /verify-release-bundle\.py/);
+  assert.match(release, /python scripts\/smoke-test-monero-runtime\.py/);
+  assert.match(read('scripts/smoke-test-monero-runtime.py'), /--version/);
   assert.match(read('scripts/verify-release-bundle.py'), /hashlib\.sha256\(data\)\.hexdigest\(\)/);
   assert.match(read('scripts/verify-release-bundle.py'), /sourceArchiveSha256/);
   assert.match(release, /rev-list -n 1/);
@@ -252,6 +265,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.8'/);
+  assert.match(verify, /\$version = '1\.2\.9'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

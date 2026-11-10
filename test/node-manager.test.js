@@ -117,6 +117,8 @@ test('monerod binds administrative RPC to loopback, prunes, and disables UPnP', 
   assert.equal(valueFor('--rpc-bind-port'), String(RPC_PORT));
   assert.ok(!args.includes('--zmq-pub'));
   assert.ok(args.includes('--prune-blockchain'));
+  assert.ok(args.includes('--sync-pruned-blocks'));
+  assert.ok(!args.includes('--db-sync-mode'), 'use the exact Monero v0.18.5.4 default staged sync behavior');
   assert.ok(args.includes('--no-igd'));
   assert.ok(args.includes('--hide-my-port'));
   assert.ok(!args.includes('0.0.0.0'));
@@ -285,4 +287,234 @@ test('source contains no runtime archive downloader or ZIP extraction path', asy
   assert.doesNotMatch(source, /downloadOfficialArchive|runPowerShellExtraction|Expand-Archive/);
   assert.match(source, /bundledRuntimeDir/);
   assert.match(source, /sha256File\(filePath\)/);
+});
+
+
+test('concurrent monerod start requests share one spawn while startup is pending', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-start-coalesce-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const spawnEntered = createGate();
+  const allowSpawn = createGate();
+  const child = createChild();
+  let spawnCount = 0;
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, spawnProcess: () => {
+    spawnCount += 1;
+    spawnEntered.resolve();
+    allowSpawn.promise.then(() => child.emit('spawn'));
+    return child;
+  } });
+  try {
+    const first = manager.start();
+    await spawnEntered.promise;
+    const second = manager.start();
+    allowSpawn.resolve();
+    const [a, b] = await Promise.all([first, second]);
+    assert.equal(spawnCount, 1);
+    assert.equal(a.running, true);
+    assert.equal(b.running, true);
+    await manager.stop(async () => { child.exitCode = 0; child.emit('close', 0, null); });
+  } finally {
+    allowSpawn.resolve();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('stopping during the spawn handshake cancels promptly and reaps the child', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-stop-spawn-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const spawnEntered = createGate();
+  const child = createChild();
+  child.kill = (signal) => {
+    child.exitCode = signal === 'SIGKILL' ? 1 : 0;
+    setImmediate(() => child.emit('close', child.exitCode, signal || null));
+    return true;
+  };
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, startTimeoutMs: 5_000, closeTimeoutMs: 100, spawnProcess: () => { spawnEntered.resolve(); return child; } });
+  try {
+    const pendingStart = manager.start();
+    await spawnEntered.promise;
+    const startedAt = Date.now();
+    await manager.stop();
+    await pendingStart;
+    assert.ok(Date.now() - startedAt < 1_000, 'stop should not wait for the spawn timeout');
+    assert.equal(manager.getStatus().running, false);
+    assert.equal(manager.getStatus().restarting, false);
+    assert.equal(manager.child, null);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('unexpected daemon exit triggers bounded automatic recovery; explicit stop disables it', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-auto-restart-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const children = [];
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, restartBaseDelayMs: 5, restartMaxDelayMs: 5, restartMaxAttempts: 2, stableRuntimeMs: 60_000, spawnProcess: () => {
+    const child = createChild();
+    children.push(child);
+    setImmediate(() => child.emit('spawn'));
+    return child;
+  } });
+  try {
+    await manager.start();
+    children[0].exitCode = 1;
+    children[0].emit('close', 1, null);
+    assert.equal(manager.getStatus().restarting, true);
+    const deadline = Date.now() + 1_000;
+    while (children.length < 2 && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal(children.length, 2, 'an unexpected exit should restart the bundled daemon');
+    assert.equal(manager.getStatus().running, true);
+    await manager.stop(async () => { children[1].exitCode = 0; children[1].emit('close', 0, null); });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    assert.equal(children.length, 2, 'a user-requested stop must not be undone by recovery');
+    assert.equal(manager.getStatus().restarting, false);
+  } finally {
+    if (manager.isRunning()) await manager.stop();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('RPC readiness waits while the real manager is starting an automatic daemon restart', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-restart-starting-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const allowRestartSpawn = createGate();
+  let restartSpawned = false;
+  const children = [];
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, restartBaseDelayMs: 5, restartMaxDelayMs: 5, spawnProcess: () => {
+    const child = createChild();
+    children.push(child);
+    if (children.length === 1) setImmediate(() => child.emit('spawn'));
+    else {
+      allowRestartSpawn.promise.then(() => { restartSpawned = true; child.emit('spawn'); });
+    }
+    return child;
+  } });
+  let settled = false;
+  try {
+    await manager.start();
+    children[0].exitCode = 1;
+    children[0].emit('close', 1, null);
+    const spawnDeadline = Date.now() + 1_000;
+    while (children.length < 2 && Date.now() < spawnDeadline) await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal(children.length, 2, 'the automatic restart should enter its spawn phase');
+    assert.equal(manager.getStatus().restarting, true);
+    const ready = waitForRpcReady(async () => {
+      const status = manager.getStatus();
+      return { ...status, rpc: { state: restartSpawned ? 'syncing' : 'stopped' } };
+    }, { timeoutMs: 1_000, intervalMs: 5 });
+    const observed = ready.then((status) => { settled = true; return { status }; }, (error) => { settled = true; return { error }; });
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    assert.equal(settled, false, 'readiness should wait through verification/spawn, not report a permanent exit');
+    allowRestartSpawn.resolve();
+    const outcome = await observed;
+    assert.equal(outcome.error, undefined);
+    assert.equal(outcome.status.running, true);
+    assert.equal(outcome.status.rpc.state, 'syncing');
+  } finally {
+    allowRestartSpawn.resolve();
+    await manager.stop(async () => {
+      if (manager.child) { manager.child.exitCode = 0; manager.child.emit('close', 0, null); }
+    });
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('RPC readiness waits through an automatic restart without treating it as a permanent exit', async () => {
+  const states = [
+    { running: true, rpc: { state: 'starting' } },
+    { running: false, restarting: true, rpc: { state: 'stopped' } },
+    { running: true, rpc: { state: 'syncing' } }
+  ];
+  let checks = 0;
+  const result = await waitForRpcReady(async () => states[checks++], { timeoutMs: 100, intervalMs: 1, delay: async () => {} });
+  assert.equal(checks, 3);
+  assert.equal(result.rpc.state, 'syncing');
+});
+
+test('RPC readiness has a strict deadline even when a status request never resolves', async () => {
+  const startedAt = Date.now();
+  await assert.rejects(waitForRpcReady(() => new Promise(() => {}), { timeoutMs: 20 }), /LOCAL_NODE_RPC_TIMEOUT/);
+  assert.ok(Date.now() - startedAt < 500, 'a hung status request should be bounded by the readiness deadline');
+});
+
+
+test('automatic daemon recovery stops after its bounded retry budget is exhausted', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-restart-budget-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const children = [];
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, restartBaseDelayMs: 2, restartMaxDelayMs: 2, restartMaxAttempts: 2, stableRuntimeMs: 60_000, spawnProcess: () => {
+    const child = createChild();
+    children.push(child);
+    setImmediate(() => child.emit('spawn'));
+    return child;
+  } });
+  const waitForCount = async (count) => {
+    const deadline = Date.now() + 1_000;
+    while (children.length < count && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 2));
+    assert.equal(children.length, count);
+  };
+  try {
+    await manager.start();
+    for (let index = 0; index < 3; index += 1) {
+      children[index].exitCode = 1;
+      children[index].emit('close', 1, null);
+      if (index < 2) await waitForCount(index + 2);
+    }
+    assert.equal(manager.getStatus().restartExhausted, true);
+    assert.equal(manager.getStatus().restarting, false);
+    assert.equal(manager.autoRestartEnabled, false);
+    assert.equal(children.length, 3, 'initial start plus exactly two restart attempts are allowed');
+  } finally {
+    if (manager.isRunning()) await manager.stop();
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test('failed spawn rejects cleanly and does not leave a stale child handle', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-spawn-error-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const child = createChild();
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, spawnProcess: () => {
+    setImmediate(() => {
+      child.emit('error', new Error('spawn failed'));
+      child.exitCode = 1;
+      child.emit('close', 1, null);
+    });
+    return child;
+  } });
+  try {
+    await assert.rejects(manager.start(), /monerod를 실행하지 못했습니다/);
+    assert.equal(manager.child, null);
+    assert.equal(manager.getStatus().running, false);
+    assert.equal(manager.getStatus().restarting, false);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});
+
+test('explicit stop during automatic-restart backoff cancels the queued respawn', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'josimi-node-stop-backoff-'));
+  const bundledRuntimeDir = await createRuntimeBundle(root);
+  const children = [];
+  const manager = new LocalNodeManager({ root: path.join(root, 'user-data'), platform: 'win32', bundledRuntimeDir, restartBaseDelayMs: 50, restartMaxDelayMs: 50, spawnProcess: () => {
+    const child = createChild();
+    children.push(child);
+    setImmediate(() => child.emit('spawn'));
+    return child;
+  } });
+  try {
+    await manager.start();
+    children[0].exitCode = 1;
+    children[0].emit('close', 1, null);
+    assert.equal(manager.getStatus().restarting, true);
+    await manager.stop();
+    await new Promise((resolve) => setTimeout(resolve, 75));
+    assert.equal(children.length, 1);
+    assert.equal(manager.getStatus().restarting, false);
+    assert.equal(manager.getStatus().running, false);
+  } finally {
+    if (manager.isRunning()) await manager.stop();
+    await fs.rm(root, { recursive: true, force: true });
+  }
 });

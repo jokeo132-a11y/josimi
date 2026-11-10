@@ -25,6 +25,10 @@ Object.assign(LANG.ko, { txConfirmed:'확정', txLocked:'잠금 중', txPending:
 Object.assign(LANG.en, { txConfirmed:'Confirmed', txLocked:'Locked', txPending:'Pending' });
 Object.assign(LANG.zh, { txConfirmed:'已确认', txLocked:'锁定中', txPending:'待处理' });
 Object.assign(LANG.ja, { txConfirmed:'確定済み', txLocked:'ロック中', txPending:'保留中' });
+Object.assign(LANG.ko, { sendSuccess: '송금이 완료됐습니다.', sendTxHash: '거래 해시' });
+Object.assign(LANG.en, { sendSuccess: 'Transfer sent.', sendTxHash: 'Transaction hash' });
+Object.assign(LANG.zh, { sendSuccess: '转账已发送。', sendTxHash: '交易哈希' });
+Object.assign(LANG.ja, { sendSuccess: '送金が完了しました。', sendTxHash: '取引ハッシュ' });
 Object.assign(LANG.ko, { reviewPriority: '우선순위' });
 Object.assign(LANG.en, { reviewPriority: 'Priority' });
 Object.assign(LANG.zh, { reviewPriority: '优先级' });
@@ -60,7 +64,7 @@ const LOCALIZED_RUNTIME = {
     nodeLocalNotice:'지갑 RPC는 127.0.0.1의 로컬 monerod에만 연결됩니다. 노드는 외부 P2P 피어에 연결해 IP를 알릴 수 있으며, 기본 포트 18080에서 계속 수신 대기합니다. --hide-my-port는 피어 목록 광고만 막고, 외부 연결 가능성은 방화벽에 달려 있습니다.',
     localNodeSummary:'로컬 노드 (monerod)', localNodeIntro:'josimi Windows ZIP에는 Monero CLI 전체가 아닌 공식 monerod v0.18.5.4와 필요한 런타임 파일만 포함됩니다. 빌드 시 원본 archive SHA-256을 확인하고, 실행 전 파일 무결성을 검사해 monerod를 창 없이 실행합니다.',
     localNodeChecking:'로컬 노드 상태 확인 중', localNodeInstall:'포함된 monerod 검증', localNodeStart:'monerod 시작', localNodeStop:'노드 중지',
-    localNodeStorageNotice:'첫 동기화는 수 시간 또는 며칠이 걸리고 큰 저장 공간과 대역폭을 쓸 수 있습니다. pruning과 UPnP 비활성화를 적용하지만 monerod는 네트워크 인터페이스의 기본 P2P 포트 18080에서 계속 수신 대기합니다. --hide-my-port는 피어 후보로 광고되는 것만 막으며, 외부 연결 가능성은 PC 방화벽에 달려 있습니다.',
+    localNodeStorageNotice:'첫 동기화는 수 시간 또는 며칠이 걸리고 큰 저장 공간과 대역폭을 쓸 수 있습니다. Monero 기본 빠른 DB 동기화는 체인 끝에 가까워지면 안전 모드로 전환되며, pruning과 UPnP 비활성화도 적용합니다. 초기 동기화 중 정전이나 시스템 강제 종료로 블록체인 DB를 다시 확인하거나 재동기화해야 할 수 있지만, 지갑 키 파일과는 별개입니다. monerod는 기본 P2P 포트 18080에서 계속 수신 대기하고, --hide-my-port는 피어 후보 광고만 막습니다. 외부 연결 가능성은 PC 방화벽에 달려 있습니다.',
     localNodeUnsupported:'로컬 노드는 Windows에서만 지원됩니다.', localNodeMissing:'포함된 monerod 런타임을 찾지 못했습니다. 공식 josimi Windows ZIP을 다시 설치하세요. 실행 중 다운로드는 하지 않습니다.',
     localNodeVerifying:'포함된 monerod 파일 검증 중', localNodeInstalled:'monerod와 필요한 런타임 파일이 포함되어 있습니다. 실행 전 각 파일의 SHA-256을 포함된 manifest와 대조합니다. manifest 자체는 별도 서명되지 않았습니다.', localNodeRunning:'monerod 실행 중 — 동기화 상태를 확인하세요.', localNodeStopped:'로컬 monerod 중지됨', localNodeSynced:'로컬 노드 동기화 완료', localNodeSyncing:'로컬 노드 동기화 중',
 
@@ -75,7 +79,7 @@ const LOCALIZED_RUNTIME = {
     nodeLocalNotice:'Wallet RPC connects only to local monerod at 127.0.0.1. The node connects to Monero P2P peers, which can see its IP, and still listens on the default P2P port 18080. --hide-my-port only prevents peer-list advertisement; the firewall controls inbound reachability.',
     localNodeSummary:'Local node (monerod)', localNodeIntro:'The josimi Windows ZIP includes the official Monero v0.18.5.4 monerod daemon and required runtime files, not the full CLI. The source archive SHA-256 is checked at build time, and monerod runs hidden after its files are verified.',
     localNodeChecking:'Checking local node status', localNodeInstall:'Verify bundled monerod', localNodeStart:'Start monerod', localNodeStop:'Stop node',
-    localNodeStorageNotice:'Initial sync may take hours or days and use substantial disk space and bandwidth. Pruning is enabled and UPnP is disabled, but monerod still listens on the default P2P port 18080 across network interfaces. --hide-my-port only prevents peer-list advertisement; inbound reachability depends on the PC firewall.',
+    localNodeStorageNotice:'Initial sync may take hours or days and use substantial disk space and bandwidth. The Monero default fast database-sync mode switches to safe mode near the chain tip; pruning is enabled and UPnP is disabled. A power loss or system crash during initial async sync may require checking or resyncing the blockchain database, but wallet key files are separate. monerod still listens on the default P2P port 18080; --hide-my-port only prevents peer-list advertisement, and inbound reachability depends on the PC firewall.',
     localNodeUnsupported:'Local node is supported on Windows only.', localNodeMissing:'The bundled monerod runtime was not found. Reinstall the official josimi Windows ZIP; the app does not download it at runtime.',
     localNodeVerifying:'Verifying bundled monerod files', localNodeInstalled:'monerod and its required runtime files are bundled; file SHA-256 values are checked against the included manifest before launch. The manifest itself is not separately signed.', localNodeRunning:'monerod is running — check sync status.', localNodeStopped:'Local monerod stopped', localNodeSynced:'Local node synced', localNodeSyncing:'Local node syncing',
 
@@ -90,7 +94,7 @@ const LOCALIZED_RUNTIME = {
     nodeLocalNotice:'钱包 RPC 仅连接到 127.0.0.1 上的本地 monerod。节点会连接 Monero P2P 节点并可能暴露 IP，且仍在默认 P2P 端口 18080 上监听。--hide-my-port 只阻止节点被列为候选节点；外部能否连接取决于电脑防火墙。',
     localNodeSummary:'本地节点（monerod）', localNodeIntro:'josimi Windows ZIP 仅包含 Monero 官方 v0.18.5.4 monerod 守护进程及必要运行库，不包含完整 CLI。构建时核对源 archive SHA-256，启动前验证文件完整性，并在后台运行。',
     localNodeChecking:'正在检查本地节点状态', localNodeInstall:'验证内置 monerod', localNodeStart:'启动 monerod', localNodeStop:'停止节点',
-    localNodeStorageNotice:'首次同步可能需要数小时或数天，并占用大量磁盘空间和网络流量。已启用裁剪并禁用 UPnP，但 monerod 仍会在网络接口的默认 P2P 端口 18080 上监听。--hide-my-port 仅阻止节点被列为候选节点；外部能否连接取决于电脑防火墙。',
+    localNodeStorageNotice:'首次同步可能需要数小时或数天，并占用较多磁盘空间和网络流量。Monero 默认快速数据库同步模式会在接近链顶时切换到安全模式；同时启用裁剪并禁用 UPnP。初次异步同步期间若断电或系统崩溃，区块链数据库可能需要重新检查或同步，但钱包密钥文件单独保存，不受影响。monerod 仍会在默认 P2P 端口 18080 上监听；--hide-my-port 只阻止节点被列为候选节点，外部能否连接取决于电脑防火墙。',
     localNodeUnsupported:'本地节点仅支持 Windows。', localNodeMissing:'未找到内置 monerod 运行文件。请重新安装官方 josimi Windows ZIP；应用运行时不会下载节点。',
     localNodeVerifying:'正在验证内置 monerod 文件', localNodeInstalled:'已包含 monerod 和必要运行库；启动前会将文件 SHA-256 与内置清单核对。该清单本身未单独签名。', localNodeRunning:'monerod 正在运行 — 请查看同步状态。', localNodeStopped:'本地 monerod 已停止', localNodeSynced:'本地节点已同步', localNodeSyncing:'本地节点同步中',
 
@@ -105,7 +109,7 @@ const LOCALIZED_RUNTIME = {
     nodeLocalNotice:'ウォレットRPCは127.0.0.1のローカルmonerodにのみ接続します。ノードはMonero P2Pピアに接続しIPを知られる可能性があり、既定P2Pポート18080でも待ち受けます。--hide-my-portはピア候補としての広告だけを止め、外部から接続できるかはPCのファイアウォールに依存します。',
     localNodeSummary:'ローカルノード（monerod）', localNodeIntro:'josimi Windows ZIPにはMonero公式v0.18.5.4のmonerodデーモンと必要なランタイムファイルのみを含み、CLI全体は含みません。ビルド時に元archiveのSHA-256を照合し、起動前にファイルを検証してバックグラウンド実行します。',
     localNodeChecking:'ローカルノードの状態を確認中', localNodeInstall:'同梱monerodを検証', localNodeStart:'monerodを起動', localNodeStop:'ノードを停止',
-    localNodeStorageNotice:'初回同期には数時間から数日かかり、大きなストレージと通信量を使う場合があります。pruningとUPnP無効化を適用しますが、monerodはネットワークインターフェースの既定P2Pポート18080で引き続き待ち受けます。--hide-my-portはピア候補としての広告だけを止め、外部からの接続可否はPCのファイアウォールに依存します。',
+    localNodeStorageNotice:'初回同期には数時間から数日かかり、ストレージと通信量を多く使う場合があります。Monero既定の高速DB同期はチェーン先端に近づくと安全モードに切り替わり、pruningとUPnP無効化も適用します。初回の非同期同期中に停電やシステムクラッシュが起きると、ブロックチェーンDBの再確認や再同期が必要になる場合がありますが、ウォレットキーのファイルとは別です。monerodは既定P2Pポート18080で引き続き待ち受け、--hide-my-portはピア候補の広告だけを止めます。外部から接続できるかはPCのファイアウォールに依存します。',
     localNodeUnsupported:'ローカルノードはWindowsのみ対応です。', localNodeMissing:'同梱monerodランタイムが見つかりません。公式josimi Windows ZIPを再インストールしてください。実行中のダウンロードはありません。',
     localNodeVerifying:'同梱monerodファイルを検証中', localNodeInstalled:'monerodと必要なランタイムファイルを同梱しています。起動前に各ファイルのSHA-256を同梱マニフェストと照合します。マニフェスト自体は個別に署名されていません。', localNodeRunning:'monerod実行中 — 同期状態を確認してください。', localNodeStopped:'ローカルmonerod停止中', localNodeSynced:'ローカルノード同期完了', localNodeSyncing:'ローカルノード同期中',
 
@@ -116,6 +120,10 @@ const LOCALIZED_RUNTIME = {
   }
 };
 for (const code of Object.keys(LOCALIZED_RUNTIME)) Object.assign(LANG[code], LOCALIZED_RUNTIME[code]);
+Object.assign(LANG.ko, { localNodeRpcWaitFailed: '로컬 노드가 응답하지 않아 연결을 확인하지 못했습니다. 노드 상태를 확인한 뒤 다시 시도하세요.', localNodeRestarting: 'monerod가 종료되어 자동으로 다시 시작하고 있습니다.', localNodeRestartFailed: '로컬 노드가 계속 종료되어 자동 재시도를 멈췄습니다. 오류 내용을 확인한 뒤 다시 시도하세요.', localNodeStatusUnavailable: '노드 상태를 확인하지 못했습니다. 잠시 후 자동으로 다시 확인합니다.' });
+Object.assign(LANG.en, { localNodeRpcWaitFailed: 'The local node did not respond in time. Check its status and try again.', localNodeRestarting: 'monerod stopped unexpectedly and is restarting automatically.', localNodeRestartFailed: 'The local node kept stopping, so automatic retries have paused. Check the error and try again.', localNodeStatusUnavailable: 'Node status could not be checked. It will be checked again automatically.' });
+Object.assign(LANG.zh, { localNodeRpcWaitFailed: '本地节点未能及时响应。请检查节点状态后重试。', localNodeRestarting: 'monerod 意外停止，正在自动重新启动。', localNodeRestartFailed: '本地节点持续停止，自动重试已暂停。请查看错误后重试。', localNodeStatusUnavailable: '无法检查节点状态，稍后会自动重试。' });
+Object.assign(LANG.ja, { localNodeRpcWaitFailed: 'ローカルノードが時間内に応答しませんでした。状態を確認して再試行してください。', localNodeRestarting: 'monerodが予期せず停止したため、自動で再起動しています。', localNodeRestartFailed: 'ローカルノードが繰り返し停止したため、自動再試行を停止しました。エラーを確認して再試行してください。', localNodeStatusUnavailable: 'ノードの状態を確認できませんでした。しばらくして自動で再確認します。' });
 const SEED_REAUTH_TEXT = {
   ko: { title: '복구 seed 표시', message: '현재 지갑 비밀번호를 다시 입력해야 seed를 표시할 수 있습니다. 비밀번호 확인은 임시 메모리 지갑에서 수행되며 기존 지갑 파일을 변경하지 않습니다.', password: '현재 지갑 비밀번호', confirm: '확인 후 계속', cancel: '취소' },
   en: { title: 'Reveal recovery seed', message: 'Enter the current wallet password to reveal the seed. Verification uses a temporary in-memory wallet and does not change the existing wallet files.', password: 'Current wallet password', confirm: 'Verify and continue', cancel: 'Cancel' },
@@ -176,6 +184,12 @@ let toastTimer;
 let selectedWalletFile = null;
 let walletFormSubmissionInFlight = false;
 let localNodeStartPromise = null;
+let localNodeStartPromiseIntent = -1;
+let localNodeIntent = 0;
+let localNodeExplicitlyStopped = false;
+let localNodeConfigReady = false;
+let localNodeSupported = false;
+let localNodeStatusRequestToken = 0;
 let inactivityTimer;
 let syncTimer;
 let syncRequestInFlight = false;
@@ -325,16 +339,29 @@ function renderLocalNodeStatus(status = {}) {
   const dict = LANG[language];
   renderLocalNodeStatus.lastStatus = status;
   let label = status.supported ? status.installed ? dict.localNodeInstalled : dict.localNodeMissing : dict.localNodeUnsupported;
-  if (status.installing) {
+  if (status.statusUnavailable) {
+    label = dict.localNodeStatusUnavailable;
+  } else if (status.restarting) {
+    label = dict.localNodeRestarting;
+  } else if (status.restartExhausted) {
+    label = dict.localNodeRestartFailed;
+  } else if (status.installing) {
     label = dict.localNodeVerifying;
   } else if (status.running) {
     label = status.rpc?.state === 'synced' ? dict.localNodeSynced : status.rpc?.state === 'syncing' ? dict.localNodeSyncing : ['starting', 'stopped'].includes(status.rpc?.state) ? dict.nodeLocalStarting : dict.localNodeRunning;
     if (status.rpc?.height) label += ` · ${status.rpc.progress || 0}% · ${Number(status.rpc.height).toLocaleString()} / ${Number(status.rpc.targetHeight || 0).toLocaleString()}`;
   } else if (status.installed && status.supported) label += ` · ${dict.localNodeStopped}`;
   $('localNodeStatus').textContent = label;
-  $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing);
-  $('startLocalNodeBtn').disabled = !status.supported || !status.installed || Boolean(status.installing) || Boolean(status.running);
-  $('stopLocalNodeBtn').disabled = !status.running;
+  $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing) || Boolean(status.statusUnavailable);
+  $('startLocalNodeBtn').disabled = !status.supported || !status.installed || Boolean(status.installing) || Boolean(status.running) || Boolean(status.restarting) || Boolean(status.statusUnavailable);
+  $('stopLocalNodeBtn').disabled = (!status.running && !status.restarting) || Boolean(status.statusUnavailable);
+  if (status.restartExhausted && $('nodeMode').value === 'local') {
+    showError('localNodeError', new Error(dict.localNodeRestartFailed));
+    $('retryLocalNodeBtn').classList.remove('hidden');
+  } else if (status.running && !status.statusUnavailable) {
+    clearError('localNodeError');
+    $('retryLocalNodeBtn').classList.add('hidden');
+  }
   renderNodeConnectionSummary(status);
 }
 function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus || {}) {
@@ -343,8 +370,17 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   let headline = dict.nodeLocalPreparing;
   let detail = dict.localNodeChecking;
   let progress = Number(status.rpc?.progress);
-  const syncing = Boolean(status.running && ['downloading', 'syncing'].includes(status.rpc?.state));
-  if (remote) {
+  const syncing = Boolean(!status.statusUnavailable && !status.restarting && status.running && ['downloading', 'syncing'].includes(status.rpc?.state));
+  if (status.statusUnavailable) {
+    headline = dict.nodeLocalPreparing;
+    detail = dict.localNodeStatusUnavailable;
+  } else if (status.restarting) {
+    headline = dict.nodeLocalPreparing;
+    detail = dict.localNodeRestarting;
+  } else if (status.restartExhausted) {
+    headline = dict.nodeLocalStoppedShort;
+    detail = dict.localNodeRestartFailed;
+  } else if (remote) {
     headline = dict.nodeRemoteSelected;
     detail = dict.nodeRemoteSummary;
   } else if (status.supported === false) {
@@ -381,9 +417,15 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   else $('localNodeProgress').value = 0;
 }
 async function refreshLocalNodeStatus() {
-  try { renderLocalNodeStatus(await window.josimi.localNodeStatus()); } catch (_) {}
+  const requestToken = ++localNodeStatusRequestToken;
+  try {
+    const status = await window.josimi.localNodeStatus();
+    if (requestToken === localNodeStatusRequestToken) renderLocalNodeStatus(status);
+  } catch (_) {
+    if (requestToken === localNodeStatusRequestToken) renderLocalNodeStatus({ ...(renderLocalNodeStatus.lastStatus || {}), statusUnavailable: true });
+  }
 }
-window.josimi.onLocalNodeStatus(renderLocalNodeStatus);
+window.josimi.onLocalNodeStatus((status) => { localNodeStatusRequestToken += 1; renderLocalNodeStatus(status); });
 window.josimi.onWalletSyncStatus((status) => {
   walletSyncStartState = status?.state || 'running';
   if (renderSync.lastStatus) renderSync(renderSync.lastStatus);
@@ -404,57 +446,69 @@ function updateNodeModeFields() {
   if (!local) { $('localNodeError').classList.add('hidden'); $('retryLocalNodeBtn').classList.add('hidden'); }
   renderNodeConnectionSummary();
 }
-$('nodeMode').addEventListener('change', updateNodeModeFields);
+$('nodeMode').addEventListener('change', () => {
+  localNodeIntent += 1;
+  localNodeExplicitlyStopped = $('nodeMode').value !== 'local';
+  updateNodeModeFields();
+  if ($('nodeMode').value === 'local') {
+    localNodeExplicitlyStopped = false;
+    void startLocalNodeInBackground();
+  } else if ($('appView').classList.contains('hidden')) {
+    window.josimi.localNodeStop().then(refreshLocalNodeStatus).catch((error) => {
+      showError('localNodeError', error);
+      $('retryLocalNodeBtn').classList.remove('hidden');
+    });
+  }
+});
 try {
   const savedNodeMode = localStorage.getItem('josimi.nodeMode');
   if (savedNodeMode === 'remote' || savedNodeMode === 'local') $('nodeMode').value = savedNodeMode;
 } catch (_) {}
 updateNodeModeFields();
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-async function ensureLocalNodeStarted() {
-  let lastError;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    let status = await window.josimi.localNodeStatus();
-    if (!status.installed) await window.josimi.localNodeInstall();
-    status = await window.josimi.localNodeStatus();
-    if (!status.running) {
-      try { await window.josimi.localNodeStart(); }
-      catch (error) {
-        lastError = error;
-        const afterFailure = await window.josimi.localNodeStatus().catch(() => null);
-        if (afterFailure?.running || attempt === 2) throw error;
-        await wait(1_000 * (attempt + 1));
-        continue;
-      }
-    }
-    try { return await window.josimi.localNodeWaitReady(); }
-    catch (error) {
-      const current = await window.josimi.localNodeStatus().catch(() => null);
-      if (error.message === 'LOCAL_NODE_EXITED' && attempt < 2 && !current?.running) {
-        lastError = error;
-        await wait(1_000 * (attempt + 1));
-        continue;
-      }
-      if (error.message === 'LOCAL_NODE_RPC_TIMEOUT') throw new Error(LANG[language].localNodeRpcWaitFailed);
-      throw error;
-    }
+async function ensureLocalNodeStarted(intent = localNodeIntent) {
+  assertLocalNodeIntent(intent);
+  if (!localNodeConfigReady || !localNodeSupported) throw new Error(LANG[language].localNodeUnsupported);
+  let status = await window.josimi.localNodeStatus();
+  assertLocalNodeIntent(intent);
+  if (!status.supported) throw new Error(LANG[language].localNodeUnsupported);
+  if (!status.installed) {
+    await window.josimi.localNodeInstall();
+    assertLocalNodeIntent(intent);
   }
-  throw lastError || new Error(LANG[language].localNodeRpcWaitFailed);
+  status = await window.josimi.localNodeStatus();
+  assertLocalNodeIntent(intent);
+  if (!status.running && !status.restarting) await window.josimi.localNodeStart();
+  assertLocalNodeIntent(intent);
+  try { return await window.josimi.localNodeWaitReady(); }
+  catch (error) {
+    assertLocalNodeIntent(intent);
+    if (error.message === 'LOCAL_NODE_RPC_TIMEOUT') throw new Error(LANG[language].localNodeRpcWaitFailed);
+    if (error.message === 'LOCAL_NODE_EXITED') throw new Error(LANG[language].localNodeRestartFailed);
+    throw error;
+  }
+}
+function assertLocalNodeIntent(intent) {
+  if (intent !== localNodeIntent || $('nodeMode').value !== 'local') throw new Error('LOCAL_NODE_CANCELLED');
 }
 function ensureLocalNodeStartedOnce() {
-  if (!localNodeStartPromise) {
-    localNodeStartPromise = ensureLocalNodeStarted().finally(() => { localNodeStartPromise = null; });
+  const intent = localNodeIntent;
+  if (!localNodeStartPromise || localNodeStartPromiseIntent !== intent) {
+    localNodeStartPromiseIntent = intent;
+    localNodeStartPromise = ensureLocalNodeStarted(intent).finally(() => {
+      if (localNodeStartPromiseIntent === intent) { localNodeStartPromise = null; localNodeStartPromiseIntent = -1; }
+    });
   }
   return localNodeStartPromise;
 }
 function startLocalNodeInBackground() {
+  if ($('nodeMode').value !== 'local' || localNodeExplicitlyStopped || !localNodeConfigReady || !localNodeSupported) return Promise.resolve(null);
+  const intent = localNodeIntent;
   return ensureLocalNodeStartedOnce().then(refreshLocalNodeStatus).catch((error) => {
+    if (error.message === 'LOCAL_NODE_CANCELLED' || intent !== localNodeIntent || $('nodeMode').value !== 'local') return null;
     showError('localNodeError', error);
     $('retryLocalNodeBtn').classList.remove('hidden');
+    return null;
   });
-}
-if ($('nodeMode').value === 'local') {
-  void startLocalNodeInBackground();
 }
 function renderSummary(summary) {
   const sessionId = Number(summary?.walletSessionId);
@@ -503,8 +557,15 @@ for (const id of ['installLocalNodeBtn', 'startLocalNodeBtn', 'stopLocalNodeBtn'
   button.disabled = true;
   try {
     if (id === 'installLocalNodeBtn') await window.josimi.localNodeInstall();
-    else if (id === 'startLocalNodeBtn') await window.josimi.localNodeStart();
-    else await window.josimi.localNodeStop();
+    else if (id === 'startLocalNodeBtn') {
+      localNodeExplicitlyStopped = false;
+      localNodeIntent += 1;
+      await window.josimi.localNodeStart();
+    } else {
+      localNodeExplicitlyStopped = true;
+      localNodeIntent += 1;
+      await window.josimi.localNodeStop();
+    }
     await refreshLocalNodeStatus();
   } catch (error) { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); await refreshLocalNodeStatus(); }
   finally { button.disabled = false; }
@@ -513,8 +574,10 @@ $('retryLocalNodeBtn').addEventListener('click', async () => {
   clearError('localNodeError');
   $('retryLocalNodeBtn').classList.add('hidden');
   $('retryLocalNodeBtn').disabled = true;
-  try { await ensureLocalNodeStarted(); await refreshLocalNodeStatus(); }
-  catch (error) { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); }
+  localNodeExplicitlyStopped = false;
+  localNodeIntent += 1;
+  try { await ensureLocalNodeStartedOnce(); await refreshLocalNodeStatus(); }
+  catch (error) { if (error.message !== 'LOCAL_NODE_CANCELLED') { showError('localNodeError', error); $('retryLocalNodeBtn').classList.remove('hidden'); } }
   finally { $('retryLocalNodeBtn').disabled = false; }
 });
  $('receiveAccount').addEventListener('change', () => renderAccountManagement(currentAccounts, currentAddressBook));
@@ -614,10 +677,19 @@ async function configureNodeInput() {
   try {
     const config = await window.josimi.config();
     if (typeof config.localNodeUrl === 'string') localNodeUrl = config.localNodeUrl;
-    $('nodeMode').querySelector('option[value="local"]').disabled = !config.localNodeSupported;
-    if (!config.localNodeSupported && $('nodeMode').value === 'local') $('nodeMode').value = 'remote';
+    localNodeConfigReady = true;
+    localNodeSupported = Boolean(config.localNodeSupported);
+    $('nodeMode').querySelector('option[value="local"]').disabled = !localNodeSupported;
+    if (!localNodeSupported && $('nodeMode').value === 'local') $('nodeMode').value = 'remote';
     updateNodeModeFields();
-  } catch (_) {}
+    if (localNodeSupported && $('nodeMode').value === 'local') void startLocalNodeInBackground();
+  } catch (_) {
+    localNodeConfigReady = true;
+    localNodeSupported = false;
+    $('nodeMode').querySelector('option[value="local"]').disabled = true;
+    if ($('nodeMode').value === 'local') $('nodeMode').value = 'remote';
+    updateNodeModeFields();
+  }
 }
 configureNodeInput();
 
@@ -645,12 +717,7 @@ $('walletForm').addEventListener('submit', async (event) => {
     let nodeValue;
     if (nodeModeValue === 'local') {
       nodeValue = localNodeUrl;
-      if (action === 'create') {
-        startLocalNodeInBackground();
-      } else {
-        const nodeStatus = await ensureLocalNodeStartedOnce();
-        if (!nodeStatus.running) throw new Error(nodeStatus.installed ? LANG[language].localNodeStopped : LANG[language].localNodeMissing);
-      }
+      if (localNodeConfigReady && localNodeSupported && !localNodeExplicitlyStopped) void startLocalNodeInBackground();
     } else {
       nodeValue = remoteNodeValue;
       if (!nodeValue) throw new Error(LANG[language].nodeAddressRequired);
@@ -786,9 +853,14 @@ $('sendForm').addEventListener('submit', async (event) => {
   finally { $('resolveUnknownSend').disabled = false; }
  });
  $('reviewPendingSendBtn').addEventListener('click', async () => { try { const pending = await window.josimi.pendingSend(); if (pending?.requiresManualReview) { pendingSend = { pendingId: pending.pendingId, requiresManualReview: true }; renderManualRelayReview(pending); $('confirmDialog').showModal(); await applyPendingSendStatus(pending); } } catch (error) { showError('sendError', error); } });
-$('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showToast(`송금 완료 · ${result.txHashes?.join(', ') || ''}`); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
+$('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showTransferSuccessToast(result.txHashes); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
 setMode('create');
 applyLanguage();
+function showTransferSuccessToast(txHashes) {
+  const hashes = Array.isArray(txHashes) ? txHashes.join(', ') : '';
+  const suffix = hashes ? ` · ${LANG[language].sendTxHash}: ${hashes}` : '';
+  showToast(`${LANG[language].sendSuccess}${suffix}`);
+}
 async function applyPendingSendStatus(status) {
   if (!status || status.pendingId !== pendingSend?.pendingId) return;
   if (status.requiresManualReview) {
@@ -807,7 +879,7 @@ async function applyPendingSendStatus(status) {
     pendingSend = null;
     if ($('confirmDialog').open) $('confirmDialog').close();
     await window.josimi.ackSend({ pendingId: id }).catch(() => false);
-    showToast(`송금 완료 · ${status.txHashes?.join(', ') || ''}`);
+    showTransferSuccessToast(status.txHashes);
     await refresh();
     return;
   }

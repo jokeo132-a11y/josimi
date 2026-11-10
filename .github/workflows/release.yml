@@ -51,6 +51,7 @@ jobs:
           run_logged npm audit --audit-level=moderate
           run_logged npm run dist
           run_logged python scripts/verify-release-bundle.py "dist/josimi-${PACKAGE_VERSION}-x64.zip"
+          run_logged python scripts/smoke-test-monero-runtime.py "dist/josimi-${PACKAGE_VERSION}-x64.zip"
           SOURCE_ZIP="dist/josimi-${PACKAGE_VERSION}-source.zip"
           git archive --format=zip --prefix="josimi-${PACKAGE_VERSION}/" "$GITHUB_SHA" > "$SOURCE_ZIP"
           (cd dist && sha256sum "josimi-${PACKAGE_VERSION}-x64.zip" "josimi-${PACKAGE_VERSION}-source.zip" build.log > SHA256SUMS.txt)

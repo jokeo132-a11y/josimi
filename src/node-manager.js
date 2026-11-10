@@ -37,7 +37,7 @@ function buildMonerodArgs(dataDir, logFile) {
   return [
     '--data-dir', dataDir,
     '--prune-blockchain',
-    '--db-sync-mode', 'safe:sync',
+    '--sync-pruned-blocks',
     '--rpc-bind-ip', RPC_HOST,
     '--rpc-bind-port', String(RPC_PORT),
     '--hide-my-port',
@@ -67,8 +67,24 @@ function waitForClose(child, timeoutMs) {
   });
 }
 
+function waitForAbortable(promise, signal) {
+  if (signal.aborted) return Promise.reject(Object.assign(new Error('LOCAL_NODE_START_CANCELLED'), { code: 'LOCAL_NODE_START_CANCELLED' }));
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (error, value) => {
+      if (settled) return;
+      settled = true;
+      signal.removeEventListener('abort', onAbort);
+      error ? reject(error) : resolve(value);
+    };
+    const onAbort = () => finish(Object.assign(new Error('LOCAL_NODE_START_CANCELLED'), { code: 'LOCAL_NODE_START_CANCELLED' }));
+    signal.addEventListener('abort', onAbort, { once: true });
+    Promise.resolve(promise).then((value) => finish(null, value), (error) => finish(error));
+  });
+}
+
 class LocalNodeManager extends EventEmitter {
-  constructor({ root, platform = process.platform, spawnProcess = spawn, bundledRuntimeDir = null, hashFile = sha256File, archiveSha256 = MONERO_ARCHIVE_SHA256 } = {}) {
+  constructor({ root, platform = process.platform, spawnProcess = spawn, bundledRuntimeDir = null, hashFile = sha256File, archiveSha256 = MONERO_ARCHIVE_SHA256, startTimeoutMs = 10_000, closeTimeoutMs = 3_000, restartBaseDelayMs = 2_000, restartMaxDelayMs = 30_000, restartMaxAttempts = 5, stableRuntimeMs = 60_000 } = {}) {
     super();
     if (!root || typeof root !== 'string') throw new TypeError('LocalNodeManager requires a data root path.');
     this.root = path.resolve(root);
@@ -79,10 +95,24 @@ class LocalNodeManager extends EventEmitter {
     this.installPromise = null;
     this.startPromise = null;
     this.cancelStart = false;
+    this.startAbortController = null;
     this.spawnProcess = spawnProcess;
     this.child = null;
     this.lastExit = null;
     this.lastBundleError = null;
+    this.startTimeoutMs = startTimeoutMs;
+    this.closeTimeoutMs = closeTimeoutMs;
+    this.restartBaseDelayMs = restartBaseDelayMs;
+    this.restartMaxDelayMs = restartMaxDelayMs;
+    this.restartMaxAttempts = restartMaxAttempts;
+    this.stableRuntimeMs = stableRuntimeMs;
+    this.autoRestartEnabled = false;
+    this.restartTimer = null;
+    this.restartAt = null;
+    this.restartAttempt = 0;
+    this.restartExhausted = false;
+    this.childStartedAt = null;
+    this.automaticRestartStarting = false;
   }
 
   get dataDir() { return path.join(this.root, 'node'); }
@@ -106,7 +136,11 @@ class LocalNodeManager extends EventEmitter {
       running: this.isRunning(),
       pid: this.isRunning() ? this.child.pid : null,
       lastExit: this.lastExit,
-      bundleError: this.lastBundleError
+      bundleError: this.lastBundleError,
+      restarting: Boolean(this.restartTimer || this.automaticRestartStarting),
+      restartAttempt: this.restartAttempt,
+      restartExhausted: this.restartExhausted,
+      nextRestartAt: this.restartAt
     };
   }
 
@@ -171,41 +205,71 @@ class LocalNodeManager extends EventEmitter {
     return fs.promises.mkdir(this.dataDir, { recursive: true });
   }
 
-  async start() {
+  async start({ automatic = false } = {}) {
     if (this.platform !== 'win32') throw new Error('로컬 Monero 노드는 Windows에서만 지원됩니다.');
-    if (this.isRunning()) return this.getStatus();
-    if (this.child && !closedChildren.has(this.child)) throw new Error('이전 monerod 프로세스의 종료 확인이 끝날 때까지 기다리세요.');
     if (this.startPromise) return this.startPromise;
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = null;
+      this.restartAt = null;
+    }
+    if (this.isRunning()) {
+      this.cancelStart = false;
+      this.autoRestartEnabled = true;
+      if (!automatic) { this.restartAttempt = 0; this.restartExhausted = false; }
+      return this.getStatus();
+    }
+    if (this.child && !closedChildren.has(this.child)) throw new Error('이전 monerod 프로세스의 종료 확인이 끝날 때까지 기다리세요.');
     this.cancelStart = false;
-    const operation = this._start();
+    this.autoRestartEnabled = true;
+    if (!automatic) { this.restartAttempt = 0; this.restartExhausted = false; }
+    const controller = new AbortController();
+    this.startAbortController = controller;
+    const operation = this._start(controller.signal);
     this.startPromise = operation;
     this.emitStatus();
     try { return await operation; }
+    catch (error) {
+      if (!automatic) {
+        this.autoRestartEnabled = false;
+        this._clearRestartTimer();
+      }
+      throw error;
+    }
     finally {
       if (this.startPromise === operation) this.startPromise = null;
+      if (this.startAbortController === controller) this.startAbortController = null;
       this.emitStatus();
     }
   }
 
-  async _start() {
+  async _start(signal) {
     let child = null;
     try {
-      if (this.installPromise) await this.installPromise;
-      const binary = await this._verifyBundledRuntime();
-      if (this.cancelStart) return this.getStatus();
-      await this._ensureDataDirectory();
-      if (this.cancelStart) return this.getStatus();
+      if (this.installPromise) await waitForAbortable(this.installPromise, signal);
+      let binary;
+      try { binary = await waitForAbortable(this._verifyBundledRuntime(), signal); }
+      catch (error) { if (!signal.aborted) this.lastBundleError = error.message; throw error; }
+      this.lastBundleError = null;
+      if (this.cancelStart || signal.aborted) return this.getStatus();
+      await waitForAbortable(this._ensureDataDirectory(), signal);
+      if (this.cancelStart || signal.aborted) return this.getStatus();
       const logFile = path.join(this.dataDir, 'monerod.log');
       const args = buildMonerodArgs(this.dataDir, logFile);
       child = this.spawnProcess(binary, args, { cwd: path.dirname(binary), windowsHide: true, stdio: 'ignore' });
       this.child = child;
+      this.childStartedAt = Date.now();
       this.lastExit = null;
       child.once('close', (code, signal) => {
+        const uptime = this.childStartedAt === null ? 0 : Date.now() - this.childStartedAt;
+        if (uptime >= this.stableRuntimeMs) this.restartAttempt = 0;
+        this.childStartedAt = null;
         closedChildren.add(child);
         if (this.child === child) this.child = null;
         this.lastExit = { code, signal, at: Date.now() };
         this.emitStatus();
         this.emit('exit', this.lastExit);
+        if (this.autoRestartEnabled && !this.cancelStart) this._scheduleRestart();
       });
       child.once('error', (error) => {
         this.lastExit = { error: error.message, at: Date.now() };
@@ -213,28 +277,97 @@ class LocalNodeManager extends EventEmitter {
         this.emit('exit', this.lastExit);
       });
       await new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { cleanup(); reject(new Error('monerod 프로세스 시작이 10초 안에 확인되지 않았습니다.')); }, 10_000);
+        const timer = setTimeout(() => { cleanup(); reject(new Error(`monerod 프로세스 시작이 ${this.startTimeoutMs / 1000}초 안에 확인되지 않았습니다.`)); }, this.startTimeoutMs);
         const onSpawn = () => { cleanup(); resolve(); };
         const onError = (error) => { cleanup(); reject(error); };
-        const cleanup = () => { clearTimeout(timer); child.removeListener('spawn', onSpawn); child.removeListener('error', onError); };
+        const onAbort = () => { cleanup(); reject(Object.assign(new Error('LOCAL_NODE_START_CANCELLED'), { code: 'LOCAL_NODE_START_CANCELLED' })); };
+        const cleanup = () => { clearTimeout(timer); child.removeListener('spawn', onSpawn); child.removeListener('error', onError); signal.removeEventListener('abort', onAbort); };
         child.once('spawn', onSpawn);
         child.once('error', onError);
-      }).catch((error) => {
-        if (isRunning(child)) child.kill();
-        throw new Error(`monerod를 실행하지 못했습니다. (${error.message})`);
+        signal.addEventListener('abort', onAbort, { once: true });
       });
+      if (this.cancelStart || signal.aborted) {
+        await this._terminateChild(child);
+        return this.getStatus();
+      }
       this.emitStatus();
       return this.getStatus();
     } catch (error) {
-      if (child && isRunning(child)) { try { child.kill(); } catch (_) {} }
-      throw error;
+      if (child) await this._terminateChild(child);
+      if (signal.aborted || this.cancelStart || error?.code === 'LOCAL_NODE_START_CANCELLED') return this.getStatus();
+      if (error?.message?.includes('포함된 Monero 런타임') || error?.message?.includes('포함된 monerod 런타임')) this.lastBundleError = error.message;
+      if (error?.message?.startsWith('monerod 프로세스 시작이')) throw error;
+      throw new Error(`monerod를 실행하지 못했습니다. (${error.message})`);
     }
+  }
+
+  _clearRestartTimer() {
+    if (this.restartTimer) clearTimeout(this.restartTimer);
+    this.restartTimer = null;
+    this.restartAt = null;
+  }
+
+  _scheduleRestart() {
+    if (!this.autoRestartEnabled || this.cancelStart || this.restartTimer) return;
+    if (this.lastBundleError) {
+      this.restartExhausted = true;
+      this.autoRestartEnabled = false;
+      this.emitStatus();
+      this.emit('restart-exhausted', this.lastExit);
+      return;
+    }
+    if (this.child && !closedChildren.has(this.child)) {
+      this.restartExhausted = true;
+      this.autoRestartEnabled = false;
+      this.emitStatus();
+      this.emit('restart-exhausted', this.lastExit);
+      return;
+    }
+    if (this.restartAttempt >= this.restartMaxAttempts) {
+      this.restartExhausted = true;
+      this.autoRestartEnabled = false;
+      this.emitStatus();
+      this.emit('restart-exhausted', this.lastExit);
+      return;
+    }
+    this.restartAttempt += 1;
+    const delayMs = Math.min(this.restartMaxDelayMs, this.restartBaseDelayMs * (2 ** (this.restartAttempt - 1)));
+    this.restartAt = Date.now() + delayMs;
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      this.restartAt = null;
+      if (!this.autoRestartEnabled || this.cancelStart) return this.emitStatus();
+      this.automaticRestartStarting = true;
+      this.emitStatus();
+      this.start({ automatic: true }).then(() => {
+        this.automaticRestartStarting = false;
+        this.emitStatus();
+      }).catch((error) => {
+        this.automaticRestartStarting = false;
+        this.lastExit = { error: error.message, at: Date.now() };
+        this._scheduleRestart();
+        this.emitStatus();
+      });
+    }, delayMs);
+    this.restartTimer.unref?.();
+    this.emitStatus();
+  }
+
+  async _terminateChild(child) {
+    if (!child || closedChildren.has(child)) return true;
+    if (isRunning(child)) { try { child.kill('SIGTERM'); } catch (_) {} }
+    let closed = await waitForClose(child, this.closeTimeoutMs);
+    if (!closed && isRunning(child)) { try { child.kill('SIGKILL'); } catch (_) {} closed = await waitForClose(child, this.closeTimeoutMs); }
+    if (closed && this.child === child) this.child = null;
+    return closed;
   }
 
   async stop(requestGracefulStop) {
     this.cancelStart = true;
-    const pendingInstall = this.installPromise;
-    if (pendingInstall) await pendingInstall.catch(() => {});
+    this.autoRestartEnabled = false;
+    this.restartExhausted = false;
+    this._clearRestartTimer();
+    this.startAbortController?.abort();
     const pendingStart = this.startPromise;
     if (pendingStart) await pendingStart.catch(() => {});
     const child = this.child;
@@ -266,8 +399,16 @@ async function waitForRpcReady(readStatus, { timeoutMs = 120_000, intervalMs = 1
   if (typeof readStatus !== 'function') throw new TypeError('waitForRpcReady requires a status reader.');
   const deadline = now() + timeoutMs;
   while (now() < deadline) {
-    const status = await readStatus();
-    if (!status?.running) throw new Error('LOCAL_NODE_EXITED');
+    const remaining = deadline - now();
+    let timer;
+    const timedRead = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('LOCAL_NODE_RPC_TIMEOUT')), Math.max(1, remaining)); });
+    let status;
+    try { status = await Promise.race([Promise.resolve().then(readStatus), timedRead]); }
+    finally { clearTimeout(timer); }
+    if (!status?.running) {
+      if (status?.restarting) { await delay(Math.min(intervalMs, Math.max(0, deadline - now()))); continue; }
+      throw new Error('LOCAL_NODE_EXITED');
+    }
     if (now() >= deadline) throw new Error('LOCAL_NODE_RPC_TIMEOUT');
     if (status.rpc && !['stopped', 'starting', 'offline'].includes(status.rpc.state)) return status;
     await delay(Math.min(intervalMs, Math.max(0, deadline - now())));

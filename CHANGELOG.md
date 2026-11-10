@@ -1,3 +1,12 @@
+## v1.2.9 — 2026-11-10
+
+- Prevent duplicate local-daemon starts and make stop-during-start, daemon-exit recovery, and retry cancellation deterministic; automatic crash recovery is bounded and user stop remains authoritative.
+- Let wallet create/open/restore continue while the local node starts and syncs in the background; tighten RPC readiness deadlines so stale or late node status cannot block wallet actions.
+- Use Monero v0.18.5.4's default fast database-sync behavior, which switches to safe mode near the chain tip, and accept pruned peer data alongside local pruning to improve first-sync progress.
+- Explain that power loss or a system crash during initial asynchronous blockchain sync may require database verification or resynchronization; wallet key files are separate.
+- Localize successful-transfer notifications in Korean, English, Chinese, and Japanese.
+- Make the Windows release workflow launch the packaged `monerod.exe --version` before publication, in addition to checking the ZIP contents and runtime hashes.
+
 ## v1.2.8 — 2026-11-09
 
 - Keep wallet creation, opening, and seed restoration usable when node-status checks or synchronization startup are slow: node probes are capped at 1 second and sync-start waiting at 1.5 seconds, while synchronization continues in the background.
@@ -289,3 +298,12 @@ v0.3.4의 HTTPS 기본 노드, 임시 지갑 생성·복구, 기존 wallet 파�
 ## v0.3.4 — 2026-10-12
 
 기본 노드와 생성·복구 파일 충돌 문제를 수정했습니다.
+## v1.2.9 — 2026-11-10
+
+- Prevent duplicate local-daemon starts and make stop-during-start, daemon-exit recovery, and retry cancellation deterministic; automatic crash recovery is bounded and user stop remains authoritative.
+- Let wallet create/open/restore continue while the local node starts and syncs in the background; tighten RPC readiness deadlines so stale or late node status cannot block wallet actions.
+- Use Monero v0.18.5.4's default fast database-sync behavior, which switches to safe mode near the chain tip, and accept pruned peer data alongside local pruning to improve first-sync progress.
+- Explain that power loss or a system crash during initial asynchronous blockchain sync may require database verification or resynchronization; wallet key files are separate.
+- Make the Windows release workflow launch the packaged `monerod.exe --version` before publication, in addition to checking the ZIP contents and runtime hashes.
+
+## v1.2.8 — 2026-11-09
