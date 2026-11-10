@@ -134,6 +134,31 @@ test('release verifier rejects mining runtimes hidden in app.asar', async () => 
   }
 });
 
+test('Windows monerod smoke test finds root-level and wrapped runtime manifests with normalized separators', () => {
+  const pythonTest = String.raw`
+import importlib.util, tempfile, zipfile
+from pathlib import Path
+spec = importlib.util.spec_from_file_location('monerod_smoke', Path('scripts/smoke-test-monero-runtime.py').resolve())
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+suffix = 'resources/app.asar.unpacked/assets/runtime/monero/manifest.json'
+for prefix in ('', 'josimi-1.2.10-x64/'):
+    for separator in ('/', '\\'):
+        member = (prefix + suffix).replace('/', separator)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = Path(temp_dir) / 'release.zip'
+            with zipfile.ZipFile(archive_path, 'w') as archive:
+                archive.writestr(member, '{}')
+            with zipfile.ZipFile(archive_path) as archive:
+                found, root, _ = module.find_runtime_manifest(archive)
+                assert found == member, (found, member)
+                assert root.as_posix() == (prefix + suffix).rsplit('/', 1)[0]
+print('manifest-path cases passed')
+`;
+  const output = execFileSync(PYTHON, ['-c', pythonTest], { cwd: ROOT, encoding: 'utf8' });
+  assert.match(output, /manifest-path cases passed/);
+});
+
 test('release verifier rejects mining binaries elsewhere in the outer ZIP', async () => {
   const fixture = await makeReleaseZip({
     extraZipFiles: [{ path: 'resources/app.asar.unpacked/assets/runtime/p2pool/p2pool.exe', content: 'unexpected miner' }]

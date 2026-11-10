@@ -9,9 +9,26 @@ import zipfile
 from pathlib import Path, PurePosixPath
 
 
+MANIFEST_SUFFIX = 'resources/app.asar.unpacked/assets/runtime/monero/manifest.json'
+
+
 def fail(message):
     print(message, file=sys.stderr)
     raise SystemExit(1)
+
+
+def find_runtime_manifest(archive):
+    members = {}
+    for original in archive.namelist():
+        normalized = original.replace('\\', '/')
+        if normalized in members:
+            raise RuntimeError(f'Release ZIP contains duplicate normalized paths: {normalized}')
+        members[normalized] = original
+    matches = [name for name in members if name.casefold().endswith(MANIFEST_SUFFIX.casefold())]
+    if len(matches) != 1:
+        raise RuntimeError(f'Expected one packaged Monero runtime manifest; found {len(matches)}.')
+    normalized_manifest = matches[0]
+    return members[normalized_manifest], PurePosixPath(normalized_manifest).parent, members
 
 
 def main():
@@ -23,12 +40,8 @@ def main():
     archive_path = sys.argv[1]
     try:
         with zipfile.ZipFile(archive_path) as archive:
-            manifests = [name for name in archive.namelist() if name.replace('\\', '/').endswith('/resources/app.asar.unpacked/assets/runtime/monero/manifest.json')]
-            if len(manifests) != 1:
-                raise RuntimeError(f'Expected one packaged Monero runtime manifest; found {len(manifests)}.')
-            manifest_path = manifests[0]
-            runtime_root = PurePosixPath(manifest_path).parent
-            manifest = json.loads(archive.read(manifest_path))
+            manifest_member, runtime_root, members = find_runtime_manifest(archive)
+            manifest = json.loads(archive.read(manifest_member))
             version = manifest.get('version')
             files = manifest.get('files')
             if not isinstance(version, str) or not version or not isinstance(files, list):
@@ -42,8 +55,11 @@ def main():
                 for name in names:
                     if not isinstance(name, str) or PurePosixPath(name).name != name or name in ('.', '..'):
                         raise RuntimeError(f'Unsafe Monero runtime file name: {name!r}')
-                    member = f'{runtime_root.as_posix()}/{name}'
-                    (runtime_dir / name).write_bytes(archive.read(member))
+                    normalized_member = f'{runtime_root.as_posix()}/{name}'
+                    original_member = members.get(normalized_member)
+                    if original_member is None:
+                        raise RuntimeError(f'Packaged Monero runtime file is missing: {normalized_member}')
+                    (runtime_dir / name).write_bytes(archive.read(original_member))
                 daemon = runtime_dir / 'monerod.exe'
                 result = subprocess.run([str(daemon), '--version'], cwd=runtime_dir, capture_output=True, timeout=30, check=False)
                 output = (result.stdout + result.stderr).decode('utf-8', errors='replace')
@@ -51,7 +67,7 @@ def main():
                     raise RuntimeError(f'Packaged monerod --version exited with code {result.returncode}: {output.strip()}')
                 if version not in output:
                     raise RuntimeError(f'Packaged monerod version output did not contain {version}: {output.strip()}')
-    except (OSError, zipfile.BadZipFile, json.JSONDecodeError, subprocess.TimeoutExpired, RuntimeError) as error:
+    except (OSError, zipfile.BadZipFile, json.JSONDecodeError, KeyError, subprocess.TimeoutExpired, RuntimeError) as error:
         fail(str(error))
 
     print(f'Windows successfully launched packaged monerod v{version} with --version; no node sync was started.')
