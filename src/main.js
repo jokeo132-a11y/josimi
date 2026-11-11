@@ -145,6 +145,18 @@ async function getLocalNodeManagerStatus() {
   const rpc = local.running ? await getRemoteNodeStatus(LOCAL_NODE_URL) : { mode: 'local', node: LOCAL_NODE_URL, state: 'stopped', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
   return { ...local, rpc };
 }
+async function ensureLocalNodeForWallet(node) {
+  const resolved = await resolveNode(node);
+  if (resolved !== LOCAL_NODE_URL || process.platform !== 'win32') return resolved;
+  const manager = getLocalNodeManager();
+  if (!manager.getStatus().supported) throw new Error('이 Windows 환경에서는 로컬 Monero 노드를 사용할 수 없습니다.');
+  let status = manager.getStatus();
+  if (!status.installed) await manager.install();
+  status = manager.getStatus();
+  if (!status.running && !status.restarting) await manager.start();
+  await waitForRpcReady(getLocalNodeManagerStatus);
+  return resolved;
+}
 async function stopLocalNode() {
   const manager = getLocalNodeManager();
   return manager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {}));
@@ -549,12 +561,13 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   assertNoUnresolvedRelay();
   assertNoPersistedRelay(walletPath());
   cancelWalletSyncRetry();
+  const preparedNode = await ensureLocalNodeForWallet(node);
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
   pendingTransactions.clear();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
-  activeConfig = { network: NETWORK, node: await resolveNode(node) };
+  activeConfig = { network: NETWORK, node: preparedNode };
   const creationHeight = await withTimeout(getNodeHeight(activeConfig.node), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS, 'Optional node height lookup timed out').catch(() => null);
   const customPath = selectedWalletPath;
   if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
@@ -594,12 +607,13 @@ registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
     assertNoUnresolvedRelay();
     assertNoPersistedRelay(walletPath());
     cancelWalletSyncRetry();
+    const preparedNode = await ensureLocalNodeForWallet(node);
     const previousWallet = wallet;
     wallet = null;
     walletSessionId += 1;
     pendingTransactions.clear();
       if (previousWallet) await previousWallet.close(true).catch(() => {});
-    activeConfig = { network: NETWORK, node: await resolveNode(node) };
+    activeConfig = { network: NETWORK, node: preparedNode };
     const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
     const customPath = selectedWalletPath;
     if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
@@ -638,12 +652,13 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
   assertNoUnresolvedRelay();
   const recoveryRecord = getRelayGuardStore().get(walletPath());
   cancelWalletSyncRetry();
+  const preparedNode = await ensureLocalNodeForWallet(node);
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
   pendingTransactions.clear();
   if (previousWallet) await previousWallet.close(true).catch(() => {});
-  activeConfig = { network: NETWORK, node: await resolveNode(node) };
+  activeConfig = { network: NETWORK, node: preparedNode };
   try {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     hydrateRelayRecovery(walletPath(), recoveryRecord);
