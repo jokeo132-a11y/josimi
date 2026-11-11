@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.14');
+  assert.equal(packageJson.version, '1.2.15');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -135,7 +135,7 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   assert.match(main, /WALLET_SYNC_START_TIMEOUT_MS = 1_500/);
   assert.match(main, /async function startWalletBackgroundSyncWithinDeadline\(/);
   const lifecycle = main.slice(main.indexOf("registerWalletOperationHandler('wallet-create'"), main.indexOf("ipcMain.handle('wallet-refresh'"));
-  assert.equal((lifecycle.match(/loadSummary\(\{ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS \}\)/g) || []).length, 3);
+  assert.equal((lifecycle.match(/loadStartupSummary\(wallet\)/g) || []).length, 3);
   assert.equal((lifecycle.match(/startWalletBackgroundSyncWithinDeadline\(wallet\)/g) || []).length, 3);
 });
 

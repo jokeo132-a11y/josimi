@@ -521,6 +521,31 @@ async function loadSummary({ nodeStatusTimeoutMs = NODE_RPC_DEADLINE_MS } = {}) 
   assertWalletSession(activeWallet, sessionId);
   return { address, balance: balance.toString(), balanceXmr: atomicToXmr(balance), txs: txs.slice().reverse().map(safeTx), accounts, addressBook, network: sessionConfig.network, node: sessionConfig.node, sync, walletSessionId: sessionId };
 }
+async function loadStartupSummary(activeWallet = wallet) {
+  try {
+    return await withTimeout(loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS }), 8_000, 'Wallet summary startup timed out');
+  } catch (error) {
+    // A valid wallet must not be discarded just because the daemon is still catching up.
+    // The dashboard can refresh these values after the background sync reconnects.
+    const sessionId = walletSessionId;
+    const address = await activeWallet.getPrimaryAddress();
+    const accounts = await loadAccounts(activeWallet).catch(() => []);
+    const addressBook = await loadAddressBook(activeWallet).catch(() => []);
+    return {
+      address,
+      balance: '0',
+      balanceXmr: atomicToXmr(0n),
+      txs: [],
+      accounts,
+      addressBook,
+      network: activeConfig.network,
+      node: activeConfig.node,
+      sync: { mode: 'local', node: activeConfig.node, state: 'starting', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 },
+      walletSessionId: sessionId,
+      startupWarning: error.message
+    };
+  }
+}
 async function makeWindow() {
   mainWindow = new BrowserWindow({ width: 1180, height: 820, minWidth: 980, minHeight: 680, backgroundColor: '#0b0b0b', webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true } });
   installPermissionPolicy(mainWindow.webContents.session, APP_URL);
@@ -579,7 +604,7 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
     await created.close(true);
     if (!customPath) archived = promoteWallet(creationPath);
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const summary = await loadStartupSummary(wallet);
     const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     if (summary.address !== createdAddress) throw new Error('생성 직후 주소 검증에 실패했습니다. 기존 파일을 사용하지 않도록 작업을 중단했습니다.');
     return { ...summary, createdAtHeight: creationHeight, restoreHeight: creationHeight, walletSyncStartState: walletSync.state };
@@ -636,7 +661,7 @@ registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
       throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
     }
     if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const summary = await loadStartupSummary(wallet);
     const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, walletSyncStartState: walletSync.state, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
   } finally {
@@ -662,7 +687,7 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
   try {
     wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
     hydrateRelayRecovery(walletPath(), recoveryRecord);
-    const summary = await loadSummary({ nodeStatusTimeoutMs: WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS });
+    const summary = await loadStartupSummary(wallet);
     const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
     return { ...summary, walletSyncStartState: walletSync.state };
   } catch (error) {
