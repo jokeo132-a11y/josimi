@@ -717,7 +717,8 @@ $('walletForm').addEventListener('submit', async (event) => {
     let nodeValue;
     if (nodeModeValue === 'local') {
       nodeValue = localNodeUrl;
-      if (localNodeConfigReady && localNodeSupported && !localNodeExplicitlyStopped) void startLocalNodeInBackground();
+      if (localNodeExplicitlyStopped) throw new Error(LANG[language].localNodeStopped);
+      await ensureLocalNodeStartedOnce();
     } else {
       nodeValue = remoteNodeValue;
       if (!nodeValue) throw new Error(LANG[language].nodeAddressRequired);

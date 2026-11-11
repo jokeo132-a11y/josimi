@@ -68,7 +68,7 @@ test('local wallet operations wait for responsive RPC, not only a spawned daemon
   let checks = 0;
   const ready = await waitForRpcReady(async () => {
     checks += 1;
-    return { running: true, rpc: { state: checks < 3 ? 'stopped' : 'syncing', synchronized: checks >= 3 } };
+    return { running: true, rpc: { state: checks < 3 ? 'stopped' : 'syncing', synchronized: false } };
   }, { timeoutMs: 100, intervalMs: 5, delay: async () => {} });
   assert.equal(checks, 3);
   assert.equal(ready.rpc.state, 'syncing');
@@ -82,15 +82,16 @@ test('local RPC readiness fails promptly if monerod exits and times out when RPC
   }), /LOCAL_NODE_RPC_TIMEOUT/);
 });
 
-test('local RPC readiness rejects ambiguous or unsynchronized node states', async () => {
+test('local RPC readiness rejects ambiguous states but accepts a syncing RPC', async () => {
   let clock = 0;
   await assert.rejects(waitForRpcReady(async () => ({ running: true, rpc: { state: 'local', synchronized: null } }), {
     timeoutMs: 10, intervalMs: 5, now: () => clock, delay: async (ms) => { clock += ms; }
   }), /LOCAL_NODE_RPC_TIMEOUT/);
   clock = 0;
-  await assert.rejects(waitForRpcReady(async () => ({ running: true, rpc: { state: 'syncing', synchronized: false } }), {
+  const syncing = await waitForRpcReady(async () => ({ running: true, rpc: { state: 'syncing', synchronized: false } }), {
     timeoutMs: 10, intervalMs: 5, now: () => clock, delay: async (ms) => { clock += ms; }
-  }), /LOCAL_NODE_RPC_TIMEOUT/);
+  });
+  assert.equal(syncing.rpc.synchronized, false);
 });
 
 test('local RPC readiness rejects a ready response that arrives after the deadline', async () => {

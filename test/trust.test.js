@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.12');
+  assert.equal(packageJson.version, '1.2.13');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -124,8 +124,8 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   const formEnd = renderer.indexOf("$('refreshBtn').addEventListener('click', refresh);", formStart);
   assert.ok(formStart >= 0 && formEnd > formStart);
   const submitHandler = renderer.slice(formStart, formEnd);
-  assert.match(submitHandler, /if \(nodeModeValue === 'local'\) \{\s*nodeValue = localNodeUrl;\s*if \(localNodeConfigReady && localNodeSupported && !localNodeExplicitlyStopped\) void startLocalNodeInBackground\(\);/);
-  assert.doesNotMatch(submitHandler, /await ensureLocalNodeStartedOnce\(\)/);
+  assert.match(submitHandler, /if \(nodeModeValue === 'local'\) \{\s*nodeValue = localNodeUrl;\s*if \(localNodeExplicitlyStopped\) throw new Error\(LANG\[language\]\.localNodeStopped\);\s*await ensureLocalNodeStartedOnce\(\);/);
+  assert.match(submitHandler, /await ensureLocalNodeStartedOnce\(\)/);
   assert.match(renderer, /localNodeRpcWaitFailed: '로컬 노드가 응답하지 않아 연결을 확인하지 못했습니다/);
   assert.match(renderer, /status\.restarting/);
   assert.match(read('src/node-manager.js'), /restartMaxAttempts = 5/);
