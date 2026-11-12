@@ -267,7 +267,10 @@ class LocalNodeManager extends EventEmitter {
       if (this.cancelStart || signal.aborted) return this.getStatus();
       const logFile = path.join(this.dataDir, 'monerod.log');
       const args = buildMonerodArgs(this.dataDir, logFile);
-      child = this.spawnProcess(binary, args, { cwd: path.dirname(binary), windowsHide: true, stdio: 'ignore' });
+      // monerod exits when stdin is closed ("Error on stdin, exiting"). Keep
+      // its input pipe open for the lifetime of the daemon; shutdown is done
+      // through RPC and _terminateChild, not by sending EOF to stdin.
+      child = this.spawnProcess(binary, args, { cwd: path.dirname(binary), windowsHide: true, stdio: ['pipe', 'ignore', 'ignore'] });
       this.child = child;
       this.childStartedAt = Date.now();
       this.lastExit = null;

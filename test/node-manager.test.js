@@ -207,7 +207,7 @@ test('monerod starts from the bundled daemon directory as a hidden process', asy
     assert.equal(spawnDetails.binary, path.join(bundledRuntimeDir, MONERO_DAEMON));
     assert.equal(spawnDetails.options.cwd, bundledRuntimeDir);
     assert.equal(spawnDetails.options.windowsHide, true);
-    assert.equal(spawnDetails.options.stdio, 'ignore');
+    assert.deepEqual(spawnDetails.options.stdio, ['pipe', 'ignore', 'ignore']);
     assert.equal(spawnDetails.args[spawnDetails.args.indexOf('--rpc-bind-ip') + 1], '127.0.0.1');
     assert.equal(await fs.stat(manager.dataDir).then((stat) => stat.isDirectory()), true);
     await manager.stop(async () => {
