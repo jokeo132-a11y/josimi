@@ -99,6 +99,7 @@ class LocalNodeManager extends EventEmitter {
     this.spawnProcess = spawnProcess;
     this.child = null;
     this.lastExit = null;
+    this.lastLogTail = null;
     this.lastBundleError = null;
     this.startTimeoutMs = startTimeoutMs;
     this.closeTimeoutMs = closeTimeoutMs;
@@ -136,6 +137,7 @@ class LocalNodeManager extends EventEmitter {
       running: this.isRunning(),
       pid: this.isRunning() ? this.child.pid : null,
       lastExit: this.lastExit,
+      lastLogTail: this.lastLogTail,
       bundleError: this.lastBundleError,
       restarting: Boolean(this.restartTimer || this.automaticRestartStarting),
       restartAttempt: this.restartAttempt,
@@ -205,6 +207,15 @@ class LocalNodeManager extends EventEmitter {
     return fs.promises.mkdir(this.dataDir, { recursive: true });
   }
 
+  _readLogTail() {
+    try {
+      const data = fs.readFileSync(path.join(this.dataDir, 'monerod.log'), 'utf8');
+      return data.slice(-4_000).trim() || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async start({ automatic = false } = {}) {
     if (this.platform !== 'win32') throw new Error('로컬 Monero 노드는 Windows에서만 지원됩니다.');
     if (this.startPromise) return this.startPromise;
@@ -267,12 +278,14 @@ class LocalNodeManager extends EventEmitter {
         closedChildren.add(child);
         if (this.child === child) this.child = null;
         this.lastExit = { code, signal, at: Date.now() };
+        this.lastLogTail = this._readLogTail();
         this.emitStatus();
         this.emit('exit', this.lastExit);
         if (this.autoRestartEnabled && !this.cancelStart) this._scheduleRestart();
       });
       child.once('error', (error) => {
         this.lastExit = { error: error.message, at: Date.now() };
+        this.lastLogTail = this._readLogTail();
         this.emitStatus();
         this.emit('exit', this.lastExit);
       });
@@ -407,7 +420,11 @@ async function waitForRpcReady(readStatus, { timeoutMs = 120_000, intervalMs = 1
     finally { clearTimeout(timer); }
     if (!status?.running) {
       if (status?.restarting) { await delay(Math.min(intervalMs, Math.max(0, deadline - now()))); continue; }
-      throw new Error('LOCAL_NODE_EXITED');
+      const detail = status?.lastExit ? ` (${JSON.stringify(status.lastExit)})` : '';
+      const log = status?.lastLogTail ? `\n${status.lastLogTail.slice(-1_500)}` : '';
+      const error = new Error(`LOCAL_NODE_EXITED${detail}${log}`);
+      error.code = 'LOCAL_NODE_EXITED';
+      throw error;
     }
     if (now() >= deadline) throw new Error('LOCAL_NODE_RPC_TIMEOUT');
     if (status.rpc && ['syncing', 'synced'].includes(status.rpc.state) && typeof status.rpc.synchronized === 'boolean') return status;

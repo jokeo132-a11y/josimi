@@ -482,8 +482,12 @@ async function ensureLocalNodeStarted(intent = localNodeIntent) {
   try { return await window.josimi.localNodeWaitReady(); }
   catch (error) {
     assertLocalNodeIntent(intent);
-    if (error.message === 'LOCAL_NODE_RPC_TIMEOUT') throw new Error(LANG[language].localNodeRpcWaitFailed);
-    if (error.message === 'LOCAL_NODE_EXITED') throw new Error(LANG[language].localNodeRestartFailed);
+    const message = String(error?.message || error);
+    if (message.includes('LOCAL_NODE_RPC_TIMEOUT')) throw new Error(LANG[language].localNodeRpcWaitFailed);
+    if (message.includes('LOCAL_NODE_EXITED')) {
+      const detail = message.split('LOCAL_NODE_EXITED').slice(1).join('LOCAL_NODE_EXITED').trim();
+      throw new Error(`${LANG[language].localNodeRestartFailed}${detail ? `\n${detail}` : ''}`);
+    }
     throw error;
   }
 }
