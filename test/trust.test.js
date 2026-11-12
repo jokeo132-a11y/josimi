@@ -41,12 +41,14 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.19');
+  assert.equal(packageJson.version, '1.2.20');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
   assert.equal(fs.readFileSync(path.join(root, 'assets/josimi-logo.png')).subarray(1, 4).toString(), 'PNG');
   assert.match(html, /<option value="local" selected/);
+  assert.match(renderer, /localStorage\.getItem\('josimi\.language'\) \|\| 'en'/);
+  assert.match(renderer, /if \(!LANG\[language\]\) language = 'en'/);
   assert.match(renderer, /localStorage\.getItem\('josimi\.nodeMode'\)/);
   assert.match(renderer, /startLocalNodeInBackground\(\)/);
   assert.match(renderer, /await ensureLocalNodeStartedOnce\(\)/);

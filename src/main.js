@@ -706,7 +706,7 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
 });
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('wallet-seed', async (_, payload = {}) => {
-  const language = payload?.language || 'ko';
+  const language = payload?.language || 'en';
   const locale = ['ko', 'en', 'zh', 'ja'].includes(language) ? language : 'ko';
   const copy = {
     ko: { title: '복구 seed 표시', message: 'seed를 화면에 표시하면 주변 사람이나 화면 캡처·녹화에 노출될 수 있습니다.', detail: '지갑 비밀번호를 다시 확인한 후 seed를 표시합니다. 임시 메모리 사본을 사용하며 기존 지갑 파일은 변경하지 않습니다. 사적인 장소에서 진행하고 seed는 오프라인에 보관하세요. josimi는 seed를 네트워크로 보내지 않습니다.', cancel: '취소', confirm: 'seed 표시', password: '현재 지갑 비밀번호를 입력하세요.', invalidPassword: '지갑 비밀번호가 일치하지 않습니다. seed를 표시하지 않았습니다.', failed: '안전한 seed 확인을 완료하지 못했습니다. 다시 시도하세요.' },
@@ -989,7 +989,7 @@ ipcMain.handle('wallet-send-pending', async () => {
   }
   return null;
 });
-ipcMain.handle('wallet-send-resolve-recovery', async (_, { pendingId, language = 'ko' } = {}) => {
+ipcMain.handle('wallet-send-resolve-recovery', async (_, { pendingId, language = 'en' } = {}) => {
   ensureWallet();
   const id = String(pendingId || '');
   const pending = pendingTransactions.get(id);
