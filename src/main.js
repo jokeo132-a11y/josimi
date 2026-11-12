@@ -142,14 +142,17 @@ function getLocalNodeManager() {
 async function getLocalNodeManagerStatus() {
   const manager = getLocalNodeManager();
   const local = manager.getStatus();
-  const rpc = local.running ? await getRemoteNodeStatus(LOCAL_NODE_URL) : { mode: 'local', node: LOCAL_NODE_URL, state: 'stopped', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
-  return { ...local, rpc };
+  const rpc = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
+  const external = !local.running && ['syncing', 'synced'].includes(rpc.state) && typeof rpc.synchronized === 'boolean';
+  return { ...local, running: local.running || external, external, rpc };
 }
 async function ensureLocalNodeForWallet(node) {
   const resolved = await resolveNode(node);
   if (resolved !== LOCAL_NODE_URL || process.platform !== 'win32') return resolved;
   const manager = getLocalNodeManager();
   if (!manager.getStatus().supported) throw new Error('이 Windows 환경에서는 로컬 Monero 노드를 사용할 수 없습니다.');
+  const existing = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
+  if (['syncing', 'synced'].includes(existing.state) && typeof existing.synchronized === 'boolean') return resolved;
   let status = manager.getStatus();
   if (!status.installed) await manager.install();
   status = manager.getStatus();
@@ -159,6 +162,10 @@ async function ensureLocalNodeForWallet(node) {
 }
 async function stopLocalNode() {
   const manager = getLocalNodeManager();
+  if (!manager.isRunning()) {
+    const status = await getLocalNodeManagerStatus();
+    if (status.external) return postJson(`${LOCAL_NODE_URL}/stop_daemon`, {});
+  }
   return manager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {}));
 }
 function hasWalletData(dir) {
@@ -860,6 +867,8 @@ ipcMain.handle('local-node-install', async () => {
 });
 ipcMain.handle('local-node-start', async () => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
+  const existing = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
+  if (['syncing', 'synced'].includes(existing.state) && typeof existing.synchronized === 'boolean') return getLocalNodeManagerStatus();
   return getLocalNodeManager().start();
 });
 ipcMain.handle('local-node-wait-ready', async () => {
