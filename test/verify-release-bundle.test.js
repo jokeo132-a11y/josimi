@@ -142,7 +142,7 @@ spec = importlib.util.spec_from_file_location('monerod_smoke', Path('scripts/smo
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
 suffix = 'resources/app.asar.unpacked/assets/runtime/monero/manifest.json'
-for prefix in ('', 'josimi-1.2.15-x64/'):
+for prefix in ('', 'josimi-1.2.16-x64/'):
     for separator in ('/', '\\'):
         member = (prefix + suffix).replace('/', separator)
         with tempfile.TemporaryDirectory() as temp_dir:

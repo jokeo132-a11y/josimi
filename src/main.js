@@ -587,6 +587,9 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   assertNoPersistedRelay(walletPath());
   cancelWalletSyncRetry();
   const preparedNode = await ensureLocalNodeForWallet(node);
+  const customPath = selectedWalletPath;
+  if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 다른 이름을 사용하세요.');
+  if (!customPath && walletFamilyExists(walletPath())) throw new Error('기존 지갑이 이미 있습니다. 기존 지갑을 열거나 새 저장 파일을 선택하세요.');
   const previousWallet = wallet;
   wallet = null;
   walletSessionId += 1;
@@ -594,8 +597,6 @@ registerWalletOperationHandler('wallet-create', async (_, payload = {}) => {
   if (previousWallet) await previousWallet.close(true).catch(() => {});
   activeConfig = { network: NETWORK, node: preparedNode };
   const creationHeight = await withTimeout(getNodeHeight(activeConfig.node), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS, 'Optional node height lookup timed out').catch(() => null);
-  const customPath = selectedWalletPath;
-  if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
   const creationPath = customPath || tempWalletPath('josimi-create');
   let created; let archived = null;
   try {
@@ -633,15 +634,15 @@ registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
     assertNoPersistedRelay(walletPath());
     cancelWalletSyncRetry();
     const preparedNode = await ensureLocalNodeForWallet(node);
+    const customPath = selectedWalletPath;
+    if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 다른 이름을 사용하세요.');
+    const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
     const previousWallet = wallet;
     wallet = null;
     walletSessionId += 1;
     pendingTransactions.clear();
-      if (previousWallet) await previousWallet.close(true).catch(() => {});
+    if (previousWallet) await previousWallet.close(true).catch(() => {});
     activeConfig = { network: NETWORK, node: preparedNode };
-    const normalizedRestoreHeight = normalizeRestoreHeight(restoreHeight);
-    const customPath = selectedWalletPath;
-    if (customPath && walletFamilyExists(customPath)) throw new Error('같은 이름의 지갑 파일이 이미 있습니다. 기존 지갑을 열거나 새 이름을 선택하세요.');
     const recoveryPath = customPath || tempWalletPath('josimi-recovery');
     normalizedSeedOffset = seedOffset === undefined || seedOffset === null || seedOffset === '' ? undefined : String(seedOffset);
     let recovered; let archived = null;
