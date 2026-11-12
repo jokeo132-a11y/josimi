@@ -419,6 +419,18 @@ function safeTx(tx) {
 function makeSendResult(pending, txHashes) {
   return { txs: pending.txs.map(safeTx), txHashes, serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic), networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic) };
 }
+function assertServiceFeeDestination(txs, recipientAddress, amountAtomic, serviceFeeAtomic) {
+  if (serviceFeeAtomic <= 0n) return;
+  if (!Array.isArray(txs) || txs.length !== 1) throw new Error('수수료가 포함된 거래를 하나로 확인하지 못해 송금을 중단했습니다.');
+  const destinations = txs[0].getOutgoingTransfer?.()?.getDestinations?.();
+  if (!Array.isArray(destinations)) throw new Error('생성된 거래의 목적지를 확인하지 못해 송금을 중단했습니다.');
+  const feeDestination = destinations.find((destination) => destination?.getAddress?.() === FEE_ADDRESS);
+  if (!feeDestination || BigInt(feeDestination.getAmount?.() ?? 0) < serviceFeeAtomic) throw new Error('생성된 거래에 서비스 수수료 주소가 정확히 포함되지 않아 송금을 중단했습니다.');
+  if (recipientAddress === FEE_ADDRESS) {
+    const recipientDestination = destinations.find((destination) => destination?.getAddress?.() === recipientAddress);
+    if (!recipientDestination || BigInt(recipientDestination.getAmount?.() ?? 0) < amountAtomic + serviceFeeAtomic) throw new Error('수수료 주소로 보내는 거래 금액을 확인하지 못해 송금을 중단했습니다.');
+  }
+}
 function serializeSubaddress(subaddress) {
   return {
     index: Number(subaddress.getIndex()),
@@ -707,7 +719,7 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
 ipcMain.handle('wallet-refresh', async () => loadSummary());
 ipcMain.handle('wallet-seed', async (_, payload = {}) => {
   const language = payload?.language || 'en';
-  const locale = ['ko', 'en', 'zh', 'ja'].includes(language) ? language : 'ko';
+  const locale = ['ko', 'en', 'zh', 'ja'].includes(language) ? language : 'en';
   const copy = {
     ko: { title: '복구 seed 표시', message: 'seed를 화면에 표시하면 주변 사람이나 화면 캡처·녹화에 노출될 수 있습니다.', detail: '지갑 비밀번호를 다시 확인한 후 seed를 표시합니다. 임시 메모리 사본을 사용하며 기존 지갑 파일은 변경하지 않습니다. 사적인 장소에서 진행하고 seed는 오프라인에 보관하세요. josimi는 seed를 네트워크로 보내지 않습니다.', cancel: '취소', confirm: 'seed 표시', password: '현재 지갑 비밀번호를 입력하세요.', invalidPassword: '지갑 비밀번호가 일치하지 않습니다. seed를 표시하지 않았습니다.', failed: '안전한 seed 확인을 완료하지 못했습니다. 다시 시도하세요.' },
     en: { title: 'Reveal recovery seed', message: 'Showing the seed can expose it to nearby people, screenshots, or recordings.', detail: 'The current wallet password is required. Verification uses a temporary in-memory copy and does not change wallet files. Continue in a private place and store the seed offline. josimi does not send the seed over the network.', cancel: 'Cancel', confirm: 'Reveal seed', password: 'Enter the current wallet password.', invalidPassword: 'The wallet password is incorrect. The seed was not revealed.', failed: 'Secure seed verification could not be completed. Please try again.' },
@@ -920,6 +932,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2,
   if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 생성한 미전송 거래를 폐기했습니다.');
   if (!Array.isArray(txs) || txs.length === 0) throw new Error('거래 미리보기를 만들지 못했습니다.');
   if (txs.length !== 1) throw new Error('한 번의 송금 요청이 여러 거래로 나뉘어 안전하게 미리보기할 수 없습니다. 금액을 줄여 다시 검토하세요.');
+  assertServiceFeeDestination(txs, address, amountAtomic, serviceFeeAtomic);
   const networkFeeAtomic = txs.reduce((sum, tx) => {
     const fee = tx.getFee?.();
     if (fee === undefined || fee === null) throw new Error('네트워크 수수료를 확인하지 못해 송금을 중단했습니다.');
@@ -994,7 +1007,7 @@ ipcMain.handle('wallet-send-resolve-recovery', async (_, { pendingId, language =
   const id = String(pendingId || '');
   const pending = pendingTransactions.get(id);
   if (!pending?.requiresManualReview || pending.walletSessionId !== walletSessionId) throw new Error('확인할 재시작 후 송금 경고를 찾지 못했습니다.');
-  const locale = ['ko', 'en', 'zh', 'ja'].includes(language) ? language : 'ko';
+  const locale = ['ko', 'en', 'zh', 'ja'].includes(language) ? language : 'en';
   const copy = {
     ko: { title: '이전 송금 경고 해제', message: '거래 해시를 지갑 또는 신뢰할 수 있는 노드에서 직접 확인했습니까?', detail: '이 작업은 경고 기록만 삭제합니다. 거래를 취소하거나 미전파를 증명하지 않으며, 상태가 불확실하면 경고를 유지하고 새 송금을 만들지 마세요.', cancel: '아니요, 계속 차단', confirm: '확인했고 경고 해제' },
     en: { title: 'Clear previous-send warning', message: 'Have you checked the transaction hash in your wallet or a trusted node?', detail: 'This only removes the warning record. It does not cancel the transaction or prove it was not relayed. If the status is uncertain, keep the block and do not send again.', cancel: 'No, keep blocked', confirm: 'Checked; clear warning' },
