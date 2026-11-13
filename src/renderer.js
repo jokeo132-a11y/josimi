@@ -312,17 +312,18 @@ function renderSync(sync = {}) {
   $('status').dataset.state = state;
   const progress = Number(sync.progress);
   const hasProgress = Number.isFinite(progress) && Number(sync.targetHeight) > 0 && ['downloading', 'syncing'].includes(state);
-  const indeterminate = ['downloading', 'starting', 'syncing'].includes(state) && !hasProgress;
-  $('syncProgress').classList.toggle('hidden', !hasProgress && !indeterminate);
+  const syncingState = ['downloading', 'starting', 'syncing'].includes(state);
+  const indeterminate = syncingState && !hasProgress;
+  $('syncProgress').classList.toggle('hidden', !syncingState && !hasProgress);
   if (hasProgress) { $('syncProgress').value = Math.max(0, Math.min(100, progress)); $('syncProgress').setAttribute('aria-valuenow', String(Math.max(0, Math.min(100, progress)))); }
-  else if (indeterminate) { $('syncProgress').removeAttribute('value'); $('syncProgress').removeAttribute('aria-valuenow'); }
+  else if (indeterminate) { $('syncProgress').value = 0; $('syncProgress').setAttribute('aria-valuenow', '0'); }
   else { $('syncProgress').value = state === 'synced' ? 100 : 0; $('syncProgress').setAttribute('aria-valuenow', String(state === 'synced' ? 100 : 0)); }
   if (state === 'offline') {
     $('syncHint').textContent = dict.nodeOfflineDetail;
     $('syncDetails').textContent = `${dict.nodeOfflineDetail} · ${sync.node || ''}`;
-  } else if (['downloading', 'starting', 'syncing'].includes(state)) {
+  } else if (syncingState) {
     $('syncHint').textContent = dict.syncWaitNotice;
-    $('syncDetails').textContent = sync.targetHeight ? `${progress || 0}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : (sync.node || dict.nodeSyncing);
+    $('syncDetails').textContent = sync.targetHeight ? `${Number(progress || 0).toFixed(2)}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : `0.00% · ${dict.syncBlocks} ${sync.height || 0} · ${dict.syncPeers} ${sync.peers || 0}`;
   } else if (state === 'synced') {
     $('syncHint').textContent = dict.syncReadyNotice;
     $('syncDetails').textContent = sync.targetHeight ? `${Math.max(0, Math.min(100, progress)).toFixed(2)}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : `${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
@@ -348,8 +349,9 @@ function renderLocalNodeStatus(status = {}) {
   } else if (status.installing) {
     label = dict.localNodeVerifying;
   } else if (status.running) {
-    label = status.rpc?.state === 'starting' ? dict.nodeLocalStarting : status.rpc?.state === 'stopped' ? dict.localNodeRunning : dict.localNodeSyncing;
+    label = dict.localNodeSyncing;
     if (status.rpc?.targetHeight > 0) label += ` · ${Number(status.rpc.progress || 0).toFixed(2)}% · ${Number(status.rpc.height || 0).toLocaleString()} / ${Number(status.rpc.targetHeight).toLocaleString()}`;
+    else label += ' · 0.00%';
   } else if (status.installed && status.supported) label += ` · ${dict.localNodeStopped}`;
   $('localNodeStatus').textContent = label;
   $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing) || Boolean(status.statusUnavailable);
@@ -389,12 +391,9 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   } else if (status.installing) {
     headline = dict.nodeLocalPreparing;
     detail = dict.localNodeVerifying;
-  } else if (status.running && ['starting', 'stopped'].includes(status.rpc?.state)) {
-    headline = dict.nodeLocalPreparing;
-    detail = dict.nodeLocalStarting;
-  } else if (status.running && Number(status.rpc?.targetHeight) > 0) {
+  } else if (status.running) {
     headline = dict.nodeLocalSyncingShort;
-    detail = Number.isFinite(progress) ? `${Math.max(0, Math.min(100, progress)).toFixed(2)}% · ${dict.localNodeSyncing}` : dict.localNodeSyncing;
+    detail = Number.isFinite(progress) && Number(status.rpc?.targetHeight) > 0 ? `${Math.max(0, Math.min(100, progress)).toFixed(2)}% · ${dict.localNodeSyncing}` : `0.00% · ${dict.localNodeSyncing}`;
   } else if (status.running) {
     headline = dict.nodeLocalPreparing;
     detail = dict.localNodeRunning;
@@ -407,10 +406,10 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   }
   $('localNodeSummaryStatus').textContent = headline;
   $('localNodeSummaryDetail').textContent = detail;
-  const showProgress = !remote && status.running && Number(status.rpc?.targetHeight) > 0;
+  const showProgress = !remote && status.running;
   $('localNodeProgress').classList.toggle('hidden', !showProgress);
   if (showProgress && Number.isFinite(progress) && Number(status.rpc?.targetHeight) > 0) $('localNodeProgress').value = Math.max(0, Math.min(100, progress));
-  else if (showProgress) $('localNodeProgress').removeAttribute('value');
+  else if (showProgress) $('localNodeProgress').value = 0;
   else $('localNodeProgress').value = 0;
 }
 async function refreshLocalNodeStatus() {
