@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.23');
+  assert.equal(packageJson.version, '1.2.24');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -54,7 +54,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   const configureNodeInput = renderer.slice(renderer.indexOf('async function configureNodeInput'), renderer.indexOf("$('languageSelect').addEventListener", renderer.indexOf('async function configureNodeInput')));
   assert.doesNotMatch(configureNodeInput, /startLocalNodeInBackground\(\)/);
   assert.match(renderer, /const showProgress = !remote && status\.running;/);
-  assert.match(renderer, /state === 'synced'[\s\S]*?toFixed\(2\).*sync\.targetHeight/);
+  assert.match(renderer, /Math\.floor\(Math\.max\(0, Math\.min\(100, progress\)\)\)/);
   assert.match(renderer, /await ensureLocalNodeStartedOnce\(\)/);
   assert.match(renderer, /localNodeWaitReady\(\)/);
   assert.match(html, /class="node-manager-actions hidden"/);

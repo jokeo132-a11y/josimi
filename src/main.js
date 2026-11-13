@@ -214,7 +214,7 @@ async function getRemoteNodeStatus(node, timeoutMs = NODE_RPC_DEADLINE_MS) {
     const synchronized = typeof info.synchronized === 'boolean' ? info.synchronized : null;
     const peers = Number(info.outgoing_connections_count);
     if (!Number.isSafeInteger(peers) || peers < 0) throw new Error('노드 피어 수 응답 형식이 올바르지 않습니다.');
-    return { mode, node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : mode === 'local' ? 'local' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 10000) / 100) : 0, peers };
+    return { mode, node, state: synchronized === true ? 'synced' : synchronized === false ? 'syncing' : mode === 'local' ? 'local' : 'remote', synchronized, height, targetHeight, progress: targetHeight ? Math.min(100, Math.floor((height / targetHeight) * 100)) : 0, peers };
   } catch (_) {
     return { mode, node, state: mode === 'local' ? 'stopped' : 'offline', synchronized: null, height: 0, targetHeight: 0, progress: 0, peers: 0 };
   }
