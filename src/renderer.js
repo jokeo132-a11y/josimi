@@ -325,7 +325,7 @@ function renderSync(sync = {}) {
     $('syncDetails').textContent = sync.targetHeight ? `${progress || 0}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : (sync.node || dict.nodeSyncing);
   } else if (state === 'synced') {
     $('syncHint').textContent = dict.syncReadyNotice;
-    $('syncDetails').textContent = `${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
+    $('syncDetails').textContent = sync.targetHeight ? `${Math.max(0, Math.min(100, progress)).toFixed(2)}% · ${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} / ${(sync.targetHeight || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}` : `${dict.syncBlocks} ${(sync.height || 0).toLocaleString()} · ${dict.syncPeers} ${sync.peers || 0}`;
   } else if (state === 'remote') {
     $('syncHint').textContent = dict.nodeRemoteSummary;
     $('syncDetails').textContent = sync.node || dict.nodeRemoteSummary;
@@ -348,8 +348,8 @@ function renderLocalNodeStatus(status = {}) {
   } else if (status.installing) {
     label = dict.localNodeVerifying;
   } else if (status.running) {
-    label = status.rpc?.state === 'synced' ? dict.localNodeSynced : status.rpc?.state === 'syncing' ? dict.localNodeSyncing : ['starting', 'stopped'].includes(status.rpc?.state) ? dict.nodeLocalStarting : dict.localNodeRunning;
-    if (status.rpc?.height) label += ` · ${status.rpc.progress || 0}% · ${Number(status.rpc.height).toLocaleString()} / ${Number(status.rpc.targetHeight || 0).toLocaleString()}`;
+    label = status.rpc?.state === 'starting' ? dict.nodeLocalStarting : status.rpc?.state === 'stopped' ? dict.localNodeRunning : dict.localNodeSyncing;
+    if (status.rpc?.targetHeight > 0) label += ` · ${Number(status.rpc.progress || 0).toFixed(2)}% · ${Number(status.rpc.height || 0).toLocaleString()} / ${Number(status.rpc.targetHeight).toLocaleString()}`;
   } else if (status.installed && status.supported) label += ` · ${dict.localNodeStopped}`;
   $('localNodeStatus').textContent = label;
   $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing) || Boolean(status.statusUnavailable);
@@ -392,12 +392,9 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   } else if (status.running && ['starting', 'stopped'].includes(status.rpc?.state)) {
     headline = dict.nodeLocalPreparing;
     detail = dict.nodeLocalStarting;
-  } else if (status.running && status.rpc?.state === 'synced') {
-    headline = dict.nodeLocalReady;
-    detail = dict.localNodeSynced;
-  } else if (syncing) {
+  } else if (status.running && Number(status.rpc?.targetHeight) > 0) {
     headline = dict.nodeLocalSyncingShort;
-    detail = Number.isFinite(progress) ? `${Math.max(0, Math.min(100, progress))}% · ${dict.localNodeSyncing}` : dict.localNodeSyncing;
+    detail = Number.isFinite(progress) ? `${Math.max(0, Math.min(100, progress)).toFixed(2)}% · ${dict.localNodeSyncing}` : dict.localNodeSyncing;
   } else if (status.running) {
     headline = dict.nodeLocalPreparing;
     detail = dict.localNodeRunning;
@@ -410,7 +407,7 @@ function renderNodeConnectionSummary(status = renderLocalNodeStatus.lastStatus |
   }
   $('localNodeSummaryStatus').textContent = headline;
   $('localNodeSummaryDetail').textContent = detail;
-  const showProgress = !remote && syncing;
+  const showProgress = !remote && status.running && Number(status.rpc?.targetHeight) > 0;
   $('localNodeProgress').classList.toggle('hidden', !showProgress);
   if (showProgress && Number.isFinite(progress) && Number(status.rpc?.targetHeight) > 0) $('localNodeProgress').value = Math.max(0, Math.min(100, progress));
   else if (showProgress) $('localNodeProgress').removeAttribute('value');
@@ -686,7 +683,8 @@ async function configureNodeInput() {
     $('nodeMode').querySelector('option[value="local"]').disabled = !localNodeSupported;
     if (!localNodeSupported && $('nodeMode').value === 'local') $('nodeMode').value = 'remote';
     updateNodeModeFields();
-    if (localNodeSupported && $('nodeMode').value === 'local') void startLocalNodeInBackground();
+    // Do not start monerod before a wallet action. Creating, restoring, or opening a
+    // key file calls ensureLocalNodeStartedOnce immediately before the wallet operation.
   } catch (_) {
     localNodeConfigReady = true;
     localNodeSupported = false;
