@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.24');
+  assert.equal(packageJson.version, '1.2.25');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -123,6 +123,14 @@ test('configured service fee address is a valid Monero mainnet address and match
   assert.ok(privacy.includes(`\`${feeAddress}\``));
 });
 
+test('service fee relay validation requires exact requested destination totals', () => {
+  const main = read('src/main.js');
+  const validator = main.slice(main.indexOf('function assertServiceFeeDestination'), main.indexOf('function serializeSubaddress'));
+  assert.match(validator, /actual\.set\(address, \(actual\.get\(address\) \|\| 0n\) \+ amount\)/);
+  assert.match(validator, /actual\.size !== expected\.size/);
+  assert.match(validator, /actual\.get\(address\) !== expectedAmount/);
+});
+
 test('wallet lifecycle does not wait indefinitely for node or sync startup', () => {
   const main = read('src/main.js');
   const renderer = read('src/renderer.js');
@@ -137,6 +145,8 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   assert.match(read('src/node-manager.js'), /restartMaxAttempts = 5/);
   assert.match(main, /response\.result\.nettype !== 'mainnet'/);
   assert.match(main, /info\.synchronized !== true/);
+  assert.match(main, /\['local', 'syncing', 'synced'\]\.includes\(existing\.state\)/);
+  assert.match(main, /\['local', 'syncing', 'synced'\]\.includes\(rpc\.state\)/);
   assert.match(main, /withTimeout\(getNodeHeight\(activeConfig\.node\), WALLET_LIFECYCLE_NODE_PROBE_TIMEOUT_MS/);
   assert.match(main, /WALLET_SYNC_START_TIMEOUT_MS = 1_500/);
   assert.match(main, /async function startWalletBackgroundSyncWithinDeadline\(/);

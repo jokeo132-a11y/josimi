@@ -143,7 +143,7 @@ async function getLocalNodeManagerStatus() {
   const manager = getLocalNodeManager();
   const local = manager.getStatus();
   const rpc = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
-  const external = !local.running && ['syncing', 'synced'].includes(rpc.state) && typeof rpc.synchronized === 'boolean';
+  const external = !local.running && ['local', 'syncing', 'synced'].includes(rpc.state);
   return { ...local, running: local.running || external, external, rpc };
 }
 async function ensureLocalNodeForWallet(node) {
@@ -152,7 +152,10 @@ async function ensureLocalNodeForWallet(node) {
   const manager = getLocalNodeManager();
   if (!manager.getStatus().supported) throw new Error('이 Windows 환경에서는 로컬 Monero 노드를 사용할 수 없습니다.');
   const existing = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
-  if (['syncing', 'synced'].includes(existing.state) && typeof existing.synchronized === 'boolean') return resolved;
+  if (['local', 'syncing', 'synced'].includes(existing.state)) {
+    await waitForRpcReady(getLocalNodeManagerStatus);
+    return resolved;
+  }
   let status = manager.getStatus();
   if (!status.installed) await manager.install();
   status = manager.getStatus();
@@ -420,15 +423,26 @@ function makeSendResult(pending, txHashes) {
   return { txs: pending.txs.map(safeTx), txHashes, serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic), networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic) };
 }
 function assertServiceFeeDestination(txs, recipientAddress, amountAtomic, serviceFeeAtomic) {
-  if (serviceFeeAtomic <= 0n) return;
   if (!Array.isArray(txs) || txs.length !== 1) throw new Error('수수료가 포함된 거래를 하나로 확인하지 못해 송금을 중단했습니다.');
   const destinations = txs[0].getOutgoingTransfer?.()?.getDestinations?.();
   if (!Array.isArray(destinations)) throw new Error('생성된 거래의 목적지를 확인하지 못해 송금을 중단했습니다.');
-  const feeDestination = destinations.find((destination) => destination?.getAddress?.() === FEE_ADDRESS);
-  if (!feeDestination || BigInt(feeDestination.getAmount?.() ?? 0) < serviceFeeAtomic) throw new Error('생성된 거래에 서비스 수수료 주소가 정확히 포함되지 않아 송금을 중단했습니다.');
-  if (recipientAddress === FEE_ADDRESS) {
-    const recipientDestination = destinations.find((destination) => destination?.getAddress?.() === recipientAddress);
-    if (!recipientDestination || BigInt(recipientDestination.getAmount?.() ?? 0) < amountAtomic + serviceFeeAtomic) throw new Error('수수료 주소로 보내는 거래 금액을 확인하지 못해 송금을 중단했습니다.');
+  const expected = new Map([[recipientAddress, amountAtomic]]);
+  if (recipientAddress === FEE_ADDRESS) expected.set(FEE_ADDRESS, amountAtomic + serviceFeeAtomic);
+  else if (serviceFeeAtomic > 0n) expected.set(FEE_ADDRESS, serviceFeeAtomic);
+  const actual = new Map();
+  try {
+    for (const destination of destinations) {
+      const address = destination?.getAddress?.();
+      const amount = BigInt(destination?.getAmount?.() ?? 0);
+      if (typeof address !== 'string' || amount < 0n) throw new Error('invalid destination');
+      actual.set(address, (actual.get(address) || 0n) + amount);
+    }
+  } catch (_) {
+    throw new Error('생성된 거래의 목적지 금액을 확인하지 못해 송금을 중단했습니다.');
+  }
+  if (actual.size !== expected.size) throw new Error('생성된 거래의 목적지 수가 요청과 달라 송금을 중단했습니다.');
+  for (const [address, expectedAmount] of expected) {
+    if (actual.get(address) !== expectedAmount) throw new Error('생성된 거래의 받는 주소 또는 서비스 수수료 금액이 요청과 달라 송금을 중단했습니다.');
   }
 }
 function serializeSubaddress(subaddress) {
@@ -880,7 +894,7 @@ ipcMain.handle('local-node-install', async () => {
 ipcMain.handle('local-node-start', async () => {
   if (shutdownRequested) throw new Error('앱 종료가 진행 중입니다.');
   const existing = await getRemoteNodeStatus(LOCAL_NODE_URL, 1_000);
-  if (['syncing', 'synced'].includes(existing.state) && typeof existing.synchronized === 'boolean') return getLocalNodeManagerStatus();
+  if (['local', 'syncing', 'synced'].includes(existing.state)) return getLocalNodeManagerStatus();
   return getLocalNodeManager().start();
 });
 ipcMain.handle('local-node-wait-ready', async () => {
