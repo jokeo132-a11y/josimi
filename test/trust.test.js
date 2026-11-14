@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.25');
+  assert.equal(packageJson.version, '1.2.26');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -121,6 +121,14 @@ test('configured service fee address is a valid Monero mainnet address and match
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.MAINNET), true);
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.TESTNET), false);
   assert.ok(privacy.includes(`\`${feeAddress}\``));
+});
+
+test('website exposes the official josimi Reddit profile and community links', () => {
+  const website = read('website/index.html');
+  assert.match(website, /https:\/\/www\.reddit\.com\/user\/josimi_developer\//);
+  assert.match(website, /https:\/\/www\.reddit\.com\/r\/josimi\//);
+  assert.match(website, /개발자 Reddit 프로필/);
+  assert.match(website, /josimi Reddit 커뮤니티/);
 });
 
 test('service fee relay validation requires exact requested destination totals', () => {
