@@ -13,7 +13,7 @@ const { RelayGuardStore } = require('./relay-guard');
 const { WalletOperationGate } = require('./wallet-operation-gate');
 const { installPermissionPolicy } = require('./permission-policy');
 
-const FEE_ADDRESS = '47ky8dusihATq9gGbQiEL9dMUfBKzgEm5ExF7yx8ANxvBVDe57e58kY1FV56zyx1CUFUJwT6YqB4XJWnAV9HiKp2MkmSkNt';
+const FEE_ADDRESS = '47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL';
 const SERVICE_FEE_RATE = 0.0025;
 const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const LOCAL_NODE_URL = `http://${RPC_HOST}:${RPC_PORT}`;

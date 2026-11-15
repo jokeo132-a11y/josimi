@@ -30,7 +30,7 @@ The josimi service fee does not apply to mining rewards. It applies only to outg
 
 ## Fees
 
-Outgoing transfers have a josimi service fee of 0.25% of the requested amount, capped at 0.05 XMR, in addition to Monero's network fee. The service-fee address is `47ky8dusihATq9gGbQiEL9dMUfBKzgEm5ExF7yx8ANxvBVDe57e58kY1FV56zyx1CUFUJwT6YqB4XJWnAV9HiKp2MkmSkNt`. The confirmation screen displays the recipient, service fee, network fee, total debit, and fee address before relay. Review these fields every time.
+Outgoing transfers have a josimi service fee of 0.25% of the requested amount, capped at 0.05 XMR, in addition to Monero's network fee. The service-fee address is `47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL`. The confirmation screen displays the recipient, service fee, network fee, total debit, and fee address before relay. Review these fields every time.
 
 ## Telemetry and limits
 

@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.26');
+  assert.equal(packageJson.version, '1.2.27');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -116,7 +116,7 @@ test('configured service fee address is a valid Monero mainnet address and match
   const privacy = read('PRIVACY.md');
   const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
   assert.ok(feeAddress);
-  assert.equal(feeAddress, '47ky8dusihATq9gGbQiEL9dMUfBKzgEm5ExF7yx8ANxvBVDe57e58kY1FV56zyx1CUFUJwT6YqB4XJWnAV9HiKp2MkmSkNt');
+  assert.equal(feeAddress, '47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL');
   const { MoneroUtils, MoneroNetworkType } = require('monero-ts');
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.MAINNET), true);
   assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.TESTNET), false);
