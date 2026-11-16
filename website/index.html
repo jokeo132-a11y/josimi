@@ -89,6 +89,7 @@
         <article class="step"><span class="step-number">02</span><h3>새 지갑·기존 지갑·복구 중 고릅니다</h3><p>새 지갑을 만들거나, 기존 <code>.keys</code> 파일을 열거나, 복구 문구로 되살릴 수 있습니다. 비밀번호와 복구 문구는 이 앱에서만 입력하세요.</p></article>
         <article class="step"><span class="step-number">03</span><h3>로컬 노드가 자동으로 동기화합니다</h3><p>새 지갑은 노드 연결을 기다리지 않고 먼저 만들 수 있어요. 로컬 노드와 지갑 동기화는 뒤에서 자동으로 이어집니다. 첫 동기화 전에는 잔액과 거래 내역이 늦게 표시될 수 있습니다.</p></article>
       </div>
+      <div class="wait-note"><span class="wait-icon" aria-hidden="true">◎</span><div><strong>공개 노드를 사용하려면</strong><p>지갑 시작 화면에서 <strong>연결 설정 → 연결 방식 → 공개 노드</strong>를 선택하세요. 기본 주소는 <code>https://node.monerodevs.org:18089</code>이며, 필요하면 신뢰하는 다른 HTTPS Monero 노드 주소를 직접 입력할 수 있습니다. 공개 노드 운영자는 접속 IP와 RPC 요청 정보를 볼 수 있으므로 노드를 신중하게 선택하세요.</p></div></div>
       <div class="wait-note"><span class="wait-icon" aria-hidden="true">↻</span><div><strong>처음에는 진행률이 한동안 그대로일 수 있습니다.</strong><p>블록체인 데이터를 내려받고 확인하는 데 시간이 걸립니다. 저장 공간과 인터넷을 사용하니 앱을 켜 둔 채 진행 상황을 확인해 주세요.</p></div></div>
     </section>
 
@@ -109,7 +110,7 @@
       <div class="faq-list">
         <details><summary>노드가 준비되기 전에 지갑을 만들거나 열 수 있나요?</summary><p>네. 새 지갑은 노드 연결 전에 만들 수 있고, 기존 지갑 열기와 복구도 노드 응답을 기다리지 않습니다. 다만 잔액과 거래 내역은 노드 연결·동기화가 이어질 때까지 늦게 표시될 수 있어요.</p></details>
         <details><summary>첫 동기화가 오래 걸리는 게 정상인가요?</summary><p>그럴 수 있습니다. Monero 블록체인을 처음 확인하므로 수 시간 또는 며칠이 걸릴 수 있고, 저장 공간과 네트워크 사용량도 큽니다. 초기 빠른 동기화 중 정전이나 시스템 강제 종료가 발생하면 블록체인 DB를 다시 확인하거나 재동기화해야 할 수 있지만, 지갑 키 파일과는 별개입니다. 동기화가 끝날 때까지 잔액이나 거래 목록이 바뀔 수 있습니다.</p></details>
-        <details><summary>공개 노드로 바꿀 수 있나요?</summary><p>네. 지갑 생성·복구 화면의 연결 설정에서 바꿀 수 있습니다. 대신 공개 노드 운영자가 IP와 연결 메타데이터를 볼 수 있으며, RPC 요청으로 지갑 잔액이나 활동을 추론할 수 있습니다.</p></details>
+        <details><summary>공개 노드로 바꾸려면 어떻게 하나요?</summary><p>지갑 시작 화면에서 <strong>연결 설정 → 연결 방식 → 공개 노드</strong>를 선택하세요. 기본 공개 노드는 <code>https://node.monerodevs.org:18089</code>입니다. 다른 노드를 쓰려면 신뢰하는 HTTPS Monero 노드 주소를 입력하면 됩니다. 공개 노드 운영자는 접속 IP와 연결 메타데이터를 볼 수 있으며, RPC 요청으로 지갑 잔액이나 활동을 추론할 수 있습니다.</p></details>
         <details><summary>체크섬을 확인하면 앱이 안전하다는 뜻인가요?</summary><p>아닙니다. SHA-256 비교는 받은 파일이 게시된 파일과 같은지 확인할 뿐, 소프트웨어의 안전성이나 무결한 개발 과정을 보증하지 않습니다. 현재 앱은 독립 감사를 받지 않았고 Windows 코드 서명도 없습니다.</p></details>
         <details><summary>복구 문구를 어디에 저장해야 하나요?</summary><p>복구 문구는 누구에게도 보내지 말고, 오프라인으로 안전하게 보관하세요. josimi에서는 현재 지갑 비밀번호를 다시 확인한 뒤에만 화면에 표시됩니다. 화면을 캡처하거나 클라우드 메모에 저장하는 일은 피하세요.</p></details>
         <details><summary>다운로드 링크가 열리지 않으면 어떻게 하나요?</summary><p>GitHub API에서 버전을 가져오지 못하더라도 릴리스 페이지를 직접 열 수 있습니다. 파일을 받을 때 버전과 Windows x64 ZIP인지 확인하세요.</p><a class="inline-link" href="https://github.com/jokeo132-a11y/josimi/releases/latest" rel="noopener">GitHub 최신 릴리스 열기 <span aria-hidden="true">↗</span></a></details>
