@@ -304,7 +304,7 @@ function copyFileDurably(source, destination) {
   const temp = `${destination}.${process.pid}.${Date.now()}.tmp`;
   try {
     fs.copyFileSync(source, temp);
-    const fd = fs.openSync(temp, 'r');
+    const fd = fs.openSync(temp, 'r+');
     try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
     fs.chmodSync(temp, 0o600);
     fs.renameSync(temp, destination);
@@ -1168,7 +1168,7 @@ ipcMain.handle('wallet-export-backup', async () => {
       const suffix = file.slice(sourceName.length);
       const staged = path.join(stagingDir, `${destinationName}${suffix}`);
       fs.copyFileSync(path.join(path.dirname(sourceBase), file), staged);
-      const fd = fs.openSync(staged, 'r');
+      const fd = fs.openSync(staged, 'r+');
       try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
       fs.chmodSync(staged, 0o600);
       stagedFiles.push({ staged, destination: path.join(path.dirname(destinationBase), `${destinationName}${suffix}`) });
