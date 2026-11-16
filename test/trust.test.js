@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.27');
+  assert.equal(packageJson.version, '1.2.28');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -161,6 +161,29 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   const lifecycle = main.slice(main.indexOf("registerWalletOperationHandler('wallet-create'"), main.indexOf("ipcMain.handle('wallet-refresh'"));
   assert.equal((lifecycle.match(/loadStartupSummary\(wallet\)/g) || []).length, 3);
   assert.equal((lifecycle.match(/startWalletBackgroundSyncWithinDeadline\(wallet\)/g) || []).length, 3);
+});
+
+test('external monerod is never stopped and relay recovery is fail closed', () => {
+  const main = read('src/main.js');
+  const renderer = read('src/renderer.js');
+  const walletSend = main.slice(main.indexOf("ipcMain.handle('wallet-send'"), main.indexOf("ipcMain.handle('wallet-export-backup'"));
+  assert.match(main, /if \(status\.external\) return \{ stopped: false, external: true \}/);
+  assert.match(renderer, /stopLocalNodeBtn'\)\.disabled = Boolean\(status\.external\)/);
+  assert.match(walletSend, /Do not report success until the post-relay recovery record is durable/);
+  assert.match(walletSend, /pending\.state = 'relay-unknown'/);
+  assert.match(walletSend, /persistRelayState\(pending, 'relay-unknown', txHashes\)/);
+  assert.ok(walletSend.indexOf("persistRelayState(pending, 'relayed', txHashes)") < walletSend.indexOf('lastCompletedSend ='));
+});
+
+test('wallet backup stages and promotes the complete wallet file set', () => {
+  const main = read('src/main.js');
+  const backup = main.slice(main.indexOf("ipcMain.handle('wallet-export-backup'"), main.indexOf("ipcMain.handle('wallet-qr'"));
+  assert.match(backup, /const sourceFiles = walletFiles\(sourceBase\)/);
+  assert.match(backup, /backup-staging/);
+  assert.match(backup, /for \(const file of sourceFiles\)/);
+  assert.match(backup, /fs\.fsyncSync\(fd\)/);
+  assert.match(backup, /fs\.renameSync\(file\.staged, file\.destination\)/);
+  assert.doesNotMatch(backup, /path\.resolve\(source\)/);
 });
 
 test('successful transfer notifications use the active locale', () => {
@@ -294,6 +317,6 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /not Authenticode-signed/i);
   assert.doesNotMatch(read('.github/workflows/release.yml'), /josimi\.exe/);
   assert.doesNotMatch(verify, /josimi\.exe/);
-  assert.match(verify, /\$version = '1\.2\.11'/);
+  assert.match(verify, /\$version = '<version from the ZIP filename>'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });

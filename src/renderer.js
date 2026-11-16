@@ -356,7 +356,7 @@ function renderLocalNodeStatus(status = {}) {
   $('localNodeStatus').textContent = label;
   $('installLocalNodeBtn').disabled = !status.supported || Boolean(status.installing) || Boolean(status.statusUnavailable);
   $('startLocalNodeBtn').disabled = !status.supported || !status.installed || Boolean(status.installing) || Boolean(status.running) || Boolean(status.restarting) || Boolean(status.statusUnavailable);
-  $('stopLocalNodeBtn').disabled = (!status.running && !status.restarting) || Boolean(status.statusUnavailable);
+  $('stopLocalNodeBtn').disabled = Boolean(status.external) || ((!status.running && !status.restarting) || Boolean(status.statusUnavailable));
   if (status.restartExhausted && $('nodeMode').value === 'local') {
     showError('localNodeError', new Error(dict.localNodeRestartFailed));
     $('retryLocalNodeBtn').classList.remove('hidden');

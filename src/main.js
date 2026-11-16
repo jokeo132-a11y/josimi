@@ -167,9 +167,12 @@ async function stopLocalNode() {
   const manager = getLocalNodeManager();
   if (!manager.isRunning()) {
     const status = await getLocalNodeManagerStatus();
-    if (status.external) return postJson(`${LOCAL_NODE_URL}/stop_daemon`, {});
+    // A loopback daemon may belong to another wallet or service. Never stop a
+    // process that josimi did not spawn; only report it as externally running.
+    if (status.external) return { stopped: false, external: true };
   }
-  return manager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {}));
+  await manager.stop(() => postJson(`${LOCAL_NODE_URL}/stop_daemon`, {}));
+  return { stopped: true, external: false };
 }
 function hasWalletData(dir) {
   try { return fs.readdirSync(dir).some((name) => name === 'josimi-wallet.keys' || name.startsWith('josimi-wallet.')); } catch (_) { return false; }
@@ -282,14 +285,33 @@ function assertNoPersistedRelay(walletBase) {
   if (getRelayGuardStore().get(walletBase)) throw new Error('이 지갑에 이전 송금의 미확정 기록이 있습니다. 앱 내 경고를 확인하고 거래 해시를 대조하기 전에는 새 송금을 만들 수 없습니다.');
 }
 function keyFilePath(base) { return `${base}.keys`; }
-function isRegularFile(filePath) { try { return fs.statSync(filePath).isFile(); } catch (_) { return false; } }
+function isRegularFile(filePath) {
+  try {
+    const stat = fs.lstatSync(filePath);
+    return stat.isFile() && !stat.isSymbolicLink();
+  } catch (_) { return false; }
+}
 function walletFamilyExists(base) {
   return isRegularFile(base) || isRegularFile(keyFilePath(base)) || isRegularFile(`${base}.address.txt`);
 }
 function walletFiles(base = walletPath()) {
   const dir = path.dirname(base);
   if (!fs.existsSync(dir)) return [];
-  return fs.readdirSync(dir).filter((name) => name === path.basename(base) || name.startsWith(`${path.basename(base)}.`));
+  return fs.readdirSync(dir).filter((name) => (name === path.basename(base) || name.startsWith(`${path.basename(base)}.`)) && isRegularFile(path.join(dir, name)));
+}
+
+function copyFileDurably(source, destination) {
+  const temp = `${destination}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    fs.copyFileSync(source, temp);
+    const fd = fs.openSync(temp, 'r');
+    try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+    fs.chmodSync(temp, 0o600);
+    fs.renameSync(temp, destination);
+  } catch (error) {
+    try { fs.rmSync(temp, { force: true }); } catch (_) {}
+    throw error;
+  }
 }
 function normalizeWalletBase(filePath) {
   if (typeof filePath !== 'string' || !filePath.trim()) throw new Error('key 파일 경로가 선택되지 않았습니다.');
@@ -1071,20 +1093,9 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
     const relayPromise = activeWallet.relayTxs(pending.txs);
     pending.relayAttemptsInFlight = (pending.relayAttemptsInFlight || 0) + 1;
     pending.relayInProgress = true;
-    void relayPromise.then((hashes) => {
+    void relayPromise.then(() => {}, () => {}).finally(() => {
       pending.relayAttemptsInFlight = Math.max(0, (pending.relayAttemptsInFlight || 1) - 1);
       pending.relayInProgress = pending.relayAttemptsInFlight > 0;
-      if (Array.isArray(hashes) && hashes.length === pending.txs.length && hashes.every(isValidMoneroTxHash) && pendingTransactions.get(id) === pending && pending.walletSessionId === walletSessionId) {
-        pending.state = 'relayed';
-        pending.txHashes = hashes;
-        try { persistRelayState(pending, 'relayed', hashes); } catch (error) { console.error('[josimi relay guard]', error.message); }
-        lastCompletedSend = { pendingId: id, walletSessionId: sessionId, walletBase: pending.walletBase, result: makeSendResult(pending, hashes) };
-        pendingTransactions.delete(id);
-      }
-    }, () => {
-      pending.relayAttemptsInFlight = Math.max(0, (pending.relayAttemptsInFlight || 1) - 1);
-      pending.relayInProgress = pending.relayAttemptsInFlight > 0;
-    }).catch(() => {}).finally(() => {
       settleRelay();
       pendingRelaySettlements.delete(relaySettlement);
     });
@@ -1096,7 +1107,18 @@ ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
     pending.state = 'relayed';
     pending.txHashes = txHashes;
     pending.relayInProgress = false;
-    try { persistRelayState(pending, 'relayed', txHashes); } catch (error) { console.error('[josimi relay guard]', error.message); }
+    try {
+      // Do not report success until the post-relay recovery record is durable.
+      // Without this guard a restart could allow the same payment to be sent twice.
+      persistRelayState(pending, 'relayed', txHashes);
+    } catch (error) {
+      pending.state = 'relay-unknown';
+      pending.requiresManualReview = true;
+      try { persistRelayState(pending, 'relay-unknown', txHashes); } catch (persistError) {
+        console.error('[josimi relay guard]', persistError.message);
+      }
+      throw new Error(`거래는 전파됐지만 송금 확인 기록을 저장하지 못했습니다. 새 송금을 만들지 말고 거래 해시를 확인하세요. (${error.message})`);
+    }
     lastCompletedSend = { pendingId: id, walletSessionId: sessionId, walletBase: pending.walletBase, result: makeSendResult(pending, txHashes) };
     pendingTransactions.delete(id);
     return lastCompletedSend.result;
@@ -1127,18 +1149,40 @@ ipcMain.handle('wallet-export-backup', async () => {
   ensureWallet();
   const sessionId = walletSessionId;
   const sourceBase = walletPath();
-  const source = keyFilePath(sourceBase);
-  if (!isRegularFile(source)) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
+  const sourceFiles = walletFiles(sourceBase);
+  if (!sourceFiles.includes(path.basename(keyFilePath(sourceBase)))) throw new Error('지갑 키 파일을 찾을 수 없습니다.');
   const result = await dialog.showSaveDialog(mainWindow, { title: 'josimi 지갑 백업 저장', defaultPath: 'josimi-wallet.keys', filters: [{ name: 'Monero wallet', extensions: ['keys'] }] });
   if (result.canceled) return { canceled: true };
   if (!wallet || sessionId !== walletSessionId) throw new Error('백업 저장 중 지갑 세션이 변경되었습니다. 다시 시도하세요.');
   const destinationBase = normalizeWalletBase(result.filePath);
   const destination = keyFilePath(destinationBase);
-  if (path.resolve(destination) === path.resolve(source)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
+  if (path.resolve(destinationBase) === path.resolve(sourceBase)) throw new Error('원본 지갑 파일과 다른 위치에 백업을 저장하세요.');
   if (walletFamilyExists(destinationBase)) throw new Error('같은 이름의 지갑 파일이나 주소 정보 파일이 이미 있습니다. 다른 백업 이름을 선택하세요.');
-  fs.copyFileSync(source, destination);
-  const sourceAddress = `${sourceBase}.address.txt`;
-  if (isRegularFile(sourceAddress)) fs.copyFileSync(sourceAddress, `${destinationBase}.address.txt`);
+  const sourceName = path.basename(sourceBase);
+  const destinationName = path.basename(destinationBase);
+  const stagingDir = `${destinationBase}.backup-staging-${process.pid}-${Date.now()}`;
+  const stagedFiles = [];
+  try {
+    fs.mkdirSync(stagingDir);
+    for (const file of sourceFiles) {
+      const suffix = file.slice(sourceName.length);
+      const staged = path.join(stagingDir, `${destinationName}${suffix}`);
+      fs.copyFileSync(path.join(path.dirname(sourceBase), file), staged);
+      const fd = fs.openSync(staged, 'r');
+      try { fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      fs.chmodSync(staged, 0o600);
+      stagedFiles.push({ staged, destination: path.join(path.dirname(destinationBase), `${destinationName}${suffix}`) });
+    }
+    for (const file of stagedFiles) fs.renameSync(file.staged, file.destination);
+  } catch (error) {
+    for (const file of stagedFiles) {
+      try { fs.rmSync(file.staged, { force: true }); } catch (_) {}
+      try { fs.rmSync(file.destination, { force: true }); } catch (_) {}
+    }
+    throw new Error(`지갑 백업을 완성하지 못했습니다. 원본은 변경되지 않았습니다. (${error.message})`);
+  } finally {
+    try { fs.rmSync(stagingDir, { recursive: true, force: true }); } catch (_) {}
+  }
   return { canceled: false, path: destination };
 });
 ipcMain.handle('wallet-qr', async (_, text) => {

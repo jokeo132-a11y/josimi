@@ -79,7 +79,7 @@ test('real wallet IPC creates, reopens, and restores offline without waiting for
   try {
     require(path.join(root, 'src', 'main.js'));
     await new Promise((resolve) => setTimeout(resolve, 25));
-    for (const channel of ['wallet-file-choose', 'wallet-create', 'wallet-open', 'wallet-restore', 'wallet-seed', 'wallet-lock']) {
+    for (const channel of ['wallet-file-choose', 'wallet-create', 'wallet-open', 'wallet-restore', 'wallet-seed', 'wallet-lock', 'wallet-export-backup']) {
       assert.ok(handlers.has(channel), `expected ${channel} IPC handler to register`);
     }
     const frame = { url: appUrl };
@@ -93,6 +93,13 @@ test('real wallet IPC creates, reopens, and restores offline without waiting for
     assert.equal(created.accounts.length, 1);
     assert.equal(created.walletSyncStartState, 'starting');
     assert.ok(fs.statSync(path.join(documents, 'first-wallet.keys')).isFile());
+
+    savePath = path.join(documents, 'first-wallet-backup.keys');
+    const backup = await handlers.get('wallet-export-backup')(event);
+    assert.equal(backup.canceled, false);
+    assert.ok(fs.statSync(path.join(documents, 'first-wallet-backup')).isFile());
+    assert.ok(fs.statSync(path.join(documents, 'first-wallet-backup.keys')).isFile());
+    assert.ok(fs.statSync(path.join(documents, 'first-wallet-backup.address.txt')).isFile());
 
     const seedPayload = { password, language: 'en' };
     const seed = await handlers.get('wallet-seed')(event, seedPayload);

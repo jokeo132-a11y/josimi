@@ -1,3 +1,10 @@
+## v1.2.28 — 2026-11-15
+
+- Fail closed when a successful relay cannot be durably recorded; the app does not report normal success or permit an untracked resend.
+- Never stop a loopback `monerod` that josimi did not spawn; external daemons are reused for status and wallet work but remain under their owner's control.
+- Stage complete wallet-file backups, including the wallet cache and address sidecar, before promoting them to the selected destination.
+- Synchronize current release/version documentation with the package and clarify that local-node startup begins when a wallet action needs it.
+
 ## v1.2.11 — 2026-11-10
 
 - Prevent duplicate local-daemon starts and make stop-during-start, daemon-exit recovery, and retry cancellation deterministic; RPC waiters see the daemon as restarting throughout recovery. Automatic crash recovery is bounded and user stop remains authoritative.
