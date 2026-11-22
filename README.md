@@ -31,6 +31,10 @@ The v1.2.1 app verified pinned XMRig and P2Pool executable hashes before launch.
 
 josimi does not add a service fee to wallet transfers. Monero network fees are calculated by the wallet and shown before confirmation.
 
+## Voluntary donations
+
+If josimi is useful to you, you may voluntarily support development with XMR. Donations are optional and are not a wallet transfer fee or swap fee. The current donation address is `44ooBbfBHPDbVvR7JCSixa8axVjp8tdRvTz2F3B5MSf3RzxZFNDtTusP51oh3dxQpVgefcxHFtTeLVCvHL11SXsQ6zkYUyB`.
+
 ## In-app swap quote model
 
 The wallet has a quote-only swap panel for BTC, SOL, ETH, LTC, and USDT to XMR. The ChangeNOW API key is read only from the developer-controlled `CHANGENOW_API_KEY` runtime secret; users do not enter a key, and it is never bundled in the renderer, source code, or wallet files. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.

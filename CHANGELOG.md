@@ -181,7 +181,7 @@
 ## v0.6.1 — 2026-10-17
 
 - solo 채굴 시간을 사용자 주소 약 95%, 수수료 주소 약 5%로 전환
-- 수수료 주소는 `42oyVMt9WTyVBNSY81ArA4NotCt7hKxxXQMk32e1tS6oTaxVZv2Y72E83JLV3xBF2e28uF3YiuAYNizNZTACBq1JHfzwUHu`로 고정
+- 기부 안내를 추가하고 공개된 기부 주소를 `44ooBbfBHPDbVvR7JCSixa8axVjp8tdRvTz2F3B5MSf3RzxZFNDtTusP51oh3dxQpVgefcxHFtTeLVCvHL11SXsQ6zkYUyB`로 통일
 - 현재 채굴 단계가 사용자 주소인지 수수료 주소인지 화면에 표시
 - 한 블록의 보상은 분할되지 않고 당시 채굴 대상 주소로 전액 지급된다는 점을 UI와 문서에 명시
 
