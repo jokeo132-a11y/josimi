@@ -1,3 +1,9 @@
+## v1.2.31 — 2026-11-22
+
+- Make wallet open and restore transitions roll back safely when candidate startup fails.
+- Wait for the complete post-relay send confirmation before shutdown closes the wallet.
+- Make the source website directly deployable and align current privacy/version documentation.
+
 ## v1.2.30 — 2026-11-22
 
 - Remove the quote-only swap panel, ChangeNOW integration, swap IPC, provider response code, and related documentation.
@@ -303,14 +309,6 @@ Monero GUI와 Cake Wallet의 실제 제품 화면을 참고해 인터페이스�
 - Monero 표준 seed 형식인 13/14/25단어만 허용하고 잘못된 12/24단어 입력은 거부합니다.
 - 생성된 지갑과 복구된 지갑의 primary address를 파일 저장 전후로 비교해 주소가 바뀌면 실패 처리합니다.
 - 실제 monero-ts 재현에서 같은 25단어 seed는 같은 주소를 만들고, offset passphrase를 넣은 경우에만 다른 주소가 만들어지는 것을 확인했습니다.
-
-# Changelog
-
-## Unreleased
-
-- Remove the outgoing josimi service fee from transaction destinations, previews, review UI, documents, and regression tests.
-- Add a quote-only BTC/SOL/ETH/LTC/USDT-to-XMR swap panel using the developer-controlled ChangeNOW runtime secret; users do not enter an API key, and order creation or asset movement is not included.
-
 
 ## v0.3.5 — 2026-10-12
 

@@ -29,9 +29,9 @@ const logo = readSource(path.join('assets', 'josimi-logo.png'));
 const cssName = `site-${digest(css)}.css`;
 const jsName = `site-${digest(js)}.js`;
 let html = htmlTemplate
-  .replace('/assets/site.css', `/assets/${cssName}`)
-  .replace('/assets/site.js', `/assets/${jsName}`);
-if (html === htmlTemplate || html.includes('/assets/site.css') || html.includes('/assets/site.js')) {
+  .replace('styles.css', `/assets/${cssName}`)
+  .replace('site.js', `/assets/${jsName}`);
+if (html === htmlTemplate || html.includes('styles.css') || html.includes('site.js')) {
   throw new Error('The website stylesheet or script reference was not versioned.');
 }
 

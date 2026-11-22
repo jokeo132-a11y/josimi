@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.30');
+  assert.equal(packageJson.version, '1.2.31');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -117,12 +117,15 @@ test('wallet lifecycle does not wait indefinitely for node or sync startup', () 
   const lifecycle = main.slice(main.indexOf("registerWalletOperationHandler('wallet-create'"), main.indexOf("ipcMain.handle('wallet-refresh'"));
   assert.equal((lifecycle.match(/loadStartupSummary\(wallet\)/g) || []).length, 3);
   assert.equal((lifecycle.match(/startWalletBackgroundSyncWithinDeadline\(wallet\)/g) || []).length, 3);
+  assert.match(lifecycle, /candidateWallet = await monerojs\.openWalletFull/);
+  assert.match(lifecycle, /wallet = previousWallet;/);
+  assert.match(lifecycle, /cancelWalletSyncRetry\(\);\s*removeWalletFiles\(recoveryPath\)/);
 });
 
 test('external monerod is never stopped and relay recovery is fail closed', () => {
   const main = read('src/main.js');
   const renderer = read('src/renderer.js');
-  const walletSend = main.slice(main.indexOf("ipcMain.handle('wallet-send'"), main.indexOf("ipcMain.handle('wallet-export-backup'"));
+  const walletSend = main.slice(main.indexOf("registerSendOperationHandler('wallet-send'"), main.indexOf("ipcMain.handle('wallet-export-backup'"));
   assert.match(main, /if \(status\.external\) return \{ stopped: false, external: true \}/);
   assert.match(renderer, /stopLocalNodeBtn'\)\.disabled = Boolean\(status\.external\)/);
   assert.match(walletSend, /Do not report success until the post-relay recovery record is durable/);
@@ -215,7 +218,7 @@ test('Windows package stages only the pinned Monero daemon runtime and cleans ge
 test('relay state is durable before broadcast and missing transaction hashes fail closed', () => {
   const main = read('src/main.js');
   const guard = read('src/relay-guard.js');
-  const walletSend = main.slice(main.indexOf("ipcMain.handle('wallet-send'"));
+  const walletSend = main.slice(main.indexOf("registerSendOperationHandler('wallet-send'"));
   assert.ok(walletSend.indexOf("persistRelayState(pending, 'relaying')") < walletSend.indexOf('relayStarted = true'));
   assert.ok(walletSend.indexOf('relayStarted = true') < walletSend.indexOf('activeWallet.relayTxs(pending.txs)'));
   assert.match(main, /hashes\.length !== pending\.txs\.length/);
@@ -256,6 +259,8 @@ test('wallet selection and lifecycle IPC handlers share the single-flight operat
     assert.match(main, new RegExp(`registerWalletOperationHandler\\('${channel}'`));
   }
   assert.match(main, /await walletOperationGate\.waitForIdle\(\)/);
+  assert.match(main, /await sendOperationGate\.waitForIdle\(\)/);
+  assert.match(main, /registerSendOperationHandler\('wallet-send'/);
   assert.match(renderer, /if \(walletFormSubmissionInFlight\) return/);
   assert.match(renderer, /setWalletFormBusy\(true\)/);
   const summary = main.slice(main.indexOf('async function loadSummary('), main.indexOf('async function makeWindow()'));
@@ -275,4 +280,13 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.doesNotMatch(verify, /josimi\.exe/);
   assert.match(verify, /\$version = '<version from the ZIP filename>'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
+});
+
+test('source website remains directly deployable while production build hashes its assets', () => {
+  const website = read('website/index.html');
+  const builder = read('scripts/build-website.js');
+  assert.match(website, /href="styles\.css"/);
+  assert.match(website, /src="site\.js"/);
+  assert.match(builder, /\.replace\('styles\.css', `\/assets\/\$\{cssName\}`\)/);
+  assert.match(builder, /\.replace\('site\.js', `\/assets\/\$\{jsName\}`\)/);
 });

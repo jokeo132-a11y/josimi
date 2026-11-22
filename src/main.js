@@ -53,10 +53,17 @@ function registerIpcHandler(channel, handler) {
 }
 const ipcMain = { handle: registerIpcHandler };
 const walletOperationGate = new WalletOperationGate();
+const sendOperationGate = new WalletOperationGate();
 function registerWalletOperationHandler(channel, handler) {
   ipcMain.handle(channel, (event, ...args) => {
     if (shutdownRequested) return Promise.reject(new Error('앱 종료가 진행 중입니다.'));
     return walletOperationGate.run(() => handler(event, ...args));
+  });
+}
+function registerSendOperationHandler(channel, handler) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (shutdownRequested) return Promise.reject(new Error('앱 종료가 진행 중입니다.'));
+    return sendOperationGate.run(() => handler(event, ...args));
   });
 }
 
@@ -683,18 +690,18 @@ registerWalletOperationHandler('wallet-restore', async (_, payload = {}) => {
       if (!customPath) archived = promoteWallet(recoveryPath);
       wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
       if (await wallet.getPrimaryAddress() !== recoveredAddress) throw new Error('복구 후 파일 주소 검증에 실패했습니다.');
+      const summary = await loadStartupSummary(wallet);
+      const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
+      return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, walletSyncStartState: walletSync.state, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
     } catch (error) {
       if (wallet) { await wallet.close(true).catch(() => {}); wallet = null; }
       if (recovered) await recovered.close(true).catch(() => {});
+      cancelWalletSyncRetry();
       removeWalletFiles(recoveryPath);
       if (archived) { removeWalletFiles(); restoreArchivedWallet(archived); }
       if (customPath) selectedWalletPath = null;
       throw new Error(`seed 복구에 실패했습니다. seed와 네트워크를 다시 확인하세요. (${error.message})`);
     }
-    if (!wallet) wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
-    const summary = await loadStartupSummary(wallet);
-    const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
-    return { ...summary, restored: true, restoreHeightUsed: normalizedRestoreHeight, walletSyncStartState: walletSync.state, recoveryNote: '기존 지갑은 복구 전 자동 보관되었습니다.' };
   } finally {
     seed = ''; seedOffset = ''; normalizedSeed = ''; normalizedSeedOffset = undefined; password = '';
     if (payload && typeof payload === 'object') { payload.seed = ''; payload.seedOffset = ''; payload.password = ''; }
@@ -710,20 +717,31 @@ registerWalletOperationHandler('wallet-open', async (_, payload = {}) => {
   cancelWalletSyncRetry();
   const preparedNode = await ensureLocalNodeForWallet(node);
   const previousWallet = wallet;
-  wallet = null;
-  walletSessionId += 1;
-  pendingTransactions.clear();
-  if (previousWallet) await previousWallet.close(true).catch(() => {});
-  activeConfig = { network: NETWORK, node: preparedNode };
+  const previousSessionId = walletSessionId;
+  const previousConfig = activeConfig;
+  const previousSelectedWalletPath = selectedWalletPath;
+  const previousPendingTransactions = pendingTransactions;
+  const candidateConfig = { network: NETWORK, node: preparedNode };
+  let candidateWallet = null;
   try {
-    wallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: activeConfig.node });
+    candidateWallet = await monerojs.openWalletFull({ path: walletPath(), password, networkType: network, server: candidateConfig.node });
+    wallet = candidateWallet;
+    walletSessionId = previousSessionId + 1;
+    pendingTransactions = new Map();
+    activeConfig = candidateConfig;
     hydrateRelayRecovery(walletPath(), recoveryRecord);
     const summary = await loadStartupSummary(wallet);
     const walletSync = await startWalletBackgroundSyncWithinDeadline(wallet);
+    if (previousWallet) await previousWallet.close(true).catch(() => {});
     return { ...summary, walletSyncStartState: walletSync.state };
   } catch (error) {
-    if (wallet) await wallet.close(true).catch(() => {});
-    wallet = null;
+    cancelWalletSyncRetry();
+    if (candidateWallet) await candidateWallet.close(true).catch(() => {});
+    wallet = previousWallet;
+    walletSessionId = previousSessionId;
+    activeConfig = previousConfig;
+    selectedWalletPath = previousSelectedWalletPath;
+    pendingTransactions = previousPendingTransactions;
     throw new Error(`key 파일을 열 수 없습니다. 비밀번호가 맞는지, 파일이 손상되지 않았는지 확인하세요. (${error.message})`);
   }
 });
@@ -910,7 +928,7 @@ registerWalletOperationHandler('wallet-lock', async () => {
   selectedWalletPath = null;
   return true;
 });
-ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2, accountIndex = 0, note = '', recipientName = '' } = {}) => {
+registerSendOperationHandler('wallet-send-preview', async (_, { address, amount, priority = 2, accountIndex = 0, note = '', recipientName = '' } = {}) => {
   pruneExpiredPreviews();
   if (sendPreviewInFlight) throw new Error('송금 미리보기를 준비 중입니다. 잠시 기다리세요.');
   if ([...pendingTransactions.values()].some((pending) => pending.state === 'ready')) throw new Error('앞선 송금 검토를 먼저 취소하거나 완료하세요.');
@@ -968,7 +986,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2,
     sendPreviewInFlight = false;
   }
 });
-ipcMain.handle('wallet-send-cancel', async (_, { pendingId } = {}) => {
+registerSendOperationHandler('wallet-send-cancel', async (_, { pendingId } = {}) => {
   const id = String(pendingId || '');
   if (lastCompletedSend?.pendingId === id) return false;
   const pending = pendingTransactions.get(id);
@@ -977,7 +995,7 @@ ipcMain.handle('wallet-send-cancel', async (_, { pendingId } = {}) => {
   pendingTransactions.delete(id);
   return true;
 });
-ipcMain.handle('wallet-send-pending', async () => {
+registerSendOperationHandler('wallet-send-pending', async () => {
   pruneExpiredPreviews();
   if (lastCompletedSend && lastCompletedSend.walletSessionId === walletSessionId) {
     return { state: 'relayed', pendingId: lastCompletedSend.pendingId, ...lastCompletedSend.result };
@@ -1002,7 +1020,7 @@ ipcMain.handle('wallet-send-pending', async () => {
   }
   return null;
 });
-ipcMain.handle('wallet-send-resolve-recovery', async (_, { pendingId, language = 'en' } = {}) => {
+registerSendOperationHandler('wallet-send-resolve-recovery', async (_, { pendingId, language = 'en' } = {}) => {
   ensureWallet();
   const id = String(pendingId || '');
   const pending = pendingTransactions.get(id);
@@ -1020,7 +1038,7 @@ ipcMain.handle('wallet-send-resolve-recovery', async (_, { pendingId, language =
   pendingTransactions.delete(id);
   return true;
 });
-ipcMain.handle('wallet-send-ack', async (_, { pendingId } = {}) => {
+registerSendOperationHandler('wallet-send-ack', async (_, { pendingId } = {}) => {
   if (lastCompletedSend && lastCompletedSend.pendingId === String(pendingId || '')) {
     const cleared = getRelayGuardStore().clear(lastCompletedSend.walletBase || walletPath(), lastCompletedSend.pendingId);
     if (!cleared) throw new Error('송금 확인 기록을 안전하게 정리하지 못했습니다. 앱을 닫지 말고 다시 확인하세요.');
@@ -1029,7 +1047,7 @@ ipcMain.handle('wallet-send-ack', async (_, { pendingId } = {}) => {
   }
   return false;
 });
-ipcMain.handle('wallet-send', async (_, { pendingId } = {}) => {
+registerSendOperationHandler('wallet-send', async (_, { pendingId } = {}) => {
   ensureWallet();
   const activeWallet = wallet;
   const sessionId = walletSessionId;
@@ -1159,6 +1177,7 @@ async function waitForPendingRelaySettlements() {
 }
 async function shutdownRuntime() {
   await walletOperationGate.waitForIdle();
+  await sendOperationGate.waitForIdle();
   cancelWalletSyncRetry();
   let stopError = null;
   if (localNodeManager) {

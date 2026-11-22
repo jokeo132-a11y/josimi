@@ -548,7 +548,6 @@ $('walletChoiceBtn').addEventListener('click', async () => {
   clearError('authError');
   try {
     if (!(await chooseWalletFile('open'))) return;
-    document.querySelector('[data-tab="open"]').classList.remove('hidden');
     setMode('open');
     $('password').focus();
   } catch (error) { showError('authError', error); }
