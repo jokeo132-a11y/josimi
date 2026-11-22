@@ -15,10 +15,10 @@ const EXTRA_LANG = {
 };
 for (const code of Object.keys(EXTRA_LANG)) Object.assign(LANG[code], EXTRA_LANG[code]);
 const SWAP_COPY = {
-  ko: { swapEyebrow:'SWAP', swapTitle:'코인 스왑', swapDescription:'BTC, LTC, USDT 같은 자산을 XMR로 바꾸는 비수탁 견적 화면입니다. seed와 private key는 공급자에게 전송하지 않습니다.', swapProvider:'공급자', swapApiKeyLabel:'ChangeNOW API 키 (선택)', swapApiKeyPlaceholder:'API 키를 입력하세요', swapApiKeyNotice:'이 키는 저장하지 않습니다. 현재 버전에서는 실제 API 요청에 사용하지 않습니다.', swapInputAsset:'보낼 자산', swapInputAmount:'보낼 수량', swapOutputAsset:'받을 자산', getSwapQuote:'견적 준비', swapApiPending:'실시간 견적은 서버에 ChangeNOW 파트너 API 키를 안전하게 설정한 뒤 활성화됩니다. 앱에 API 키를 넣지 않습니다.', swapApiUnavailable:'현재는 견적 API가 연결되지 않았습니다. API 키는 Electron 앱에 넣지 말고 서버에만 설정하세요.' },
-  en: { swapEyebrow:'SWAP', swapTitle:'Coin swap', swapDescription:'A non-custodial quote screen for exchanging BTC, LTC, or USDT to XMR. Your seed and private keys are never sent to a provider.', swapProvider:'Provider', swapApiKeyLabel:'ChangeNOW API key (optional)', swapApiKeyPlaceholder:'Enter API key', swapApiKeyNotice:'This key is not saved. The current version does not use it for a real API request.', swapInputAsset:'Asset to send', swapInputAmount:'Amount to send', swapOutputAsset:'Asset to receive', getSwapQuote:'Prepare quote', swapApiPending:'Live quotes will be enabled after a ChangeNOW partner API key is configured securely on a server. The key never belongs in this Electron app.', swapApiUnavailable:'The quote API is not connected yet. Keep the API key on a server, never in this Electron app.' },
-  zh: { swapEyebrow:'SWAP', swapTitle:'币种兑换', swapDescription:'将 BTC、LTC 或 USDT 兑换为 XMR 的非托管报价界面。不会向服务商发送 seed 或私钥。', swapProvider:'服务商', swapApiKeyLabel:'ChangeNOW API 密钥（可选）', swapApiKeyPlaceholder:'输入 API 密钥', swapApiKeyNotice:'不会保存此密钥。当前版本不会使用它发出真实 API 请求。', swapInputAsset:'发送资产', swapInputAmount:'发送数量', swapOutputAsset:'接收资产', getSwapQuote:'准备报价', swapApiPending:'在服务器安全配置 ChangeNOW 合作伙伴 API 密钥后才会启用实时报价。密钥不会放入此 Electron 应用。', swapApiUnavailable:'报价 API 尚未连接。请只在服务器上保存 API 密钥，不要放入 Electron 应用。' },
-  ja: { swapEyebrow:'SWAP', swapTitle:'コインスワップ', swapDescription:'BTC、LTC、USDTをXMRへ交換する非カストディ型の見積画面です。seedと秘密鍵はプロバイダーへ送信しません。', swapProvider:'プロバイダー', swapApiKeyLabel:'ChangeNOW APIキー（任意）', swapApiKeyPlaceholder:'APIキーを入力', swapApiKeyNotice:'このキーは保存しません。現在のバージョンでは実際のAPIリクエストに使用しません。', swapInputAsset:'送る資産', swapInputAmount:'送る数量', swapOutputAsset:'受け取る資産', getSwapQuote:'見積を準備', swapApiPending:'ChangeNOWパートナーAPIキーをサーバーに安全に設定した後、リアルタイム見積を有効化します。キーをElectronアプリに入れません。', swapApiUnavailable:'見積APIはまだ接続されていません。APIキーはElectronアプリではなくサーバーだけに保存してください。' }
+  ko: { swapEyebrow:'SWAP', swapTitle:'코인 스왑', swapDescription:'BTC, SOL, ETH, LTC, USDT 같은 자산을 XMR로 바꾸는 비수탁 견적 화면입니다. seed와 private key는 공급자에게 전송하지 않습니다.', swapProvider:'공급자', swapInputAsset:'보낼 자산', swapNetwork:'USDT 네트워크', swapInputAmount:'보낼 수량', swapOutputAsset:'받을 자산', getSwapQuote:'견적 준비', swapApiPending:'개발자 서버에 등록된 ChangeNOW 키로 실시간 견적을 조회합니다. 사용자는 API 키를 입력하지 않습니다.', swapApiUnavailable:'ChangeNOW 견적 서비스가 아직 설정되지 않았습니다.' },
+  en: { swapEyebrow:'SWAP', swapTitle:'Coin swap', swapDescription:'A non-custodial quote screen for exchanging BTC, SOL, ETH, LTC, or USDT to XMR. Your seed and private keys are never sent to a provider.', swapProvider:'Provider', swapInputAsset:'Asset to send', swapNetwork:'USDT network', swapInputAmount:'Amount to send', swapOutputAsset:'Asset to receive', getSwapQuote:'Get quote', swapApiPending:'Live quotes use the developer-configured ChangeNOW key. Users do not enter an API key.', swapApiUnavailable:'The ChangeNOW quote service is not configured yet.' },
+  zh: { swapEyebrow:'SWAP', swapTitle:'币种兑换', swapDescription:'将 BTC、SOL、ETH、LTC 或 USDT 兑换为 XMR 的非托管报价界面。不会向服务商发送 seed 或私钥。', swapProvider:'服务商', swapInputAsset:'发送资产', swapNetwork:'USDT 网络', swapInputAmount:'发送数量', swapOutputAsset:'接收资产', getSwapQuote:'获取报价', swapApiPending:'实时报价使用开发者配置的 ChangeNOW 密钥。用户无需输入 API 密钥。', swapApiUnavailable:'ChangeNOW 报价服务尚未配置。' },
+  ja: { swapEyebrow:'SWAP', swapTitle:'コインスワップ', swapDescription:'BTC、SOL、ETH、LTC、USDTをXMRへ交換する非カストディ型の見積画面です。seedと秘密鍵はプロバイダーへ送信しません。', swapProvider:'プロバイダー', swapInputAsset:'送る資産', swapNetwork:'USDTネットワーク', swapInputAmount:'送る数量', swapOutputAsset:'受け取る資産', getSwapQuote:'見積を取得', swapApiPending:'リアルタイム見積は開発者が設定したChangeNOWキーを使用します。ユーザーがAPIキーを入力する必要はありません。', swapApiUnavailable:'ChangeNOW見積サービスがまだ設定されていません。' }
 };
 for (const code of Object.keys(SWAP_COPY)) Object.assign(LANG[code], SWAP_COPY[code]);
 const GUI_LANG = {
@@ -863,10 +863,17 @@ $('sendForm').addEventListener('submit', async (event) => {
  });
  $('reviewPendingSendBtn').addEventListener('click', async () => { try { const pending = await window.josimi.pendingSend(); if (pending?.requiresManualReview) { pendingSend = { pendingId: pending.pendingId, requiresManualReview: true }; renderManualRelayReview(pending); $('confirmDialog').showModal(); await applyPendingSendStatus(pending); } } catch (error) { showError('sendError', error); } });
 $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showTransferSuccessToast(result.txHashes); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
-$('swapQuoteForm').addEventListener('submit', (event) => {
+$('swapInputAsset').addEventListener('change', () => $('swapNetworkLabel').classList.toggle('hidden', $('swapInputAsset').value !== 'usdt'));
+$('swapQuoteForm').addEventListener('submit', async (event) => {
   event.preventDefault();
-  const amount = $('swapInputAmount').value.trim();
-  $('swapQuoteResult').textContent = amount ? LANG[language].swapApiUnavailable : LANG[language].swapApiPending;
+  const result = $('swapQuoteResult');
+  const fromCurrency = $('swapInputAsset').value;
+  const fromNetwork = fromCurrency === 'usdt' ? $('swapInputNetwork').value : '';
+  try {
+    result.textContent = LANG[language].swapLoading || '견적을 조회하는 중입니다.';
+    const quote = await window.josimi.swapQuote({ fromCurrency, fromNetwork, fromAmount: $('swapInputAmount').value.trim() });
+    result.textContent = `${quote.fromAmount} ${quote.fromCurrency}${quote.fromNetwork ? ` (${quote.fromNetwork})` : ''} → 약 ${quote.estimatedAmount} ${quote.toCurrency} · ${quote.provider}${quote.warningMessage ? ` · ${quote.warningMessage}` : ''}`;
+  } catch (error) { result.textContent = error?.message || LANG[language].swapApiUnavailable; }
 });
 setMode('create');
 applyLanguage();

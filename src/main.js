@@ -119,6 +119,40 @@ function postJson(url, body, redirects = 0, deadline = Date.now() + NODE_RPC_DEA
   });
 }
 
+const SWAP_API_URL = 'https://api.changenow.io/v2/exchange/estimated-amount';
+const SWAP_API_DEADLINE_MS = 10_000;
+const SWAP_ASSETS = new Set(['btc', 'sol', 'eth', 'ltc', 'usdt']);
+const SWAP_NETWORKS = new Set(['eth', 'bsc', 'trx', 'sol']);
+function getSwapQuote({ fromCurrency, fromNetwork, fromAmount } = {}) {
+  const apiKey = process.env.CHANGENOW_API_KEY;
+  if (typeof apiKey !== 'string' || apiKey.trim().length < 8 || apiKey.length > 512) throw new Error('ChangeNOW 견적 서비스가 아직 설정되지 않았습니다.');
+  const currency = String(fromCurrency || '').toLowerCase();
+  if (!SWAP_ASSETS.has(currency)) throw new Error('지원하지 않는 스왑 입력 자산입니다.');
+  const amount = String(fromAmount || '').trim();
+  if (!/^\d+(\.\d{1,18})?$/.test(amount) || Number(amount) <= 0) throw new Error('스왑 수량을 확인해 주세요.');
+  const network = fromNetwork ? String(fromNetwork).toLowerCase() : '';
+  if (currency === 'usdt' && !SWAP_NETWORKS.has(network)) throw new Error('USDT 네트워크를 선택해 주세요.');
+  const params = new URLSearchParams({ fromCurrency: currency, toCurrency: 'xmr', fromAmount: amount, flow: 'standard' });
+  if (network) params.set('fromNetwork', network);
+  return new Promise((resolve, reject) => {
+    const request = https.get(`${SWAP_API_URL}?${params}`, { headers: { 'x-changenow-api-key': apiKey.trim(), Accept: 'application/json' } }, (response) => {
+      const chunks = []; let bytes = 0;
+      response.on('data', (chunk) => { bytes += chunk.length; if (bytes <= 128 * 1024) chunks.push(chunk); else response.destroy(new Error('ChangeNOW 응답이 너무 큽니다.')); });
+      response.on('end', () => {
+        try {
+          const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+          if (response.statusCode < 200 || response.statusCode >= 300) throw new Error(data?.message || data?.error || `ChangeNOW API 오류 (${response.statusCode})`);
+          if (!data || typeof data !== 'object' || typeof data.estimatedAmount !== 'string') throw new Error('ChangeNOW 견적 응답 형식이 올바르지 않습니다.');
+          resolve({ provider: 'ChangeNOW', fromCurrency: currency.toUpperCase(), fromNetwork: network || null, toCurrency: 'XMR', fromAmount: amount, estimatedAmount: data.estimatedAmount, transactionSpeed: data.transactionSpeed || null, warningMessage: data.warningMessage || null });
+        } catch (error) { reject(error); }
+      });
+      response.on('error', reject);
+    });
+    request.setTimeout(SWAP_API_DEADLINE_MS, () => request.destroy(new Error('ChangeNOW 견적 요청 시간이 초과되었습니다.')));
+    request.on('error', reject);
+  });
+}
+
 function portableDataDir() {
   if (!app.isPackaged) return path.join(app.getPath('userData'), 'josimi');
   const executableDir = process.env.PORTABLE_EXECUTABLE_DIR || path.dirname(process.execPath);
@@ -585,6 +619,7 @@ async function makeWindow() {
 }
 
 ipcMain.handle('app-config', () => ({ network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION }));
+ipcMain.handle('swap-quote', async (_, payload = {}) => getSwapQuote(payload));
 registerWalletOperationHandler('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   if (action === 'save') {
     const result = await dialog.showSaveDialog(mainWindow, {

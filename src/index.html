@@ -119,17 +119,16 @@
 
           <article class="card swap-card" id="swapCard">
             <div class="card-heading"><div><span class="card-kicker" data-i18n="swapEyebrow">SWAP</span><h2 class="card-label" data-i18n="swapTitle">코인 스왑</h2></div><span class="card-step">03</span></div>
-            <p class="fine" data-i18n="swapDescription">BTC, LTC, USDT 같은 자산을 XMR로 바꾸는 비수탁 견적 화면입니다. seed와 private key는 공급자에게 전송하지 않습니다.</p>
+            <p class="fine" data-i18n="swapDescription">BTC, SOL, ETH, LTC, USDT 같은 자산을 XMR로 바꾸는 비수탁 견적 화면입니다. seed와 private key는 공급자에게 전송하지 않습니다.</p>
             <form id="swapQuoteForm">
               <label><span data-i18n="swapProvider">공급자</span><select id="swapProvider"><option value="changenow">ChangeNOW API</option></select></label>
-              <label><span data-i18n="swapApiKeyLabel">ChangeNOW API 키 (선택)</span><input id="swapApiKey" type="password" autocomplete="off" spellcheck="false" data-i18n-placeholder="swapApiKeyPlaceholder" placeholder="API 키를 입력하세요" /></label>
-              <p class="field-hint" data-i18n="swapApiKeyNotice">이 키는 저장하지 않습니다. 현재 버전에서는 실제 API 요청에 사용하지 않습니다.</p>
-              <label><span data-i18n="swapInputAsset">보낼 자산</span><select id="swapInputAsset"><option>BTC</option><option>LTC</option><option>USDT</option></select></label>
+              <label><span data-i18n="swapInputAsset">보낼 자산</span><select id="swapInputAsset"><option value="btc">BTC</option><option value="sol">Solana (SOL)</option><option value="eth">Ethereum (ETH)</option><option value="ltc">LTC</option><option value="usdt">USDT</option></select></label>
+              <label id="swapNetworkLabel" class="hidden"><span data-i18n="swapNetwork">USDT 네트워크</span><select id="swapInputNetwork"><option value="eth">Ethereum (ERC-20)</option><option value="bsc">BNB Smart Chain (BEP-20)</option><option value="trx">Tron (TRC-20)</option><option value="sol">Solana</option></select></label>
               <label><span data-i18n="swapInputAmount">보낼 수량</span><input id="swapInputAmount" inputmode="decimal" placeholder="0.00" required /></label>
               <label><span data-i18n="swapOutputAsset">받을 자산</span><input value="XMR" disabled /></label>
               <button class="primary" type="submit" data-i18n="getSwapQuote">견적 준비</button>
             </form>
-            <div id="swapQuoteResult" class="fine" aria-live="polite" data-i18n="swapApiPending">실시간 견적은 서버에 ChangeNOW 파트너 API 키를 안전하게 설정한 뒤 활성화됩니다. 앱에 API 키를 넣지 않습니다.</div>
+            <div id="swapQuoteResult" class="fine" aria-live="polite" data-i18n="swapApiPending">개발자 서버 키로 실시간 견적을 조회합니다. 사용자 API 키는 필요하지 않습니다.</div>
           </article>
           <article class="card tx-card">
             <div class="card-heading"><div><span class="card-kicker" data-i18n="activityEyebrow">기록</span><h2 class="card-label" data-i18n="recentTransactions">최근 거래</h2></div><span class="muted" data-i18n="localRecord">이 기기에 저장</span></div>

@@ -33,7 +33,7 @@ josimi does not add a service fee to wallet transfers. Monero network fees are c
 
 ## In-app swap quote model
 
-The wallet has a quote-only swap panel for BTC, LTC, and USDT to XMR. The first provider candidate is [ChangeNOW API](https://changenow.io/api): its official partner flow documents API-key issuance through the partner dashboard and referral revenue for API integrations. A live integration is intentionally not enabled in this desktop build yet. The API key must be kept on a server-side proxy, never bundled in Electron or sent to the renderer. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
+The wallet has a quote-only swap panel for BTC, SOL, ETH, LTC, and USDT to XMR. The ChangeNOW API key is read only from the developer-controlled `CHANGENOW_API_KEY` runtime secret; users do not enter a key, and it is never bundled in the renderer, source code, or wallet files. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
 
 ## Trust and security
 
