@@ -1,3 +1,9 @@
+## v1.2.29 — 2026-11-22
+
+- Harden ChangeNOW quote response validation and reject oversized or malformed provider responses.
+- Prevent stale swap quote responses from overwriting a newer request.
+- Document that the public ZIP does not contain the developer runtime secret or a hosted quote proxy.
+
 ## v1.2.28 — 2026-11-15
 
 - Fail closed when a successful relay cannot be durably recorded; the app does not report normal success or permit an untracked resend.
