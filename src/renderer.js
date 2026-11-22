@@ -14,17 +14,10 @@ const EXTRA_LANG = {
   ja: {        reviewRecipient: '送金先アドレス', reviewAmount: '送金額', reviewNetworkFee: 'ネットワーク手数料', reviewTotal: '合計引落額' }
 };
 for (const code of Object.keys(EXTRA_LANG)) Object.assign(LANG[code], EXTRA_LANG[code]);
-const SWAP_COPY = {
-  ko: { swapEyebrow:'SWAP', swapTitle:'코인 스왑', swapDescription:'BTC, SOL, ETH, LTC, USDT 같은 자산을 XMR로 바꾸는 비수탁 견적 화면입니다. seed와 private key는 공급자에게 전송하지 않습니다.', swapProvider:'공급자', swapInputAsset:'보낼 자산', swapNetwork:'USDT 네트워크', swapInputAmount:'보낼 수량', swapOutputAsset:'받을 자산', getSwapQuote:'견적 준비', swapApiPending:'개발자 서버에 등록된 ChangeNOW 키로 실시간 견적을 조회합니다. 사용자는 API 키를 입력하지 않습니다.', swapApiUnavailable:'ChangeNOW 견적 서비스가 아직 설정되지 않았습니다.' },
-  en: { swapEyebrow:'SWAP', swapTitle:'Coin swap', swapDescription:'A non-custodial quote screen for exchanging BTC, SOL, ETH, LTC, or USDT to XMR. Your seed and private keys are never sent to a provider.', swapProvider:'Provider', swapInputAsset:'Asset to send', swapNetwork:'USDT network', swapInputAmount:'Amount to send', swapOutputAsset:'Asset to receive', getSwapQuote:'Get quote', swapApiPending:'Live quotes use the developer-configured ChangeNOW key. Users do not enter an API key.', swapApiUnavailable:'The ChangeNOW quote service is not configured yet.' },
-  zh: { swapEyebrow:'SWAP', swapTitle:'币种兑换', swapDescription:'将 BTC、SOL、ETH、LTC 或 USDT 兑换为 XMR 的非托管报价界面。不会向服务商发送 seed 或私钥。', swapProvider:'服务商', swapInputAsset:'发送资产', swapNetwork:'USDT 网络', swapInputAmount:'发送数量', swapOutputAsset:'接收资产', getSwapQuote:'获取报价', swapApiPending:'实时报价使用开发者配置的 ChangeNOW 密钥。用户无需输入 API 密钥。', swapApiUnavailable:'ChangeNOW 报价服务尚未配置。' },
-  ja: { swapEyebrow:'SWAP', swapTitle:'コインスワップ', swapDescription:'BTC、SOL、ETH、LTC、USDTをXMRへ交換する非カストディ型の見積画面です。seedと秘密鍵はプロバイダーへ送信しません。', swapProvider:'プロバイダー', swapInputAsset:'送る資産', swapNetwork:'USDTネットワーク', swapInputAmount:'送る数量', swapOutputAsset:'受け取る資産', getSwapQuote:'見積を取得', swapApiPending:'リアルタイム見積は開発者が設定したChangeNOWキーを使用します。ユーザーがAPIキーを入力する必要はありません。', swapApiUnavailable:'ChangeNOW見積サービスがまだ設定されていません。' }
-};
-for (const code of Object.keys(SWAP_COPY)) Object.assign(LANG[code], SWAP_COPY[code]);
-Object.assign(LANG.ko, { donationEyebrow:'후원', donationTitle:'josimi 후원', donationText:'josimi가 도움이 되었다면 개발자에게 XMR로 자발적인 후원을 보낼 수 있습니다. 후원은 선택 사항이며 송금·스왑 수수료가 아닙니다.', copyDonationAddress:'후원 주소 복사', donationCopied:'후원 주소를 복사했습니다.' });
-Object.assign(LANG.en, { donationEyebrow:'SUPPORT', donationTitle:'Support josimi', donationText:'If josimi helps you, you can voluntarily support the developer with XMR. This is optional and is not a transfer or swap fee.', copyDonationAddress:'Copy donation address', donationCopied:'Donation address copied.' });
-Object.assign(LANG.zh, { donationEyebrow:'支持', donationTitle:'支持 josimi', donationText:'如果 josimi 对您有帮助，可以使用 XMR 自愿支持开发者。这是可选捐赠，不是转账或兑换手续费。', copyDonationAddress:'复制捐赠地址', donationCopied:'捐赠地址已复制。' });
-Object.assign(LANG.ja, { donationEyebrow:'支援', donationTitle:'josimiを支援', donationText:'josimiがお役に立った場合、XMRで開発者を任意に支援できます。これは任意の寄付であり、送金・スワップ手数料ではありません。', copyDonationAddress:'寄付アドレスをコピー', donationCopied:'寄付アドレスをコピーしました。' });
+Object.assign(LANG.ko, { donationEyebrow:'후원', donationTitle:'josimi 후원', donationText:'josimi가 도움이 되었다면 개발자에게 XMR로 자발적인 후원을 보낼 수 있습니다. 후원은 선택 사항이며 송금 수수료가 아닙니다.', copyDonationAddress:'후원 주소 복사', donationCopied:'후원 주소를 복사했습니다.' });
+Object.assign(LANG.en, { donationEyebrow:'SUPPORT', donationTitle:'Support josimi', donationText:'If josimi helps you, you can voluntarily support the developer with XMR. This is optional and is not a transfer fee.', copyDonationAddress:'Copy donation address', donationCopied:'Donation address copied.' });
+Object.assign(LANG.zh, { donationEyebrow:'支持', donationTitle:'支持 josimi', donationText:'如果 josimi 对您有帮助，可以使用 XMR 自愿支持开发者。这是可选捐赠，不是转账手续费。', copyDonationAddress:'复制捐赠地址', donationCopied:'捐赠地址已复制。' });
+Object.assign(LANG.ja, { donationEyebrow:'支援', donationTitle:'josimiを支援', donationText:'josimiがお役に立った場合、XMRで開発者を任意に支援できます。これは任意の寄付であり、送金手数料ではありません。', copyDonationAddress:'寄付アドレスをコピー', donationCopied:'寄付アドレスをコピーしました。' });
 const GUI_LANG = {
   ko: { accountsTitle:'계정과 하위 주소', accountName:'새 계정 이름', accountNamePlaceholder:'예: 저축', createAccount:'계정 만들기', renameAccount:'이름 저장', receiveAccount:'받을 계정', receiveSubaddress:'받을 하위 주소', createSubaddress:'하위 주소 만들기', subaddressLabel:'선택 계정의 하위 주소 이름', subaddressLabelPlaceholder:'예: 월급', sendFromAccount:'보낼 계정', recipientName:'받는 사람 이름 (선택)', transactionNote:'거래 메모 (선택)', txIncoming:'받음', txOutgoing:'보냄', txUnknown:'거래', editTxNote:'메모', addressBookTitle:'주소록', contactName:'이름', contactNamePlaceholder:'예: 거래처', contactAddress:'Monero 주소', contactAddressPlaceholder:'Monero 주소를 입력하세요', addContact:'주소록에 추가', updateContact:'주소록 수정', cancelEdit:'수정 취소', useContact:'받는 주소로 사용', editContact:'편집', deleteContact:'삭제', noContacts:'주소록이 비어 있습니다.', noAccounts:'계정을 불러오지 못했습니다.', accountBalance:'잔액', unlockedBalance:'사용 가능', confirmDeleteContact:'이 주소록 항목을 삭제할까요?', notePrompt:'거래 메모를 입력하세요. 비우면 메모를 지웁니다.', saved:'저장했습니다.' },
   en: { accountsTitle:'Accounts and subaddresses', accountName:'New account name', accountNamePlaceholder:'e.g. Savings', createAccount:'Create account', renameAccount:'Save name', receiveAccount:'Receive account', receiveSubaddress:'Receive subaddress', createSubaddress:'Create subaddress', subaddressLabel:'New subaddress name', subaddressLabelPlaceholder:'e.g. Salary', sendFromAccount:'Send from account', recipientName:'Recipient name (optional)', transactionNote:'Transaction note (optional)', txIncoming:'Received', txOutgoing:'Sent', txUnknown:'Transaction', editTxNote:'Note', addressBookTitle:'Address book', contactName:'Name', contactNamePlaceholder:'e.g. Merchant', contactAddress:'Monero address', contactAddressPlaceholder:'Enter a Monero address', addContact:'Add to address book', updateContact:'Update contact', cancelEdit:'Cancel edit', useContact:'Use as recipient', editContact:'Edit', deleteContact:'Delete', noContacts:'Address book is empty.', noAccounts:'Could not load accounts.', accountBalance:'Balance', unlockedBalance:'Unlocked', confirmDeleteContact:'Delete this address book entry?', notePrompt:'Enter a transaction note. Leave empty to clear it.', saved:'Saved.' },
@@ -213,7 +206,6 @@ let currentAddressBook = [];
 let currentTransactions = [];
 let renderedWalletSessionId = 0;
 let selectedSendContactName = '';
-let swapQuoteRequestId = 0;
 
 const formatXmr = (atomic) => {
   const n = BigInt(atomic || 0); const negative = n < 0n; const absolute = negative ? -n : n;
@@ -869,26 +861,6 @@ $('sendForm').addEventListener('submit', async (event) => {
  });
  $('reviewPendingSendBtn').addEventListener('click', async () => { try { const pending = await window.josimi.pendingSend(); if (pending?.requiresManualReview) { pendingSend = { pendingId: pending.pendingId, requiresManualReview: true }; renderManualRelayReview(pending); $('confirmDialog').showModal(); await applyPendingSendStatus(pending); } } catch (error) { showError('sendError', error); } });
 $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sendCallInProgress) return; clearError('sendDialogError'); const pendingId = pendingSend.pendingId; sendCallInProgress = true; try { $('confirmSend').disabled = true; const result = await window.josimi.send(pendingSend); pendingSend = null; $('confirmDialog').close(); await window.josimi.ackSend({ pendingId }).catch(() => false); showTransferSuccessToast(result.txHashes); await refresh(); } catch (e) { showError('sendDialogError', e); try { await applyPendingSendStatus(await window.josimi.pendingSend()); } catch (_) {} } finally { sendCallInProgress = false; } });
-$('swapInputAsset').addEventListener('change', () => $('swapNetworkLabel').classList.toggle('hidden', $('swapInputAsset').value !== 'usdt'));
-$('swapQuoteForm').addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const requestId = ++swapQuoteRequestId;
-  const result = $('swapQuoteResult');
-  const submitButton = $('swapQuoteForm').querySelector('button[type=submit]');
-  const fromCurrency = $('swapInputAsset').value;
-  const fromNetwork = fromCurrency === 'usdt' ? $('swapInputNetwork').value : '';
-  submitButton.disabled = true;
-  result.textContent = LANG[language].swapLoading || '견적을 조회하는 중입니다.';
-  try {
-    const quote = await window.josimi.swapQuote({ fromCurrency, fromNetwork, fromAmount: $('swapInputAmount').value.trim() });
-    if (requestId !== swapQuoteRequestId) return;
-    result.textContent = `${quote.fromAmount} ${quote.fromCurrency}${quote.fromNetwork ? ` (${quote.fromNetwork})` : ''} → 약 ${quote.estimatedAmount} ${quote.toCurrency} · ${quote.provider}${quote.warningMessage ? ` · ${quote.warningMessage}` : ''}`;
-  } catch (error) {
-    if (requestId === swapQuoteRequestId) result.textContent = error?.message || LANG[language].swapApiUnavailable;
-  } finally {
-    if (requestId === swapQuoteRequestId) submitButton.disabled = false;
-  }
-});
 setMode('create');
 applyLanguage();
 function showTransferSuccessToast(txHashes) {

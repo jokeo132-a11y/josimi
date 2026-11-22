@@ -15,8 +15,7 @@ const {
   waitForPromiseOrTimeout,
   isMoneroKeysFile,
   isAllowedNodeRedirect,
-  canAppendResponseBytes,
-  normalizeSwapQuoteResponse
+  canAppendResponseBytes
 } = require('../src/core');
 
 test('XMR amount conversion preserves atomic-unit precision', () => {
@@ -62,23 +61,6 @@ test('node RPC response byte accounting enforces a hard size limit', () => {
   assert.equal(canAppendResponseBytes(512, 513, 1024), false);
   assert.equal(canAppendResponseBytes(-1, 1, 1024), false);
   assert.equal(canAppendResponseBytes(0, Number.MAX_SAFE_INTEGER + 1, 1024), false);
-});
-
-test('swap quote responses accept positive amounts and reject malformed provider data', () => {
-  assert.deepEqual(normalizeSwapQuoteResponse({ estimatedAmount: '0.123400', transactionSpeed: '10 minutes', warningMessage: '' }, {
-    currency: 'btc', network: '', amount: '0.01'
-  }), {
-    provider: 'ChangeNOW', fromCurrency: 'BTC', fromNetwork: null, toCurrency: 'XMR', fromAmount: '0.01',
-    estimatedAmount: '0.123400', transactionSpeed: '10 minutes', warningMessage: null
-  });
-  for (const data of [
-    {},
-    { estimatedAmount: '0' },
-    { estimatedAmount: '-1' },
-    { estimatedAmount: 'not-a-number' },
-    { estimatedAmount: 1 },
-    { estimatedAmount: '1', warningMessage: 'x'.repeat(513) }
-  ]) assert.throws(() => normalizeSwapQuoteResponse(data, { currency: 'btc', amount: '0.01' }));
 });
 
 test('wallet indices must be non-negative safe integers', () => {

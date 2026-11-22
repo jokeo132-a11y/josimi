@@ -41,7 +41,7 @@ test('the current source contains no mining UI, IPC, modules, or bundled runtime
   assert.match(readme, /v1\.2\.2 removes mining entirely/i);
   assert.match(privacy, /Mining disclosures below apply only to the older v1\.2\.1 ZIP/i);
   assert.match(html, /src="\.\.\/assets\/josimi-logo\.png"/);
-  assert.equal(packageJson.version, '1.2.29');
+  assert.equal(packageJson.version, '1.2.30');
   assert.ok(website.includes(`"softwareVersion":"${packageJson.version}"`));
   assert.ok(website.includes(`releases/download/v${packageJson.version}/josimi-${packageJson.version}-x64.zip`));
   assert.ok(packageJson.build.files.includes('assets/josimi-logo.png'));
@@ -275,12 +275,4 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.doesNotMatch(verify, /josimi\.exe/);
   assert.match(verify, /\$version = '<version from the ZIP filename>'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
-});
-
-test('swap quote UI ignores stale responses from earlier requests', () => {
-  const renderer = read('src/renderer.js');
-  assert.match(renderer, /let swapQuoteRequestId = 0/);
-  assert.match(renderer, /const requestId = \+\+swapQuoteRequestId/);
-  assert.match(renderer, /if \(requestId !== swapQuoteRequestId\) return/);
-  assert.match(renderer, /if \(requestId === swapQuoteRequestId\) result\.textContent/);
 });

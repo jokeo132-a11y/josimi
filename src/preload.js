@@ -34,5 +34,4 @@ contextBridge.exposeInMainWorld('josimi', {
   send: (payload) => ipcRenderer.invoke('wallet-send', payload),
   exportBackup: () => ipcRenderer.invoke('wallet-export-backup'),
   qr: (text) => ipcRenderer.invoke('wallet-qr', text),
-  swapQuote: (payload) => ipcRenderer.invoke('swap-quote', payload)
 });

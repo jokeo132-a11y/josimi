@@ -28,10 +28,6 @@ In solo mode, josimi sends the primary public address and mining settings to the
 
 josimi does not add a service fee to wallet transfers. Monero network fees are calculated by the wallet and shown before confirmation.
 
-## Swap privacy boundary
-
-The current in-app swap panel is quote-only and does not create orders or move assets. The ChangeNOW credential is supplied only through the developer-controlled `CHANGENOW_API_KEY` runtime secret and is not exposed to the renderer, stored in wallet files, or committed to source control. The integration sends only minimum quote inputs and never sends wallet seeds or private spend keys. Provider terms, regional availability, KYC requirements, quote expiry, affiliate disclosure, and network/provider fees must be shown before any order is submitted.
-
 ## Fees
 
 Outgoing transfers show the requested amount, Monero network fee, and total debit before relay. josimi does not add a service fee or redirect any part of the requested amount. If a relay succeeds but the durable recovery record cannot be saved, josimi does not report a normal success and keeps the transfer in an unresolved-review state.

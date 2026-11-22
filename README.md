@@ -1,6 +1,6 @@
 # josimi
 
-josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest published Windows x64 ZIP is available from [GitHub Releases](https://github.com/jokeo132-a11y/josimi/releases/latest). The current source package version is **v1.2.29**. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
+josimi is a non-custodial Monero desktop wallet built with Electron. Its interface is available in Korean, English, Chinese, and Japanese. The latest published Windows x64 ZIP is available from [GitHub Releases](https://github.com/jokeo132-a11y/josimi/releases/latest). The current source package version is **v1.2.30**. The older v1.2.1 ZIP remains available and includes optional CPU mining; v1.2.2 removes mining entirely.
 
 ## Wallet features
 
@@ -33,11 +33,7 @@ josimi does not add a service fee to wallet transfers. Monero network fees are c
 
 ## Voluntary donations
 
-If josimi is useful to you, you may voluntarily support development with XMR. Donations are optional and are not a wallet transfer fee or swap fee. The current donation address is `44ooBbfBHPDbVvR7JCSixa8axVjp8tdRvTz2F3B5MSf3RzxZFNDtTusP51oh3dxQpVgefcxHFtTeLVCvHL11SXsQ6zkYUyB`.
-
-## In-app swap quote model
-
-The wallet has a quote-only swap panel for BTC, SOL, ETH, LTC, and USDT to XMR. The ChangeNOW API key is read only from the developer-controlled `CHANGENOW_API_KEY` runtime secret; users do not enter a key, and it is never bundled in the renderer, source code, or wallet files. The public Windows ZIP does not contain that secret or a hosted proxy, so the panel reports that the service is not configured unless the app is launched in a controlled environment that supplies the runtime secret. A future public deployment must use an authenticated, rate-limited developer proxy rather than embedding the key. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
+If josimi is useful to you, you may voluntarily support development with XMR. Donations are optional and are not a wallet transfer fee. The current donation address is `44ooBbfBHPDbVvR7JCSixa8axVjp8tdRvTz2F3B5MSf3RzxZFNDtTusP51oh3dxQpVgefcxHFtTeLVCvHL11SXsQ6zkYUyB`.
 
 ## Trust and security
 

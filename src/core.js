@@ -89,28 +89,6 @@ function canAppendResponseBytes(currentBytes, incomingBytes, maxBytes) {
     && Number.isSafeInteger(maxBytes) && maxBytes > 0
     && currentBytes <= maxBytes && incomingBytes <= maxBytes - currentBytes;
 }
-function normalizeSwapQuoteResponse(data, { currency, network, amount } = {}) {
-  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('ChangeNOW 견적 응답 형식이 올바르지 않습니다.');
-  const estimatedAmount = typeof data.estimatedAmount === 'string' ? data.estimatedAmount.trim() : '';
-  if (!/^\d+(\.\d{1,36})?$/.test(estimatedAmount) || Number(estimatedAmount) <= 0) {
-    throw new Error('ChangeNOW 견적 금액 형식이 올바르지 않습니다.');
-  }
-  const optionalText = (value, field) => {
-    if (value === undefined || value === null || value === '') return null;
-    if (typeof value !== 'string' || value.length > 512) throw new Error(`ChangeNOW ${field} 형식이 올바르지 않습니다.`);
-    return value;
-  };
-  return {
-    provider: 'ChangeNOW',
-    fromCurrency: String(currency).toUpperCase(),
-    fromNetwork: network || null,
-    toCurrency: 'XMR',
-    fromAmount: String(amount),
-    estimatedAmount,
-    transactionSpeed: optionalText(data.transactionSpeed, '거래 속도'),
-    warningMessage: optionalText(data.warningMessage, '경고')
-  };
-}
 module.exports = {
   ATOMIC_PER_XMR,
   MAX_ATOMIC,
@@ -127,6 +105,5 @@ module.exports = {
   waitForPromiseOrTimeout,
   isMoneroKeysFile,
   isAllowedNodeRedirect,
-  canAppendResponseBytes,
-  normalizeSwapQuoteResponse
+  canAppendResponseBytes
 };

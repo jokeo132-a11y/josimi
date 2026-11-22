@@ -1,3 +1,8 @@
+## v1.2.30 — 2026-11-22
+
+- Remove the quote-only swap panel, ChangeNOW integration, swap IPC, provider response code, and related documentation.
+- Keep the wallet focused on non-custodial Monero transfers, local/public node choices, and optional donations.
+
 ## v1.2.29 — 2026-11-22
 
 - Harden ChangeNOW quote response validation and reject oversized or malformed provider responses.
