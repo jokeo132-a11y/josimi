@@ -7,14 +7,12 @@ const https = require('node:https');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, calculateServiceFee, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
+const { atomicToXmr, xmrToAtomic, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
 const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT, waitForRpcReady } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
 const { WalletOperationGate } = require('./wallet-operation-gate');
 const { installPermissionPolicy } = require('./permission-policy');
 
-const FEE_ADDRESS = '47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL';
-const SERVICE_FEE_RATE = 0.0025;
 const SEND_PREVIEW_TTL_MS = 5 * 60 * 1000;
 const LOCAL_NODE_URL = `http://${RPC_HOST}:${RPC_PORT}`;
 const MAX_NODE_RPC_RESPONSE_BYTES = 512 * 1024;
@@ -442,30 +440,7 @@ function safeTx(tx) {
   };
 }
 function makeSendResult(pending, txHashes) {
-  return { txs: pending.txs.map(safeTx), txHashes, serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic), networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic) };
-}
-function assertServiceFeeDestination(txs, recipientAddress, amountAtomic, serviceFeeAtomic) {
-  if (!Array.isArray(txs) || txs.length !== 1) throw new Error('수수료가 포함된 거래를 하나로 확인하지 못해 송금을 중단했습니다.');
-  const destinations = txs[0].getOutgoingTransfer?.()?.getDestinations?.();
-  if (!Array.isArray(destinations)) throw new Error('생성된 거래의 목적지를 확인하지 못해 송금을 중단했습니다.');
-  const expected = new Map([[recipientAddress, amountAtomic]]);
-  if (recipientAddress === FEE_ADDRESS) expected.set(FEE_ADDRESS, amountAtomic + serviceFeeAtomic);
-  else if (serviceFeeAtomic > 0n) expected.set(FEE_ADDRESS, serviceFeeAtomic);
-  const actual = new Map();
-  try {
-    for (const destination of destinations) {
-      const address = destination?.getAddress?.();
-      const amount = BigInt(destination?.getAmount?.() ?? 0);
-      if (typeof address !== 'string' || amount < 0n) throw new Error('invalid destination');
-      actual.set(address, (actual.get(address) || 0n) + amount);
-    }
-  } catch (_) {
-    throw new Error('생성된 거래의 목적지 금액을 확인하지 못해 송금을 중단했습니다.');
-  }
-  if (actual.size !== expected.size) throw new Error('생성된 거래의 목적지 수가 요청과 달라 송금을 중단했습니다.');
-  for (const [address, expectedAmount] of expected) {
-    if (actual.get(address) !== expectedAmount) throw new Error('생성된 거래의 받는 주소 또는 서비스 수수료 금액이 요청과 달라 송금을 중단했습니다.');
-  }
+  return { txs: pending.txs.map(safeTx), txHashes, networkFeeXmr: atomicToXmr(pending.networkFeeAtomic), totalXmr: atomicToXmr(pending.amountAtomic + pending.networkFeeAtomic) };
 }
 function serializeSubaddress(subaddress) {
   return {
@@ -609,7 +584,7 @@ async function makeWindow() {
   await mainWindow.loadFile(path.join(__dirname, 'index.html'));
 }
 
-ipcMain.handle('app-config', () => ({ feeAddress: FEE_ADDRESS, feeRate: SERVICE_FEE_RATE, feeCapXmr: '0.05', network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION }));
+ipcMain.handle('app-config', () => ({ network: activeConfig.network, defaultNodes: DEFAULT_NODES, remoteOnly: false, localNodeSupported: process.platform === 'win32', localNodeUrl: LOCAL_NODE_URL, moneroVersion: MONERO_VERSION }));
 registerWalletOperationHandler('wallet-file-choose', async (_, { action = 'open' } = {}) => {
   if (action === 'save') {
     const result = await dialog.showSaveDialog(mainWindow, {
@@ -957,18 +932,13 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2,
   const account = (await activeWallet.getAccounts(false)).find((entry) => Number(entry.getIndex()) === sourceAccountIndex);
   await ensureSendableNode();
   if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 새 지갑에서 거래를 다시 검토하세요.');
-  const serviceFeeAtomic = calculateServiceFee(amountAtomic);
   if (typeof address !== 'string' || address.length < 90) throw new Error('Monero 주소를 확인해 주세요.');
   await assertMainnetAddress(address, '받는 주소');
-  await assertMainnetAddress(FEE_ADDRESS, '서비스 수수료 주소');
   const destinations = [{ address, amount: amountAtomic }];
-  if (serviceFeeAtomic > 0n && address === FEE_ADDRESS) destinations[0].amount += serviceFeeAtomic;
-  else if (serviceFeeAtomic > 0n) destinations.push({ address: FEE_ADDRESS, amount: serviceFeeAtomic });
   const txs = await activeWallet.createTxs({ accountIndex: sourceAccountIndex, destinations, priority: txPriority, relay: false, note: transactionNote, recipientName: contactName || undefined });
   if (wallet !== activeWallet || walletSessionId !== sessionId) throw new Error('송금 중 지갑이 전환되었습니다. 생성한 미전송 거래를 폐기했습니다.');
   if (!Array.isArray(txs) || txs.length === 0) throw new Error('거래 미리보기를 만들지 못했습니다.');
   if (txs.length !== 1) throw new Error('한 번의 송금 요청이 여러 거래로 나뉘어 안전하게 미리보기할 수 없습니다. 금액을 줄여 다시 검토하세요.');
-  assertServiceFeeDestination(txs, address, amountAtomic, serviceFeeAtomic);
   const networkFeeAtomic = txs.reduce((sum, tx) => {
     const fee = tx.getFee?.();
     if (fee === undefined || fee === null) throw new Error('네트워크 수수료를 확인하지 못해 송금을 중단했습니다.');
@@ -977,7 +947,7 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2,
   const now = Date.now();
   const pendingId = crypto.randomBytes(24).toString('hex');
   pendingTransactions.set(pendingId, {
-    txs, address, amountAtomic, serviceFeeAtomic, networkFeeAtomic, priority: txPriority,
+    txs, address, amountAtomic, networkFeeAtomic, priority: txPriority,
     accountIndex: sourceAccountIndex, accountLabel: account?.getLabel?.() || '', note: transactionNote,
     walletSessionId: sessionId, walletBase: walletPath(), pendingId, createdAt: now, state: 'ready',
     expiresAt: now + SEND_PREVIEW_TTL_MS
@@ -986,17 +956,13 @@ ipcMain.handle('wallet-send-preview', async (_, { address, amount, priority = 2,
     pendingId,
     address,
     amountXmr: atomicToXmr(amountAtomic),
-    serviceFeeXmr: atomicToXmr(serviceFeeAtomic),
     networkFeeXmr: atomicToXmr(networkFeeAtomic),
-    totalXmr: atomicToXmr(amountAtomic + serviceFeeAtomic + networkFeeAtomic),
+    totalXmr: atomicToXmr(amountAtomic + networkFeeAtomic),
     accountIndex: sourceAccountIndex,
     accountLabel: account?.getLabel?.() || '',
     note: transactionNote,
     priority: txPriority,
     txCount: txs.length,
-    feeRate: SERVICE_FEE_RATE,
-    feeCapXmr: '0.05',
-    feeAddress: FEE_ADDRESS
   };
   } finally {
     sendPreviewInFlight = false;
@@ -1025,15 +991,13 @@ ipcMain.handle('wallet-send-pending', async () => {
       pendingId,
       address: pending.address,
       amountXmr: atomicToXmr(pending.amountAtomic),
-      serviceFeeXmr: atomicToXmr(pending.serviceFeeAtomic),
       networkFeeXmr: atomicToXmr(pending.networkFeeAtomic),
-      totalXmr: atomicToXmr(pending.amountAtomic + pending.serviceFeeAtomic + pending.networkFeeAtomic),
+      totalXmr: atomicToXmr(pending.amountAtomic + pending.networkFeeAtomic),
       priority: pending.priority,
       accountIndex: pending.accountIndex,
       accountLabel: pending.accountLabel,
       note: pending.note,
       txCount: pending.txs.length,
-      feeAddress: FEE_ADDRESS
     };
   }
   return null;

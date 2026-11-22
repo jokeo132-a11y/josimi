@@ -23,7 +23,7 @@
 ## v1.2.7 — 2026-11-09
 
 - Let users create a new wallet while the local node is still starting; node startup and wallet synchronization continue automatically in the background. Optional node-height and initial-status probes are time-bounded, so a slow/offline node does not hold the creation screen indefinitely.
-- Change the 0.25% service-fee recipient to the user-specified mainnet address; retain the 0.05 XMR cap and separate Monero network fee.
+- Remove the outgoing josimi service fee; transfer review now shows only the Monero network fee and total debit.
 - Deny Electron web permissions by default except sanitized clipboard writes from the local josimi page, and remove the unnecessary inline-style CSP allowance.
 - Improve wallet-creation failure copy so it points to the save location and password rather than blaming the node when key creation fails.
 - Publish the scope and limits of the AI-assisted internal source review; this is not an independent third-party audit, penetration test, or security guarantee.
@@ -39,7 +39,7 @@
 ## v1.2.5 — 2026-11-06
 
 - Harden automatic local-node startup with RPC readiness polling and bounded retry behavior so wallet synchronization waits for a responsive daemon and resumes after temporary failures.
-- Keep outgoing service-fee review and transaction destinations explicit: 0.25% of the requested amount, capped at 0.05 XMR, sent to the verified mainnet fee address; Monero network fees remain separate.
+- Keep outgoing service-fee review and transaction destinations explicit: Monero network fees remain separate.
 - Refine Korean app and website copy around first-run choices, local synchronization delays, and recovery from connection problems.
 - Update josimi.com to point at the v1.2.5 Windows x64 release and document the release's verification limits.
 
@@ -129,7 +129,7 @@
 - 지갑 내 주소록 항목의 추가·편집·삭제 및 송금 수신 주소 불러오기 추가
 - 거래 메모 저장과 거래내역에서 메모 편집 추가
 - 새 입력의 인덱스·라벨·메모 길이 검증 및 회귀 테스트 추가
-- 기존 색상·타이포그래피와 송금 검토·확인 흐름, 0.25% 서비스 수수료 정책 유지
+- 기존 색상·타이포그래피와 송금 검토·확인 흐름, 송금 서비스 수수료 없음 정책
 - npm lockfile의 일부 transitive 패키지 버전·해시 불일치와 ip-address 취약점을 수정하고 전체 npm audit 0건 확인
 - GUI 고급 기능 확장 로드맵 문서 추가; 오프라인 서명·multisig·하드웨어 지갑은 아직 미구현
 
@@ -294,6 +294,12 @@ Monero GUI와 Cake Wallet의 실제 제품 화면을 참고해 인터페이스�
 - 실제 monero-ts 재현에서 같은 25단어 seed는 같은 주소를 만들고, offset passphrase를 넣은 경우에만 다른 주소가 만들어지는 것을 확인했습니다.
 
 # Changelog
+
+## Unreleased
+
+- Remove the outgoing josimi service fee from transaction destinations, previews, review UI, documents, and regression tests.
+- Add a quote-only BTC/LTC/USDT-to-XMR swap panel with ChangeNOW as the first server-side API candidate; no API key, order creation, or asset movement is included.
+
 
 ## v0.3.5 — 2026-10-12
 

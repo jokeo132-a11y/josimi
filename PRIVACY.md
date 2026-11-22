@@ -26,11 +26,15 @@ In local P2Pool mode, the bundled P2Pool process connects to the local monerod a
 
 In solo mode, josimi sends the primary public address and mining settings to the local monerod's loopback-only `start_mining` RPC. Monero P2P peers can observe the node's IP and connection metadata. The app never sends the seed or private spend key to a mining pool, P2Pool, XMRig, or monerod.
 
-The josimi service fee does not apply to mining rewards. It applies only to outgoing wallet transfers, as described below.
+josimi does not add a service fee to wallet transfers. Monero network fees are calculated by the wallet and shown before confirmation.
+
+## Swap privacy boundary
+
+The current in-app swap panel is quote-only and does not create orders or move assets. A future server-side provider integration must keep API credentials outside the Electron client, send only the minimum quote inputs, and never send wallet seeds or private spend keys. Provider terms, regional availability, KYC requirements, quote expiry, affiliate disclosure, and network/provider fees must be shown before any order is submitted.
 
 ## Fees
 
-Outgoing transfers have a josimi service fee of 0.25% of the requested amount, capped at 0.05 XMR, in addition to Monero's network fee. The service-fee address is `47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL`. The confirmation screen displays the recipient, service fee, network fee, total debit, and fee address before relay. Review these fields every time. If a relay succeeds but the durable recovery record cannot be saved, josimi does not report a normal success and keeps the transfer in an unresolved-review state.
+Outgoing transfers show the requested amount, Monero network fee, and total debit before relay. josimi does not add a service fee or redirect any part of the requested amount. If a relay succeeds but the durable recovery record cannot be saved, josimi does not report a normal success and keeps the transfer in an unresolved-review state.
 
 ## Telemetry and limits
 

@@ -2,7 +2,6 @@
 
 const ATOMIC_PER_XMR = 1000000000000n;
 const MAX_ATOMIC = 18446744073709551615n;
-const SERVICE_FEE_CAP_ATOMIC = 50000000000n;
 const MAX_WALLET_LABEL_LENGTH = 80;
 const MAX_TRANSACTION_NOTE_LENGTH = 500;
 
@@ -21,13 +20,6 @@ function xmrToAtomic(value) {
   const atomic = BigInt(whole) * ATOMIC_PER_XMR + BigInt((fraction + '000000000000').slice(0, 12));
   if (atomic > MAX_ATOMIC) throw new RangeError('XMR 금액이 너무 큽니다.');
   return atomic;
-}
-
-function calculateServiceFee(amountAtomic) {
-  const amount = BigInt(amountAtomic);
-  if (amount < 0n || amount > MAX_ATOMIC) throw new RangeError('송금 금액 범위를 벗어났습니다.');
-  const computed = (amount * 25n) / 10000n;
-  return computed > SERVICE_FEE_CAP_ATOMIC ? SERVICE_FEE_CAP_ATOMIC : computed;
 }
 
 function isValidMoneroTxHash(value) {
@@ -101,12 +93,10 @@ function canAppendResponseBytes(currentBytes, incomingBytes, maxBytes) {
 module.exports = {
   ATOMIC_PER_XMR,
   MAX_ATOMIC,
-  SERVICE_FEE_CAP_ATOMIC,
   MAX_WALLET_LABEL_LENGTH,
   MAX_TRANSACTION_NOTE_LENGTH,
   atomicToXmr,
   xmrToAtomic,
-  calculateServiceFee,
   isValidMoneroTxHash,
   normalizeWalletIndex,
   normalizeWalletLabel,

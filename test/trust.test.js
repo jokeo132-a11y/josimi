@@ -79,66 +79,22 @@ test('Electron denies unneeded web permissions and uses a restrictive local-page
   assert.doesNotMatch(html, /unsafe-inline/);
 });
 
-test('privacy docs disclose legacy v1.2.1 mining and current wallet, seed, and fee behavior', () => {
+test('privacy docs disclose no outgoing josimi service fee', () => {
   const privacy = read('PRIVACY.md');
   const readme = read('README.md');
   const main = read('src/main.js');
-  const seedHandler = main.slice(main.indexOf("ipcMain.handle('wallet-seed'"), main.indexOf("ipcMain.handle('wallet-account-create'"));
-  const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
-  assert.ok(feeAddress);
-  assert.match(privacy, /a node that is slow or unavailable does not prevent a new wallet from being created/);
-  assert.match(privacy, /parallel TLS connection checks/);
-  assert.match(privacy, /The P2Pool peer listener binds to all network interfaces/);
-  assert.match(privacy, /does \*\*not\*\* stop the daemon from listening on its default P2P port/);
-  assert.match(privacy, /Incoming reachability therefore also depends on the computer's firewall/);
-  assert.match(readme, /It still listens on its Monero P2P port; inbound reachability depends on the computer's firewall/);
-  assert.match(privacy, /fresh current-wallet-password check/);
-  assert.match(privacy, /temporary in-memory wallet/);
-  assert.match(privacy, /cannot be guaranteed physically zeroized/);
-  assert.match(privacy, /MoneroOcean preset uses TLS at `gulf\.moneroocean\.stream:20128`/);
-  assert.match(privacy, /XMRig connects only to P2Pool's loopback Stratum listener/);
-  assert.match(privacy, /it receives neither the wallet address nor pool login credentials/);
-  assert.match(privacy, /custom pool can use plaintext Stratum when TLS is disabled/);
-  assert.match(readme, /Solo reported monerod's active mining status/);
-  assert.match(readme, /custom pool with TLS disabled sent its wallet address and pool login in plaintext/);
-  assert.match(privacy, /parallel TLS connection checks/);
-  assert.match(seedHandler, /monerojs\.openWalletFull\(\{ keysData, cacheData, password/);
-  assert.doesNotMatch(seedHandler, /activeWallet\.getSeed\(/);
-  assert.match(seedHandler, /verificationWallet\.close\(false\)/);
-  assert.match(privacy, /timestamped `josimi-wallet-before-restore-/);
-  assert.match(privacy, /0\.25% of the requested amount, capped at 0\.05 XMR/);
-  assert.ok(privacy.includes(`\`${feeAddress}\``));
-  assert.match(privacy, /local monerod's loopback-only `start_mining` RPC/);
+  assert.match(privacy, /does not add a service fee/);
+  assert.match(readme, /does not add a service fee/i);
+  assert.doesNotMatch(main, /FEE_ADDRESS|SERVICE_FEE|calculateServiceFee|serviceFeeXmr|feeAddress/);
+  assert.doesNotMatch(privacy, /0\.25%|0\.05 XMR|47gm2Vv/);
 });
-
-test('configured service fee address is a valid Monero mainnet address and matches the disclosure', async () => {
+test('wallet send preview has only recipient amount and network fee', () => {
   const main = read('src/main.js');
-  const privacy = read('PRIVACY.md');
-  const feeAddress = main.match(/const FEE_ADDRESS = '([1-9A-HJ-NP-Za-km-z]+)'/)?.[1];
-  assert.ok(feeAddress);
-  assert.equal(feeAddress, '47gm2VvjaaTATUFJ7JVQ3qg5p51heqTuX1136uikDsoRaggrCUozA1CQvstEWZJsRKL79ZwyrZms2VipMRvy9tRNHmTJVKL');
-  const { MoneroUtils, MoneroNetworkType } = require('monero-ts');
-  assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.MAINNET), true);
-  assert.equal(await MoneroUtils.isValidAddress(feeAddress, MoneroNetworkType.TESTNET), false);
-  assert.ok(privacy.includes(`\`${feeAddress}\``));
+  const renderer = read('src/renderer.js');
+  assert.doesNotMatch(main, /assertServiceFeeDestination|serviceFeeAtomic|feeRate|feeCapXmr/);
+  assert.doesNotMatch(renderer, /reviewServiceFee|reviewFeeAddress|serviceFeeXmr|feeAddress/);
+  assert.match(renderer, /preview\.networkFeeXmr/);
 });
-
-test('website exposes the official josimi Reddit profile and community links', () => {
-  const website = read('website/index.html');
-  assert.match(website, /https:\/\/www\.reddit\.com\/user\/josimi_developer\//);
-  assert.match(website, /https:\/\/www\.reddit\.com\/r\/josimi\//);
-  assert.match(website, /개발자 Reddit 프로필/);
-  assert.match(website, /josimi Reddit 커뮤니티/);
-});
-
-test('service fee relay validation requires exact requested destination totals', () => {
-  const main = read('src/main.js');
-  const validator = main.slice(main.indexOf('function assertServiceFeeDestination'), main.indexOf('function serializeSubaddress'));
-  assert.match(validator, /actual\.set\(address, \(actual\.get\(address\) \|\| 0n\) \+ amount\)/);
-  assert.match(validator, /actual\.size !== expected\.size/);
-  assert.match(validator, /actual\.get\(address\) !== expectedAmount/);
-});
-
 test('wallet lifecycle does not wait indefinitely for node or sync startup', () => {
   const main = read('src/main.js');
   const renderer = read('src/renderer.js');

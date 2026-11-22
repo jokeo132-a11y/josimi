@@ -8,7 +8,7 @@ josimi is a non-custodial Monero desktop wallet built with Electron. Its interfa
 - Wallet creation, opening, and seed restoration prepare the local node only when a wallet action needs it; they do not wait for synchronization to become ready, and scanning continues automatically in the background.
 - Restore from a standard Monero seed, with optional seed-offset passphrase and restore height. Existing wallet files are preserved before a default-path replacement.
 - Manage multiple accounts and subaddresses, receive addresses and QR codes, address-book entries, transaction notes, and transaction history.
-- Review recipient, amount, service fee, network fee, total debit, and fee address before a transfer is relayed.
+- Review recipient, amount, Monero network fee, and total debit before a transfer is relayed.
 - A durable recovery warning blocks new sends after an ambiguous relay and app restart until the user checks the recorded transaction hash.
 - Recovery seeds are returned only after an explicit request, a localized native warning, and fresh wallet-password verification against a temporary in-memory copy. Password and seed-offset fields are cleared after use; JavaScript runtime memory cannot be guaranteed physically zeroized.
 - Wallet backup exports the complete regular Monero wallet file set, including the key, wallet cache, and address sidecar, through a staged copy; keep the resulting files together.
@@ -29,7 +29,11 @@ Mining is not available in v1.2.2. The following details describe the optional C
 
 The v1.2.1 app verified pinned XMRig and P2Pool executable hashes before launch. P2Pool received the wallet's public primary address; XMRig connected to its loopback Stratum listener without a wallet login. The app checked P2Pool's local HTTP health marker so an unrelated service on port 3333 was less likely to be mistaken for P2Pool; this marker was a local heuristic, not authenticated process identity. P2Pool still needed its own initial sync after monerod was ready; this commonly took 5–10 minutes, during which XMRig might show a connecting state. P2Pool opened its peer listener on all network interfaces; the profile used its standard peer port and router UPnP mapping was disabled. In pool and P2Pool modes, the app distinguished connecting from receiving work and only reported mining after XMRig reported an accepted share. The displayed accepted-share count was XMRig-reported, might include its developer-donation work, and did not confirm a payout credited by the pool. Solo reported monerod's active mining status because it did not use XMRig. A custom pool with TLS disabled sent its wallet address and pool login in plaintext; TLS was recommended where supported. A local hardware recommendation used the detected logical CPU count and RAM as a conservative starting point, not a hashrate or temperature guarantee. v1.2.1 supported CPU mining, not GPU mining. XMRig's default developer donation and any pool fees might apply.
 
-The josimi service fee applies only to outgoing wallet transfers. It is **0.25% of the requested amount, capped at 0.05 XMR**, plus Monero's network fee. No josimi fee is taken from mining rewards.
+josimi does not add a service fee to wallet transfers. Monero network fees are calculated by the wallet and shown before confirmation.
+
+## In-app swap quote model
+
+The wallet has a quote-only swap panel for BTC, LTC, and USDT to XMR. The first provider candidate is [ChangeNOW API](https://changenow.io/api): its official partner flow documents API-key issuance through the partner dashboard and referral revenue for API integrations. A live integration is intentionally not enabled in this desktop build yet. The API key must be kept on a server-side proxy, never bundled in Electron or sent to the renderer. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
 
 ## Trust and security
 

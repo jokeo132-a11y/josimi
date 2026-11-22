@@ -6,8 +6,6 @@ const {
   atomicToXmr,
   xmrToAtomic,
   MAX_ATOMIC,
-  calculateServiceFee,
-  SERVICE_FEE_CAP_ATOMIC,
   isValidMoneroTxHash,
   normalizeWalletIndex,
   normalizeWalletLabel,
@@ -40,13 +38,9 @@ test('XMR conversion rejects negative and uint64-overflow values', () => {
   assert.throws(() => atomicToXmr(MAX_ATOMIC + 1n), RangeError);
 });
 
-test('service fee is 0.25 percent and capped at 0.05 XMR', () => {
-  assert.equal(calculateServiceFee(100000000000n), 250000000n);
-  assert.equal(calculateServiceFee(100000000000000n), SERVICE_FEE_CAP_ATOMIC);
-  assert.equal(calculateServiceFee(0n), 0n);
-  assert.throws(() => calculateServiceFee(-1n), RangeError);
+test('core exports no josimi service-fee calculator', () => {
+  assert.equal('calculateServiceFee' in require('../src/core'), false);
 });
-
 test('Monero transaction hashes must be exactly 64 hexadecimal characters', () => {
   assert.equal(isValidMoneroTxHash('a'.repeat(64)), true);
   assert.equal(isValidMoneroTxHash('F'.repeat(64)), true);
