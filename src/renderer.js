@@ -213,6 +213,7 @@ let currentAddressBook = [];
 let currentTransactions = [];
 let renderedWalletSessionId = 0;
 let selectedSendContactName = '';
+let swapQuoteRequestId = 0;
 
 const formatXmr = (atomic) => {
   const n = BigInt(atomic || 0); const negative = n < 0n; const absolute = negative ? -n : n;
@@ -871,14 +872,22 @@ $('confirmSend').addEventListener('click', async () => { if (!pendingSend || sen
 $('swapInputAsset').addEventListener('change', () => $('swapNetworkLabel').classList.toggle('hidden', $('swapInputAsset').value !== 'usdt'));
 $('swapQuoteForm').addEventListener('submit', async (event) => {
   event.preventDefault();
+  const requestId = ++swapQuoteRequestId;
   const result = $('swapQuoteResult');
+  const submitButton = $('swapQuoteForm').querySelector('button[type=submit]');
   const fromCurrency = $('swapInputAsset').value;
   const fromNetwork = fromCurrency === 'usdt' ? $('swapInputNetwork').value : '';
+  submitButton.disabled = true;
+  result.textContent = LANG[language].swapLoading || '견적을 조회하는 중입니다.';
   try {
-    result.textContent = LANG[language].swapLoading || '견적을 조회하는 중입니다.';
     const quote = await window.josimi.swapQuote({ fromCurrency, fromNetwork, fromAmount: $('swapInputAmount').value.trim() });
+    if (requestId !== swapQuoteRequestId) return;
     result.textContent = `${quote.fromAmount} ${quote.fromCurrency}${quote.fromNetwork ? ` (${quote.fromNetwork})` : ''} → 약 ${quote.estimatedAmount} ${quote.toCurrency} · ${quote.provider}${quote.warningMessage ? ` · ${quote.warningMessage}` : ''}`;
-  } catch (error) { result.textContent = error?.message || LANG[language].swapApiUnavailable; }
+  } catch (error) {
+    if (requestId === swapQuoteRequestId) result.textContent = error?.message || LANG[language].swapApiUnavailable;
+  } finally {
+    if (requestId === swapQuoteRequestId) submitButton.disabled = false;
+  }
 });
 setMode('create');
 applyLanguage();

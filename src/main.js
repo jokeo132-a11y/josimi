@@ -7,7 +7,7 @@ const https = require('node:https');
 const { pathToFileURL } = require('node:url');
 const monerojs = require('monero-ts');
 const QRCode = require('qrcode');
-const { atomicToXmr, xmrToAtomic, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes } = require('./core');
+const { atomicToXmr, xmrToAtomic, isValidMoneroTxHash, normalizeWalletIndex, normalizeWalletLabel, normalizeTransactionNote, validateWalletPassword, isRelayAttemptInProgress, waitForPromiseOrTimeout, isAllowedNodeRedirect, isMoneroKeysFile, canAppendResponseBytes, normalizeSwapQuoteResponse } = require('./core');
 const { LocalNodeManager, MONERO_VERSION, RPC_HOST, RPC_PORT, waitForRpcReady } = require('./node-manager');
 const { RelayGuardStore } = require('./relay-guard');
 const { WalletOperationGate } = require('./wallet-operation-gate');
@@ -123,6 +123,7 @@ const SWAP_API_URL = 'https://api.changenow.io/v2/exchange/estimated-amount';
 const SWAP_API_DEADLINE_MS = 10_000;
 const SWAP_ASSETS = new Set(['btc', 'sol', 'eth', 'ltc', 'usdt']);
 const SWAP_NETWORKS = new Set(['eth', 'bsc', 'trx', 'sol']);
+const MAX_SWAP_RESPONSE_BYTES = 128 * 1024;
 function getSwapQuote({ fromCurrency, fromNetwork, fromAmount } = {}) {
   const apiKey = process.env.CHANGENOW_API_KEY;
   if (typeof apiKey !== 'string' || apiKey.trim().length < 8 || apiKey.length > 512) throw new Error('ChangeNOW 견적 서비스가 아직 설정되지 않았습니다.');
@@ -136,14 +137,29 @@ function getSwapQuote({ fromCurrency, fromNetwork, fromAmount } = {}) {
   if (network) params.set('fromNetwork', network);
   return new Promise((resolve, reject) => {
     const request = https.get(`${SWAP_API_URL}?${params}`, { headers: { 'x-changenow-api-key': apiKey.trim(), Accept: 'application/json' } }, (response) => {
-      const chunks = []; let bytes = 0;
-      response.on('data', (chunk) => { bytes += chunk.length; if (bytes <= 128 * 1024) chunks.push(chunk); else response.destroy(new Error('ChangeNOW 응답이 너무 큽니다.')); });
+      const declaredLength = Number(response.headers['content-length'] || 0);
+      if (declaredLength > MAX_SWAP_RESPONSE_BYTES) {
+        response.resume();
+        response.destroy();
+        reject(new Error('ChangeNOW 응답이 너무 큽니다.'));
+        return;
+      }
+      const chunks = []; let bytes = 0; let oversized = false;
+      response.on('data', (chunk) => {
+        if (oversized) return;
+        bytes += chunk.length;
+        if (bytes > MAX_SWAP_RESPONSE_BYTES) {
+          oversized = true;
+          response.destroy();
+          reject(new Error('ChangeNOW 응답이 너무 큽니다.'));
+        } else chunks.push(chunk);
+      });
       response.on('end', () => {
+        if (oversized) return;
         try {
           const data = JSON.parse(Buffer.concat(chunks).toString('utf8'));
           if (response.statusCode < 200 || response.statusCode >= 300) throw new Error(data?.message || data?.error || `ChangeNOW API 오류 (${response.statusCode})`);
-          if (!data || typeof data !== 'object' || typeof data.estimatedAmount !== 'string') throw new Error('ChangeNOW 견적 응답 형식이 올바르지 않습니다.');
-          resolve({ provider: 'ChangeNOW', fromCurrency: currency.toUpperCase(), fromNetwork: network || null, toCurrency: 'XMR', fromAmount: amount, estimatedAmount: data.estimatedAmount, transactionSpeed: data.transactionSpeed || null, warningMessage: data.warningMessage || null });
+          resolve(normalizeSwapQuoteResponse(data, { currency, network, amount }));
         } catch (error) { reject(error); }
       });
       response.on('error', reject);

@@ -37,7 +37,7 @@ If josimi is useful to you, you may voluntarily support development with XMR. Do
 
 ## In-app swap quote model
 
-The wallet has a quote-only swap panel for BTC, SOL, ETH, LTC, and USDT to XMR. The ChangeNOW API key is read only from the developer-controlled `CHANGENOW_API_KEY` runtime secret; users do not enter a key, and it is never bundled in the renderer, source code, or wallet files. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
+The wallet has a quote-only swap panel for BTC, SOL, ETH, LTC, and USDT to XMR. The ChangeNOW API key is read only from the developer-controlled `CHANGENOW_API_KEY` runtime secret; users do not enter a key, and it is never bundled in the renderer, source code, or wallet files. The public Windows ZIP does not contain that secret or a hosted proxy, so the panel reports that the service is not configured unless the app is launched in a controlled environment that supplies the runtime secret. A future public deployment must use an authenticated, rate-limited developer proxy rather than embedding the key. The quote must show the provider, rate, provider/network charges, expiry, and affiliate relationship before any future order flow is enabled. The wallet seed and private keys are never sent to a swap provider, and there is no recommendation or sponsored-services tab.
 
 ## Trust and security
 

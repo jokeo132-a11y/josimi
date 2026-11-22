@@ -276,3 +276,11 @@ test('release verification docs disclose checksum limitations and audit status',
   assert.match(verify, /\$version = '<version from the ZIP filename>'/);
   assert.match(verify, /Split-Path \$zip -Leaf/);
 });
+
+test('swap quote UI ignores stale responses from earlier requests', () => {
+  const renderer = read('src/renderer.js');
+  assert.match(renderer, /let swapQuoteRequestId = 0/);
+  assert.match(renderer, /const requestId = \+\+swapQuoteRequestId/);
+  assert.match(renderer, /if \(requestId !== swapQuoteRequestId\) return/);
+  assert.match(renderer, /if \(requestId === swapQuoteRequestId\) result\.textContent/);
+});
