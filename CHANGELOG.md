@@ -298,7 +298,7 @@ Monero GUI와 Cake Wallet의 실제 제품 화면을 참고해 인터페이스�
 ## Unreleased
 
 - Remove the outgoing josimi service fee from transaction destinations, previews, review UI, documents, and regression tests.
-- Add a quote-only BTC/LTC/USDT-to-XMR swap panel with ChangeNOW as the first server-side API candidate; no API key, order creation, or asset movement is included.
+- Add a quote-only BTC/SOL/ETH/LTC/USDT-to-XMR swap panel using the developer-controlled ChangeNOW runtime secret; users do not enter an API key, and order creation or asset movement is not included.
 
 
 ## v0.3.5 — 2026-10-12
